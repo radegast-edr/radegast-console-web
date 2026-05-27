@@ -1,0 +1,89 @@
+import {BACKEND_URL} from '$env/static/private';
+
+async function request(method, path, body = null, isFormData = false) {
+	const options = {
+		method,
+		credentials: 'include',
+		headers: {}
+	};
+
+	if (body && !isFormData) {
+		options.headers['Content-Type'] = 'application/json';
+		options.body = JSON.stringify(body);
+	} else if (body && isFormData) {
+		options.body = body;
+	}
+
+	const resp = await fetch(`${BACKEND_URL}${path}`, options);
+
+	if (!resp.ok) {
+		const error = await resp.json().catch(() => ({ detail: resp.statusText }));
+		throw new Error(error.detail || 'Request failed');
+	}
+
+	if (resp.headers.get('content-type')?.includes('application/json')) {
+		return resp.json();
+	}
+	return resp;
+}
+
+export const api = {
+	// Auth
+	register: (email, password) => request('POST', '/auth/register', { email, password }),
+	login: (email, password) => request('POST', '/auth/login', { email, password }),
+	logout: () => request('POST', '/auth/logout'),
+	me: () => request('GET', '/auth/me'),
+	verify: (token) => request('GET', `/auth/verify?token=${token}`),
+	setupKeys: () => request('POST', '/auth/keys/setup'),
+	recoverKeys: (recovery_key) => request('POST', '/auth/keys/recover', { recovery_key }),
+	deviceLogin: (token) => request('POST', '/auth/device/login', { token }),
+
+	// Teams
+	listTeams: () => request('GET', '/teams/'),
+	createTeam: (data) => request('POST', '/teams/', data),
+	getTeam: (id) => request('GET', `/teams/${id}`),
+	updateTeam: (id, data) => request('PUT', `/teams/${id}`, data),
+	inviteToTeam: (teamId, email) => request('POST', `/teams/${teamId}/invite`, { email }),
+	listMembers: (teamId) => request('GET', `/teams/${teamId}/members`),
+	removeMember: (teamId, userId) => request('DELETE', `/teams/${teamId}/members/${userId}`),
+	listTeamGroups: (teamId) => request('GET', `/teams/${teamId}/groups`),
+	createTeamGroup: (teamId, name) => request('POST', `/teams/${teamId}/groups`, { name }),
+
+	// Devices
+	createDevice: (name) => request('POST', '/devices/', { name }),
+	listDevices: () => request('GET', '/devices/'),
+	addDeviceToGroup: (deviceId, groupId) =>
+		request('POST', `/devices/${deviceId}/groups/${groupId}`),
+	deleteDevice: (deviceId) => request('DELETE', `/devices/${deviceId}`),
+
+	// Packs
+	listPacks: () => request('GET', '/packs/'),
+	createPack: (name, description) => request('POST', '/packs/', { name, description }),
+	getPack: (id) => request('GET', `/packs/${id}`),
+	listVersions: (packId) => request('GET', `/packs/${packId}/versions`),
+	uploadVersion: (packId, version, file) => {
+		const formData = new FormData();
+		formData.append('file', file);
+		return request('POST', `/packs/${packId}/versions?version=${version}`, formData, true);
+	},
+	enablePack: (groupId, packVersionId, autoupdate = true) =>
+		request('POST', `/packs/groups/${groupId}/enable`, {
+			pack_version_id: packVersionId,
+			autoupdate
+		}),
+	listEnabledPacks: (groupId) => request('GET', `/packs/groups/${groupId}/enabled`),
+	disablePack: (groupId, enabledId) =>
+		request('DELETE', `/packs/groups/${groupId}/enabled/${enabledId}`),
+
+	// Logs
+	listLogs: (deviceId = null) =>
+		request('GET', deviceId ? `/logs/?device_id=${deviceId}` : '/logs/'),
+
+	// Admin
+	adminListUsers: () => request('GET', '/admin/users'),
+	adminDeleteUser: (id) => request('DELETE', `/admin/users/${id}`),
+	adminListDevices: () => request('GET', '/admin/devices'),
+	adminDeleteDevice: (id) => request('DELETE', `/admin/devices/${id}`),
+	adminListPacks: () => request('GET', '/admin/packs'),
+	adminDeletePack: (id) => request('DELETE', `/admin/packs/${id}`)
+};
