@@ -11,7 +11,7 @@
 	// Routes that are fully public (no auth needed)
 	const PUBLIC_PREFIXES = ['/login', '/register'];
 	// Routes that need auth but bypass the key-setup gate
-	const KEY_EXEMPT_PREFIXES = ['/keys/'];
+	const KEY_EXEMPT_PREFIXES = ['/keys/', '/settings'];
 
 	onMount(async () => {
 		const path = window.location.pathname;

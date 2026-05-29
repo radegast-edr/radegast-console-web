@@ -1,4 +1,5 @@
 import {PUBLIC_BACKEND_URL as BACKEND_URL} from '$env/static/public';
+import { goto } from '$app/navigation';
 
 async function request(method, path, body = null, isFormData = false) {
 	const options = {
@@ -15,6 +16,12 @@ async function request(method, path, body = null, isFormData = false) {
 	}
 
 	const resp = await fetch(`${BACKEND_URL}${path}`, options);
+
+	if (resp.status === 401 && path !== '/auth/login') {
+		// Session expired or not logged in — send to login page
+		goto('/login');
+		throw new Error('Not authenticated');
+	}
 
 	if (!resp.ok) {
 		const error = await resp.json().catch(() => ({ detail: resp.statusText }));
@@ -43,6 +50,10 @@ export const api = {
 	deleteKeys: () => request('DELETE', '/auth/keys'),
 	recoverKeys: () => request('GET', '/auth/keys/recover'),
 	deviceLogin: (token) => request('POST', '/auth/device/login', { token }),
+	changePassword: (old_password, new_password) =>
+		request('POST', '/auth/change-password', { old_password, new_password }),
+	getNotifications: () => request('GET', '/auth/notifications'),
+	updateNotifications: (data) => request('PUT', '/auth/notifications', data),
 
 	// Teams
 	listTeams: () => request('GET', '/teams/'),

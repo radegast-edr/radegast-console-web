@@ -9,6 +9,7 @@
 	let hasKey = $state(false);
 	/** @type {boolean|null} */
 	let hasKeysOnServer = $state(null); // null = unknown
+	let userId = $state(null);
 
 	// Receiver state
 	let transferId = $state('');
@@ -35,13 +36,14 @@
 		} catch (e) {
 			showError('Failed to load crypto library: ' + e.message);
 		}
-		hasKey = !!getStoredPrivateKey();
 		try {
 			const me = await api.me();
+			userId = me.id;
 			hasKeysOnServer = me.has_keys;
 		} catch {
 			hasKeysOnServer = false;
 		}
+		hasKey = !!(await getStoredPrivateKey(userId));
 		return () => { if (pollInterval) clearInterval(pollInterval); };
 	});
 
@@ -68,7 +70,7 @@
 				sessionStorage.removeItem(EPH_PRIV_KEY);
 
 				const mainPriv = decrypt(status.encrypted_private_key, ephPriv);
-				storePrivateKey(mainPriv);
+				await storePrivateKey(userId, mainPriv);
 				showFlash('Key transferred successfully!');
 				goto('/');
 			}
@@ -86,7 +88,7 @@
 			const transfer = await api.transferGet(senderTransferId.trim());
 			const receiverPub = transfer.receiver_age_public_key;
 
-			const mainPriv = getStoredPrivateKey();
+			const mainPriv = await getStoredPrivateKey(userId);
 			if (!mainPriv) { showError('No private key in this browser.'); return; }
 
 			const encryptedPayload = encrypt(mainPriv, [receiverPub]);
@@ -129,7 +131,7 @@
 				});
 			}
 
-			storePrivateKey(mainPriv);
+			await storePrivateKey(userId, mainPriv);
 			genRecoveryPrivateKey = recoveryPriv;
 			genStep = 'show_recovery';
 		} catch (e) {

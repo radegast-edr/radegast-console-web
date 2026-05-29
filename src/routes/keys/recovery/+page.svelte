@@ -7,6 +7,7 @@
 	let recoveryKey = $state('');
 	let success = $state(false);
 	let wasmReady = $state(false);
+	let userId = $state(null);
 
 	onMount(async () => {
 		try {
@@ -15,6 +16,12 @@
 		} catch (e) {
 			showError('Failed to load crypto library: ' + e.message);
 		}
+		try {
+			const me = await api.me();
+			userId = me.id;
+		} catch {
+			// not logged in — layout will redirect
+		}
 	});
 
 	async function recover() {
@@ -22,7 +29,7 @@
 			const result = await api.recoverKeys();
 			// Decrypt the stored encrypted private key using the AGE recovery private key
 			const mainPriv = decrypt(result.encrypted_private_key, recoveryKey.trim());
-			storePrivateKey(mainPriv);
+			await storePrivateKey(userId, mainPriv);
 			success = true;
 			showFlash('Keys recovered successfully! Private key stored in browser.');
 		} catch (e) {

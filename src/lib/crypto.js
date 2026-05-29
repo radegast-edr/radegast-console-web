@@ -85,18 +85,67 @@ export function decrypt(ciphertext, privateKey) {
 	return result.output;
 }
 
-// --- Local storage helpers for private key ---
+// --- IndexedDB helpers for private key storage (per user ID) ---
 
-const PRIVATE_KEY_STORAGE_KEY = 'radegast_age_private_key';
+const IDB_NAME = 'radegast';
+const IDB_STORE = 'keys';
+const IDB_VERSION = 1;
 
-export function getStoredPrivateKey() {
-	return localStorage.getItem(PRIVATE_KEY_STORAGE_KEY);
+/** @returns {Promise<IDBDatabase>} */
+function openKeyDB() {
+	return new Promise((resolve, reject) => {
+		const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+		req.onupgradeneeded = (e) => {
+			/** @type {IDBDatabase} */
+			const db = e.target.result;
+			if (!db.objectStoreNames.contains(IDB_STORE)) {
+				db.createObjectStore(IDB_STORE);
+			}
+		};
+		req.onsuccess = (e) => resolve(e.target.result);
+		req.onerror = () => reject(req.error);
+	});
 }
 
-export function storePrivateKey(privateKey) {
-	localStorage.setItem(PRIVATE_KEY_STORAGE_KEY, privateKey);
+/**
+ * @param {string|number} userId
+ * @returns {Promise<string|null>}
+ */
+export async function getStoredPrivateKey(userId) {
+	const db = await openKeyDB();
+	return new Promise((resolve, reject) => {
+		const tx = db.transaction(IDB_STORE, 'readonly');
+		const req = tx.objectStore(IDB_STORE).get(String(userId));
+		req.onsuccess = () => resolve(req.result ?? null);
+		req.onerror = () => reject(req.error);
+	});
 }
 
-export function clearStoredPrivateKey() {
-	localStorage.removeItem(PRIVATE_KEY_STORAGE_KEY);
+/**
+ * @param {string|number} userId
+ * @param {string} privateKey
+ * @returns {Promise<void>}
+ */
+export async function storePrivateKey(userId, privateKey) {
+	const db = await openKeyDB();
+	return new Promise((resolve, reject) => {
+		const tx = db.transaction(IDB_STORE, 'readwrite');
+		const req = tx.objectStore(IDB_STORE).put(privateKey, String(userId));
+		req.onsuccess = () => resolve();
+		req.onerror = () => reject(req.error);
+	});
+}
+
+/**
+ * @param {string|number} userId
+ * @returns {Promise<void>}
+ */
+export async function clearStoredPrivateKey(userId) {
+	const db = await openKeyDB();
+	return new Promise((resolve, reject) => {
+		const tx = db.transaction(IDB_STORE, 'readwrite');
+		const req = tx.objectStore(IDB_STORE).delete(String(userId));
+		req.onsuccess = () => resolve();
+		req.onerror = () => reject(req.error);
+	});
 }

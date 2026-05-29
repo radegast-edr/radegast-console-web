@@ -9,10 +9,13 @@
 	let recoveryPrivateKey = $state('');
 	let confirmed = $state(false);
 	let error = $state('');
+	let userId = $state(null);
 
 	onMount(async () => {
 		try {
 			await initAgeWasm();
+			const me = await api.me();
+			userId = me.id;
 			step = 'ready';
 		} catch (e) {
 			error = 'Failed to load crypto library: ' + e.message;
@@ -39,8 +42,8 @@
 				encrypted_private_key: encryptedMainPriv
 			});
 
-			// 5. Store main private key in localStorage
-			storePrivateKey(mainPriv);
+			// 5. Store main private key in IndexedDB keyed by user ID
+			await storePrivateKey(userId, mainPriv);
 
 			// 6. Show recovery key to user (this is the only time it's shown)
 			recoveryPrivateKey = recoveryPriv;

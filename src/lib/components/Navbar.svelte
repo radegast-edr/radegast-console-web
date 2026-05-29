@@ -50,7 +50,7 @@
 				</ul>
 				<ul class="navbar-nav">
 					<li class="nav-item">
-						<span class="nav-link text-light">{$user.email}</span>
+						<a class="nav-link text-light" href="/settings">{$user.email}</a>
 					</li>
 					<li class="nav-item">
 						<button class="btn btn-outline-light btn-sm" onclick={logout}>Logout</button>

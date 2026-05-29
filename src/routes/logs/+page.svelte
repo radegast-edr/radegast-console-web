@@ -9,8 +9,9 @@
 	let privateKey = $state(null);
 
 	onMount(async () => {
-		privateKey = getStoredPrivateKey();
 		try {
+			const me = await api.me();
+			privateKey = await getStoredPrivateKey(me.id);
 			logs = await api.listLogs();
 		} catch (e) {
 			showError(e.message);

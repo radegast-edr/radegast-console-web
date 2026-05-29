@@ -8,6 +8,7 @@
 	let teams = $state([]);
 	let groups = $state([]);
 	let devices = $state([]);
+	let hasPrivateKey = $state(true); // default true to avoid flash
 
 	onMount(async () => {
 		try {
@@ -18,15 +19,20 @@
 				api.listGroups(),
 				api.listDevices()
 			]);
+			hasPrivateKey = !!(await getStoredPrivateKey(me.id));
 		} catch (e) {
 			goto('/login');
 		}
 	});
 </script>
 
+<svelte:head>
+	<title>Dashboard - Radegast</title>
+</svelte:head>
+
 <h2>Dashboard</h2>
 
-{#if $user && !getStoredPrivateKey()}
+{#if $user && !hasPrivateKey}
 	<div class="alert alert-warning">
 		<h5>Private Key Not Found</h5>
 		<p class="mb-2">
