@@ -1,63 +1,36 @@
 <script>
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api.js';
-	import { user, showFlash, showError } from '$lib/store.js';
+	import { user } from '$lib/store.js';
 	import { getStoredPrivateKey } from '$lib/crypto.js';
 	import { goto } from '$app/navigation';
 
 	let teams = $state([]);
-	let showKeySetup = $state(false);
-	let recoveryKey = $state('');
-	let keySetupDone = $state(false);
 
 	onMount(async () => {
 		try {
 			const me = await api.me();
 			$user = me;
 			teams = await api.listTeams();
-
-			if (!getStoredPrivateKey()) {
-				showKeySetup = true;
-			}
 		} catch (e) {
 			goto('/login');
 		}
 	});
-
-	async function setupKeys() {
-		try {
-			const result = await api.setupKeys();
-			recoveryKey = result.recovery_key;
-			keySetupDone = true;
-			showFlash('Keys set up successfully! Save your recovery key!');
-		} catch (e) {
-			if (e.message.includes('already set up')) {
-				showKeySetup = false;
-			} else {
-				showError(e.message);
-			}
-		}
-	}
 </script>
 
 <h2>Dashboard</h2>
 
-{#if showKeySetup && !keySetupDone}
+{#if $user && !getStoredPrivateKey()}
 	<div class="alert alert-warning">
-		<h5>Key Setup Required</h5>
-		<p>You need to set up your encryption keys. This is required for viewing encrypted logs.</p>
-		<button class="btn btn-warning" onclick={setupKeys}>Set Up Keys</button>
-	</div>
-{/if}
-
-{#if keySetupDone}
-	<div class="alert alert-danger">
-		<h5>Save Your Recovery Key!</h5>
-		<p>This is the only time you'll see this key. Store it securely:</p>
-		<code class="d-block p-2 bg-dark text-light rounded">{recoveryKey}</code>
-		<p class="mt-2 mb-0">
-			If you lose your private key, you'll need this to recover your account.
+		<h5>Private Key Not Found</h5>
+		<p class="mb-2">
+			Your private key is not stored in this browser. You won't be able to decrypt logs until
+			you restore it.
 		</p>
+		<a href="/keys/recovery" class="btn btn-warning btn-sm me-2">Recover with Recovery Key</a>
+		<a href="/keys/transfer" class="btn btn-outline-secondary btn-sm"
+			>Transfer from Another Browser</a
+		>
 	</div>
 {/if}
 

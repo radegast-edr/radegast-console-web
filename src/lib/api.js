@@ -1,4 +1,4 @@
-import {BACKEND_URL} from '$env/static/private';
+import {PUBLIC_BACKEND_URL as BACKEND_URL} from '$env/static/public';
 
 async function request(method, path, body = null, isFormData = false) {
 	const options = {
@@ -34,8 +34,10 @@ export const api = {
 	logout: () => request('POST', '/auth/logout'),
 	me: () => request('GET', '/auth/me'),
 	verify: (token) => request('GET', `/auth/verify?token=${token}`),
-	setupKeys: () => request('POST', '/auth/keys/setup'),
-	recoverKeys: (recovery_key) => request('POST', '/auth/keys/recover', { recovery_key }),
+	setupKeys: (data) => request('POST', '/auth/keys/setup', data),
+	setupSecondaryKey: (data) => request('POST', '/auth/keys/secondary', data),
+	deleteKeys: () => request('DELETE', '/auth/keys'),
+	recoverKeys: () => request('GET', '/auth/keys/recover'),
 	deviceLogin: (token) => request('POST', '/auth/device/login', { token }),
 
 	// Teams
@@ -50,7 +52,7 @@ export const api = {
 	createTeamGroup: (teamId, name) => request('POST', `/teams/${teamId}/groups`, { name }),
 
 	// Devices
-	createDevice: (name) => request('POST', '/devices/', { name }),
+	createDevice: (name, group_id) => request('POST', '/devices/', { name, group_id }),
 	listDevices: () => request('GET', '/devices/'),
 	addDeviceToGroup: (deviceId, groupId) =>
 		request('POST', `/devices/${deviceId}/groups/${groupId}`),
@@ -74,6 +76,13 @@ export const api = {
 	listEnabledPacks: (groupId) => request('GET', `/packs/groups/${groupId}/enabled`),
 	disablePack: (groupId, enabledId) =>
 		request('DELETE', `/packs/groups/${groupId}/enabled/${enabledId}`),
+
+	// Key transfer
+	transferInitiate: (receiver_age_public_key) =>
+		request('POST', '/auth/keys/transfer/initiate', { receiver_age_public_key }),
+	transferGet: (id) => request('GET', `/auth/keys/transfer/${id}`),
+	transferComplete: (id, encrypted_private_key) =>
+		request('POST', `/auth/keys/transfer/${id}/complete`, { encrypted_private_key }),
 
 	// Logs
 	listLogs: (deviceId = null) =>
