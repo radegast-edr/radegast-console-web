@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<style>@import url('https://cdnjs.cloudflare.com/ajax/libs/hack-font/3.3.0/web/hack.min.css');
+      
+      .bg { 
+        fill: #050505; 
+      }
+      
+      .bracket { 
+        fill: #00ff66; 
+      }
+      
+      .letter { 
+        fill: #ffffff; 
+      }
+      
+      .txt {
+        font-family: 'Hack', monospace;
+        font-size: 90px;
+        text-anchor: middle;
+        dominant-baseline: central;
+      }
+
+      .sub {
+        font-size: 55px;
+        baseline-shift: sub;
+      }</style>
+</defs>
+<rect class="bg" width="100%" height="100%"/>
+<text class="txt" x="50%" y="50%"><tspan class="bracket">[</tspan><tspan class="letter">r</tspan><tspan class="letter sub">c</tspan><tspan class="bracket">]</tspan></text>
+</svg>
