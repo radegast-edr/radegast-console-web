@@ -40,7 +40,7 @@
 						<a class="nav-link" href="/packs">Packs</a>
 					</li>
 					<li class="nav-item">
-						<a class="nav-link" href="/logs">Logs</a>
+						<a class="nav-link" href="/alerts">Alerts</a>
 					</li>
 					{#if $user.role === 'admin'}
 						<li class="nav-item">

@@ -117,8 +117,14 @@ export const api = {
 		request('POST', `/auth/keys/transfer/${id}/complete`, { encrypted_private_key }),
 
 	// Logs
-	listLogs: (deviceId = null) =>
-		request('GET', deviceId ? `/logs/?device_id=${deviceId}` : '/logs/'),
+	listLogs: (page = 1, limit = 100, deviceId = null) => {
+		let url = `/logs/?page=${page}&limit=${limit}`;
+		if (deviceId) url += `&device_id=${deviceId}`;
+		return request('GET', url);
+	},
+	getUnreadLogsCount: () => request('GET', '/logs/unread-count'),
+	markLogSeen: (id) => request('POST', `/logs/${id}/seen`),
+	markAllLogsSeen: () => request('POST', '/logs/seen/all'),
 
 	// Admin
 	adminListUsers: () => request('GET', '/admin/users'),

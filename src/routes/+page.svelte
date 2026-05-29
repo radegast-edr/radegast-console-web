@@ -9,21 +9,39 @@
 	let groups = $state([]);
 	let devices = $state([]);
 	let hasPrivateKey = $state(true); // default true to avoid flash
+	let unreadCount = $state(0);
 
 	onMount(async () => {
 		try {
 			const me = await api.me();
 			$user = me;
-			[teams, groups, devices] = await Promise.all([
+			const [teamsRes, groupsRes, devicesRes, unreadRes] = await Promise.all([
 				api.listTeams(),
 				api.listGroups(),
-				api.listDevices()
+				api.listDevices(),
+				api.getUnreadLogsCount()
 			]);
+			teams = teamsRes;
+			groups = groupsRes;
+			devices = devicesRes;
+			unreadCount = unreadRes.unread_count;
 			hasPrivateKey = !!(await getStoredPrivateKey(me.id));
 		} catch (e) {
 			goto('/login');
 		}
+
+		const interval = setInterval(refreshUnreadCount, 60000);
+		return () => clearInterval(interval);
 	});
+
+	async function refreshUnreadCount() {
+		try {
+			const unreadRes = await api.getUnreadLogsCount();
+			unreadCount = unreadRes.unread_count;
+		} catch (e) {
+			console.error("Failed to auto-refresh unread alerts:", e);
+		}
+	}
 </script>
 
 <svelte:head>
@@ -95,6 +113,28 @@
 				<h5 class="card-title">Packs</h5>
 				<p class="card-text text-muted">Configuration packs</p>
 				<a href="/packs" class="btn btn-primary btn-sm">Browse Packs</a>
+			</div>
+		</div>
+	</div>
+	<div class="col-md-4">
+		<div class="card h-100 border-{unreadCount > 0 ? 'danger' : 'primary'} shadow-sm">
+			<div class="card-body">
+				<h5 class="card-title text-{unreadCount > 0 ? 'danger' : 'primary'} fw-bold d-flex align-items-center justify-content-between">
+					<span>Alerts</span>
+					{#if unreadCount > 0}
+						<span class="badge bg-danger">{unreadCount} unread</span>
+					{:else}
+						<span class="badge bg-primary">0 unread</span>
+					{/if}
+				</h5>
+				<p class="card-text text-muted">
+					{#if unreadCount > 0}
+						You have <strong>{unreadCount}</strong> unread alert(s) requiring attention.
+					{:else}
+						All alerts have been reviewed.
+					{/if}
+				</p>
+				<a href="/alerts" class="btn btn-{unreadCount > 0 ? 'danger' : 'primary'} btn-sm">View Alerts</a>
 			</div>
 		</div>
 	</div>

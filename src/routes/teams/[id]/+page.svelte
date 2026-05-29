@@ -168,18 +168,15 @@
 				<thead>
 					<tr>
 						<th>Device</th>
-						<th>Signing Key</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each teamDevices as d}
 						<tr>
-							<td><a href="/devices/{d.id}">{d.name}</a></td>
 							<td>
-								{#if d.signature_public_key}
-									<span class="badge bg-success">Set</span>
-								{:else}
-									<span class="badge bg-secondary">Not set</span>
+								<a href="/devices/{d.id}">{d.name}</a>
+								{#if !d.signature_public_key}
+									<span class="badge bg-danger ms-2" title="Unsigned device! Signing key is not set.">Unsigned</span>
 								{/if}
 							</td>
 						</tr>

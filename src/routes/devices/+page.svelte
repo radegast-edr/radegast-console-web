@@ -101,7 +101,6 @@
 		<tr>
 			<th>ID</th>
 			<th>Name</th>
-			<th>Signing Key</th>
 			<th>Actions</th>
 		</tr>
 	</thead>
@@ -109,12 +108,10 @@
 		{#each devices as device}
 			<tr>
 				<td>{device.id}</td>
-				<td><a href="/devices/{device.id}">{device.name}</a></td>
 				<td>
-					{#if device.signature_public_key}
-						<span class="badge bg-success">Set</span>
-					{:else}
-						<span class="badge bg-secondary">Not set</span>
+					<a href="/devices/{device.id}">{device.name}</a>
+					{#if !device.signature_public_key}
+						<span class="badge bg-danger ms-2" title="Unsigned device! Signing key is not set.">Unsigned</span>
 					{/if}
 				</td>
 				<td>

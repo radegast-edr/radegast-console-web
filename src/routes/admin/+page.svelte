@@ -124,7 +124,6 @@
 			<tr>
 				<th>ID</th>
 				<th>Name</th>
-				<th>Signing Key</th>
 				<th>Actions</th>
 			</tr>
 		</thead>
@@ -132,8 +131,12 @@
 			{#each devices as d}
 				<tr>
 					<td>{d.id}</td>
-					<td>{d.name}</td>
-					<td>{d.signature_public_key ? 'Set' : 'Not set'}</td>
+					<td>
+						<a href="/devices/{d.id}">{d.name}</a>
+						{#if !d.signature_public_key}
+							<span class="badge bg-danger ms-2" title="Unsigned device! Signing key is not set.">Unsigned</span>
+						{/if}
+					</td>
 					<td>
 						<button class="btn btn-sm btn-outline-danger" onclick={() => deleteDevice(d.id)}
 							>Delete</button
