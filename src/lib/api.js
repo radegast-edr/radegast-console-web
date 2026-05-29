@@ -41,7 +41,7 @@ async function request(method, path, body = null, isFormData = false) {
 export const api = {
 	// Auth
 	register: (email, password) => request('POST', '/auth/register', { email, password }),
-	login: (email, password) => request('POST', '/auth/login', { email, password }),
+	login: (email, password, public_key = null) => request('POST', '/auth/login', { email, password, public_key }),
 	logout: () => request('POST', '/auth/logout'),
 	me: () => request('GET', '/auth/me'),
 	verify: (token) => request('GET', `/auth/verify?token=${token}`),
@@ -49,6 +49,9 @@ export const api = {
 	setupSecondaryKey: (data) => request('POST', '/auth/keys/secondary', data),
 	deleteKeys: () => request('DELETE', '/auth/keys'),
 	recoverKeys: () => request('GET', '/auth/keys/recover'),
+	listKeys: () => request('GET', '/auth/keys'),
+	addKey: (data) => request('POST', '/auth/keys', data),
+	deleteKey: (id) => request('DELETE', `/auth/keys/${id}`),
 	deviceLogin: (token) => request('POST', '/auth/device/login', { token }),
 	changePassword: (old_password, new_password) =>
 		request('POST', '/auth/change-password', { old_password, new_password }),

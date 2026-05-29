@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api.js';
 	import { showFlash, showError } from '$lib/store.js';
-	import { initAgeWasm, decrypt, storePrivateKey } from '$lib/crypto.js';
+	import { initAgeWasm, storePrivateKey, aesDecrypt } from '$lib/crypto.js';
 
 	let recoveryKey = $state('');
 	let success = $state(false);
@@ -26,10 +26,25 @@
 
 	async function recover() {
 		try {
-			const result = await api.recoverKeys();
-			// Decrypt the stored encrypted private key using the AGE recovery private key
-			const mainPriv = decrypt(result.encrypted_private_key, recoveryKey.trim());
-			await storePrivateKey(userId, mainPriv);
+			const keys = await api.recoverKeys();
+			let decryptedKey = null;
+			let matchedPublicKey = null;
+			for (const key of keys) {
+				if (!key.encrypted_private_key) continue;
+				try {
+					decryptedKey = await aesDecrypt(key.encrypted_private_key, recoveryKey.trim());
+					if (decryptedKey) {
+						matchedPublicKey = key.public_key;
+						break;
+					}
+				} catch (e) {
+					// continue
+				}
+			}
+			if (!decryptedKey) {
+				throw new Error('No matching recovery key found or decryption failed.');
+			}
+			await storePrivateKey(userId, decryptedKey, matchedPublicKey);
 			success = true;
 			showFlash('Keys recovered successfully! Private key stored in browser.');
 		} catch (e) {

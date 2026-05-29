@@ -199,13 +199,26 @@ export async function getStoredPrivateKey(userId) {
 }
 
 /**
+ * Retrieve the stored AGE public key for the given user.
+ *
+ * @param {string|number} userId
+ * @returns {Promise<string|null>}
+ */
+export async function getStoredPublicKey(userId) {
+	const db = await openKeyDB();
+	return await idbGet(db, `pub_${userId}`);
+}
+
+/**
  * Encrypt and persist the AGE private key for the given user.
+ * Optionally saves the corresponding public key unencrypted in IndexedDB.
  *
  * @param {string|number} userId
  * @param {string} privateKey
+ * @param {string|null} publicKey
  * @returns {Promise<void>}
  */
-export async function storePrivateKey(userId, privateKey) {
+export async function storePrivateKey(userId, privateKey, publicKey = null) {
 	const db = await openKeyDB();
 	const wk = await getOrCreateWrappingKey(db, userId);
 	const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -215,10 +228,56 @@ export async function storePrivateKey(userId, privateKey) {
 		new TextEncoder().encode(privateKey)
 	);
 	await idbPut(db, `pk_${userId}`, { iv, ciphertext });
+	if (publicKey) {
+		await idbPut(db, `pub_${userId}`, publicKey);
+	}
 }
 
 /**
- * Remove both the encrypted private key blob and the wrapping key for a user.
+ * Look up the stored public key for a given user email, or fallback to the first
+ * public key found in IndexedDB if there's only one user.
+ *
+ * @param {string} email
+ * @returns {Promise<string|null>}
+ */
+export async function getPublicKeyForLogin(email) {
+	if (email) {
+		const normalized = email.toLowerCase().trim();
+		const savedUserId = localStorage.getItem(`uid_${normalized}`);
+		if (savedUserId) {
+			const pubKey = await getStoredPublicKey(savedUserId);
+			if (pubKey) return pubKey;
+		}
+	}
+	try {
+		const db = await openKeyDB();
+		return new Promise((resolve) => {
+			const tx = db.transaction(IDB_STORE, 'readonly');
+			const store = tx.objectStore(IDB_STORE);
+			const req = store.openCursor();
+			let foundPubKey = null;
+			req.onsuccess = (e) => {
+				const cursor = e.target.result;
+				if (cursor) {
+					if (typeof cursor.key === 'string' && cursor.key.startsWith('pub_')) {
+						foundPubKey = cursor.value;
+						resolve(foundPubKey);
+						return;
+					}
+					cursor.continue();
+				} else {
+					resolve(foundPubKey);
+				}
+			};
+			req.onerror = () => resolve(null);
+		});
+	} catch (err) {
+		return null;
+	}
+}
+
+/**
+ * Remove both the encrypted private key blob, public key, and the wrapping key for a user.
  *
  * @param {string|number} userId
  * @returns {Promise<void>}
@@ -227,7 +286,72 @@ export async function clearStoredPrivateKey(userId) {
 	const db = await openKeyDB();
 	await Promise.all([
 		idbDelete(db, `pk_${userId}`),
+		idbDelete(db, `pub_${userId}`),
 		idbDelete(db, `wk_${userId}`),
 		idbDelete(db, String(userId)) // remove any legacy plaintext entry
 	]);
+}
+
+function hexToBytes(hex) {
+	const bytes = new Uint8Array(hex.length / 2);
+	for (let i = 0; i < bytes.length; i++) {
+		bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+	}
+	return bytes;
+}
+
+function bytesToHex(bytes) {
+	return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Encrypt plaintext using AES-GCM-256 with a hex-encoded key.
+ * Returns a JSON string containing hex-encoded IV and ciphertext.
+ * @param {string} plaintext
+ * @param {string} keyHex - 64-character hex string (256-bit key)
+ * @returns {Promise<string>}
+ */
+export async function aesEncrypt(plaintext, keyHex) {
+	const keyBytes = hexToBytes(keyHex);
+	const key = await window.crypto.subtle.importKey(
+		'raw',
+		keyBytes,
+		{ name: 'AES-GCM' },
+		false,
+		['encrypt']
+	);
+	const iv = window.crypto.getRandomValues(new Uint8Array(12));
+	const ciphertextBuffer = await window.crypto.subtle.encrypt(
+		{ name: 'AES-GCM', iv },
+		key,
+		new TextEncoder().encode(plaintext)
+	);
+	return JSON.stringify({
+		iv: bytesToHex(iv),
+		ciphertext: bytesToHex(new Uint8Array(ciphertextBuffer))
+	});
+}
+
+/**
+ * Decrypt ciphertext using AES-GCM-256 with a hex-encoded key.
+ * @param {string} encryptedJsonStr - JSON string with iv and ciphertext hex fields
+ * @param {string} keyHex - 64-character hex string (256-bit key)
+ * @returns {Promise<string>}
+ */
+export async function aesDecrypt(encryptedJsonStr, keyHex) {
+	const { iv: ivHex, ciphertext: cipherHex } = JSON.parse(encryptedJsonStr);
+	const keyBytes = hexToBytes(keyHex);
+	const key = await window.crypto.subtle.importKey(
+		'raw',
+		keyBytes,
+		{ name: 'AES-GCM' },
+		false,
+		['decrypt']
+	);
+	const decryptedBuffer = await window.crypto.subtle.decrypt(
+		{ name: 'AES-GCM', iv: hexToBytes(ivHex) },
+		key,
+		hexToBytes(cipherHex)
+	);
+	return new TextDecoder().decode(decryptedBuffer);
 }

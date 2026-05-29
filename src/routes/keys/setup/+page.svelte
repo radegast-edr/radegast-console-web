@@ -3,26 +3,31 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api.js';
 	import { showError } from '$lib/store.js';
-	import { initAgeWasm, generateKeypair, encrypt, storePrivateKey } from '$lib/crypto.js';
+	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt } from '$lib/crypto.js';
 
 	let step = $state('init'); // 'init' | 'generating' | 'show_recovery' | 'done'
-	let recoveryPrivateKey = $state('');
+	let recoveryKey = $state('');
 	let confirmed = $state(false);
 	let error = $state('');
 	let userId = $state(null);
+	let keyName = $state('Primary Key');
 
 	onMount(async () => {
 		try {
 			await initAgeWasm();
 			const me = await api.me();
 			userId = me.id;
-			step = 'ready';
+			await generateAndSetupKeys();
 		} catch (e) {
 			error = 'Failed to load crypto library: ' + e.message;
 		}
 	});
 
 	async function generateAndSetupKeys() {
+		if (!keyName.trim()) {
+			error = 'Please enter a name for your key pair';
+			return;
+		}
 		step = 'generating';
 		error = '';
 
@@ -30,23 +35,35 @@
 			// 1. Generate main AGE keypair (used for encrypting logs)
 			const { publicKey: mainPub, privateKey: mainPriv } = generateKeypair();
 
-			// 2. Generate recovery AGE keypair (user saves the private key)
+			// 2. Generate recovery AGE keypair
 			const { publicKey: recoveryPub, privateKey: recoveryPriv } = generateKeypair();
 
-			// 3. AGE-encrypt main private key with recovery public key
-			const encryptedMainPriv = encrypt(mainPriv, [recoveryPub]);
+			// 3. Generate random 256-bit AES key
+			const keyBytes = window.crypto.getRandomValues(new Uint8Array(32));
+			const aesKeyHex = Array.from(keyBytes).map(b => b.toString(16).padStart(2, '0')).join('');
 
-			// 4. Submit to backend
+			// 4. AES-GCM-256 encrypt recovery private key with the AES key
+			const encryptedRecoveryPriv = await aesEncrypt(recoveryPriv, aesKeyHex);
+
+			// 5. Submit to backend
 			await api.setupKeys({
 				public_key: mainPub,
-				encrypted_private_key: encryptedMainPriv
+				recovery_public_key: recoveryPub,
+				recovery_encrypted_private_key: encryptedRecoveryPriv,
+				name: keyName.trim()
 			});
 
-			// 5. Store main private key in IndexedDB keyed by user ID
-			await storePrivateKey(userId, mainPriv);
+			// 6. Store main private and public key in IndexedDB keyed by user ID
+			await storePrivateKey(userId, mainPriv, mainPub);
 
-			// 6. Show recovery key to user (this is the only time it's shown)
-			recoveryPrivateKey = recoveryPriv;
+			// Save userId for this email
+			const me = await api.me();
+			if (me && me.email) {
+				localStorage.setItem(`uid_${me.email.toLowerCase().trim()}`, userId);
+			}
+
+			// 7. Show AES recovery key to user (this is the only time it's shown)
+			recoveryKey = aesKeyHex;
 			step = 'show_recovery';
 		} catch (e) {
 			error = e.message;
@@ -86,7 +103,19 @@
 						Your private key is generated in this browser and never sent to the server.
 						A recovery key will be shown once — store it somewhere safe.
 					</p>
-					<button class="btn btn-primary" onclick={generateAndSetupKeys}>
+					<div class="mb-3">
+						<label for="keyName" class="form-label fw-bold">Name this key pair</label>
+						<input
+							type="text"
+							class="form-control"
+							id="keyName"
+							placeholder="e.g. My Laptop, Work PC"
+							bind:value={keyName}
+							required
+						/>
+						<div class="form-text">Give this key pair a friendly name to identify it later.</div>
+					</div>
+					<button class="btn btn-primary" onclick={generateAndSetupKeys} disabled={!keyName.trim()}>
 						Generate Keys
 					</button>
 				</div>
@@ -108,12 +137,12 @@
 					If you lose your private key, you'll need this to recover access.
 					Store it in a password manager or write it down.
 				</p>
-				<label class="form-label fw-bold">Recovery Key (AGE private key):</label>
+				<label class="form-label fw-bold">Recovery Key (AES recovery key):</label>
 				<textarea
 					class="form-control font-monospace mb-3"
-					rows="3"
+					rows="2"
 					readonly
-					value={recoveryPrivateKey}
+					value={recoveryKey}
 				></textarea>
 				<div class="form-check mb-3">
 					<input

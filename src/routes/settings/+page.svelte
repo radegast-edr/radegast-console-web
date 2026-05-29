@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api.js';
 	import { showFlash, showError } from '$lib/store.js';
+	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt, getStoredPublicKey } from '$lib/crypto.js';
 
 	// Password change
 	let oldPassword = $state('');
@@ -14,13 +15,160 @@
 	let notifications = $state(null);
 	let notifSaving = $state(false);
 
+	// Encryption Keys Management
+	let keys = $state([]);
+	let keysLoading = $state(true);
+	let wasmReady = $state(false);
+	let userId = $state(null);
+	let currentLocalPubKey = $state(null);
+
+	// Add key state
+	let isRecovery = $state(false);
+	let addKeyStep = $state('idle'); // 'idle' | 'generating' | 'show_recovery'
+	let generatedRecoveryKey = $state('');
+	let newKeyName = $state('');
+
+	// Custom Confirmation Modal state
+	let showConfirmModal = $state(false);
+	let modalTitle = $state('');
+	let modalMessage = $state('');
+	let confirmCallback = $state(null);
+
+	function openConfirmModal(title, message, callback) {
+		modalTitle = title;
+		modalMessage = message;
+		confirmCallback = () => {
+			showConfirmModal = false;
+			callback();
+		};
+		showConfirmModal = true;
+	}
+
 	onMount(async () => {
 		try {
 			notifications = await api.getNotifications();
 		} catch (e) {
 			showError('Failed to load notification settings: ' + e.message);
 		}
+		try {
+			await initAgeWasm();
+			wasmReady = true;
+		} catch (e) {
+			showError('Failed to initialize crypto library: ' + e.message);
+		}
+		try {
+			const me = await api.me();
+			userId = me.id;
+		} catch (e) {
+			// not logged in
+		}
+		await loadKeys();
 	});
+
+	async function loadKeys() {
+		keysLoading = true;
+		try {
+			keys = await api.listKeys();
+			if (userId) {
+				currentLocalPubKey = await getStoredPublicKey(userId);
+			}
+		} catch (e) {
+			showError('Failed to load keys: ' + e.message);
+		} finally {
+			keysLoading = false;
+		}
+	}
+
+	function promptDeleteKey(key) {
+		openConfirmModal(
+			'Confirm Key Deletion',
+			`Are you sure you want to delete the key "${key.name || 'Unnamed Key'}" (${key.public_key.substring(0, 10)}...)? Any logs encrypted using this key will become permanently unreadable unless you have a backup of the key. This action cannot be undone.`,
+			async () => {
+				try {
+					await api.deleteKey(key.id);
+					showFlash('Encryption key deleted.');
+					await loadKeys();
+				} catch (e) {
+					showError('Failed to delete key: ' + e.message);
+				}
+			}
+		);
+	}
+
+	function requestGenerateKey() {
+		if (!newKeyName.trim()) {
+			showError('Please enter a name for the new key pair.');
+			return;
+		}
+
+		if (!isRecovery) {
+			openConfirmModal(
+				'Change Encryption Keys Warning',
+				'You are about to change your active encryption keys. This browser will switch to using the new active key, and you will lose access to logs that were recorded prior to this public key creation. Do you want to proceed?',
+				() => {
+					executeGenerateKey();
+				}
+			);
+		} else {
+			executeGenerateKey();
+		}
+	}
+
+	async function executeGenerateKey() {
+		addKeyStep = 'generating';
+		try {
+			const { publicKey, privateKey } = generateKeypair();
+
+			if (isRecovery) {
+				// Generate random 256-bit AES key
+				const keyBytes = window.crypto.getRandomValues(new Uint8Array(32));
+				const aesKeyHex = Array.from(keyBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
+				// Encrypt private key with AES key
+				const encryptedPriv = await aesEncrypt(privateKey, aesKeyHex);
+
+				// Register with backend
+				await api.addKey({
+					public_key: publicKey,
+					encrypted_private_key: encryptedPriv,
+					key_type: 'recovery',
+					name: newKeyName.trim()
+				});
+
+				generatedRecoveryKey = aesKeyHex;
+				addKeyStep = 'show_recovery';
+				newKeyName = '';
+			} else {
+				// Register with backend
+				await api.addKey({
+					public_key: publicKey,
+					key_type: 'secondary',
+					name: newKeyName.trim()
+				});
+
+				// Store private key locally in IndexedDB along with public key
+				await storePrivateKey(userId, privateKey, publicKey);
+				
+				// Update current local public key ref
+				currentLocalPubKey = publicKey;
+
+				// Save email to userId mapping in case it's not set
+				const me = await api.me();
+				if (me && me.email) {
+					localStorage.setItem(`uid_${me.email.toLowerCase().trim()}`, userId);
+				}
+
+				showFlash('Key pair generated successfully, registered, and set active.');
+				addKeyStep = 'idle';
+				newKeyName = '';
+			}
+
+			await loadKeys();
+		} catch (e) {
+			showError('Failed to generate key pair: ' + e.message);
+			addKeyStep = 'idle';
+		}
+	}
 
 	async function changePassword() {
 		if (newPassword !== confirmPassword) {
@@ -173,3 +321,168 @@
 		</div>
 	</div>
 </div>
+
+<div class="row g-4 mt-2">
+	<!-- Encryption Keys Card -->
+	<div class="col-12">
+		<div class="card">
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<h5 class="mb-0">Encryption Keys</h5>
+				<span class="badge bg-secondary">End-to-End Encryption</span>
+			</div>
+			<div class="card-body">
+				<p class="text-muted small">
+					Manage public keys linked to your account. Public keys are used by devices to encrypt logs for you.
+					Private keys are stored securely in your browser's local database and never sent to the server.
+				</p>
+
+				{#if keysLoading}
+					<div class="text-muted">Loading keys…</div>
+				{:else}
+					<div class="table-responsive mb-4">
+						<table class="table table-hover align-middle">
+							<thead>
+								<tr>
+									<th style="width: 8%">ID</th>
+									<th style="width: 17%">Name</th>
+									<th style="width: 35%">Public Key</th>
+									<th style="width: 15%">Type</th>
+									<th style="width: 15%">Last Used</th>
+									<th style="width: 10%" class="text-end">Actions</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each keys as key}
+									<tr class={key.public_key === currentLocalPubKey ? 'table-primary fw-semibold' : ''}>
+										<td><code>#{key.id}</code></td>
+										<td>{key.name || 'Unnamed Key'}</td>
+										<td>
+											<span class="text-monospace text-break font-monospace" title={key.public_key}>
+												{key.public_key.length > 30 ? key.public_key.substring(0, 15) + '...' + key.public_key.substring(key.public_key.length - 15) : key.public_key}
+											</span>
+										</td>
+										<td>
+											{#if key.key_type === 'recovery'}
+												<span class="badge bg-danger">Recovery Key</span>
+											{:else}
+												<span class="badge bg-success">Active Key</span>
+											{/if}
+											{#if key.public_key === currentLocalPubKey}
+												<span class="badge bg-primary ms-1" title="Used by this browser to decrypt logs">Current Browser</span>
+											{/if}
+										</td>
+										<td>
+											{key.last_used_at ? new Date(key.last_used_at).toLocaleString() : 'Never'}
+										</td>
+										<td class="text-end">
+											{#if key.public_key === currentLocalPubKey}
+												<button class="btn btn-sm btn-outline-secondary" disabled title="Cannot delete key currently in use by this browser">
+													Delete
+												</button>
+											{:else}
+												<button class="btn btn-sm btn-outline-danger" onclick={() => promptDeleteKey(key)}>
+													Delete
+												</button>
+											{/if}
+										</td>
+									</tr>
+								{:else}
+									<tr>
+										<td colspan="6" class="text-muted text-center py-3">No encryption keys registered.</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{/if}
+
+				<hr />
+
+				<h5 class="mt-4 mb-3">Add New Encryption Key Pair</h5>
+				{#if addKeyStep === 'idle'}
+					<div class="row align-items-end g-3">
+						<div class="col-md-4">
+							<label for="newKeyName" class="form-label fw-semibold">Key Pair Name</label>
+							<input
+								type="text"
+								class="form-control"
+								id="newKeyName"
+								placeholder="e.g. Work PC, Adam's Phone"
+								bind:value={newKeyName}
+								required
+							/>
+						</div>
+						<div class="col-md-5">
+							<div class="form-check mb-2">
+								<input
+									class="form-check-input"
+									type="checkbox"
+									id="isRecovery"
+									bind:checked={isRecovery}
+								/>
+								<label class="form-check-label" for="isRecovery">
+									<strong>Mark as recovery key</strong> (backup key with encrypted private key stored on server)
+								</label>
+							</div>
+						</div>
+						<div class="col-md-3 text-end">
+							<button class="btn btn-primary w-100" onclick={requestGenerateKey} disabled={!wasmReady || keysLoading || !newKeyName.trim()}>
+								Generate & Register
+							</button>
+						</div>
+					</div>
+				{:else if addKeyStep === 'generating'}
+					<div class="d-flex align-items-center gap-2">
+						<div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+						<span>Generating fresh cryptographic keys inside browser…</span>
+					</div>
+				{:else if addKeyStep === 'show_recovery'}
+					<div class="alert alert-danger mb-0">
+						<h5 class="alert-heading fw-bold">⚠️ Save Your New Recovery Key Now</h5>
+						<p class="small mb-3">
+							This recovery key is a random AES key generated in your browser.
+							It has been used to encrypt your backup private key, and the server only holds the encrypted version.
+							<strong>Write this key down or save it in a password manager.</strong> You will never see it again.
+						</p>
+						<div class="mb-3">
+							<label class="form-label fw-bold">New Recovery Key (AES hex key):</label>
+							<textarea
+								class="form-control font-monospace text-center fw-bold"
+								rows="1"
+								readonly
+								value={generatedRecoveryKey}
+							></textarea>
+						</div>
+						<button class="btn btn-danger btn-sm" onclick={() => { addKeyStep = 'idle'; generatedRecoveryKey = ''; }}>
+							I have securely saved this recovery key
+						</button>
+					</div>
+				{/if}
+			</div>
+		</div>
+	</div>
+</div>
+
+{#if showConfirmModal}
+	<div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1050;">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+				<div class="modal-header bg-warning text-dark border-0 py-3">
+					<h5 class="modal-title fw-bold mb-0">⚠️ {modalTitle}</h5>
+					<button type="button" class="btn-close" onclick={() => showConfirmModal = false} aria-label="Close"></button>
+				</div>
+				<div class="modal-body p-4">
+					<p class="mb-0 fs-6 text-muted">{modalMessage}</p>
+				</div>
+				<div class="modal-footer border-0 bg-light py-3">
+					<button type="button" class="btn btn-outline-secondary px-4 fw-semibold" style="border-radius: 6px;" onclick={() => showConfirmModal = false}>
+						No
+					</button>
+					<button type="button" class="btn btn-warning px-4 fw-semibold text-dark" style="border-radius: 6px;" onclick={confirmCallback}>
+						Yes
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}

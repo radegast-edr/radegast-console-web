@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api.js';
 	import { showFlash, showError } from '$lib/store.js';
-	import { initAgeWasm, generateKeypair, encrypt, decrypt, getStoredPrivateKey, storePrivateKey } from '$lib/crypto.js';
+	import { initAgeWasm, generateKeypair, encrypt, decrypt, getStoredPrivateKey, storePrivateKey, aesEncrypt } from '$lib/crypto.js';
 
 	let wasmReady = $state(false);
 	let hasKey = $state(false);
@@ -70,7 +70,28 @@
 				sessionStorage.removeItem(EPH_PRIV_KEY);
 
 				const mainPriv = decrypt(status.encrypted_private_key, ephPriv);
-				await storePrivateKey(userId, mainPriv);
+				
+				let matchedPubKey = null;
+				try {
+					const allKeys = await api.listKeys();
+					const testMsg = 'match-check';
+					for (const key of allKeys) {
+						try {
+							const cipher = encrypt(testMsg, [key.public_key]);
+							const dec = decrypt(cipher, mainPriv);
+							if (dec === testMsg) {
+								matchedPubKey = key.public_key;
+								break;
+							}
+						} catch (e) {
+							// ignore and continue
+						}
+					}
+				} catch (e) {
+					console.error("Failed to match public key during transfer:", e);
+				}
+
+				await storePrivateKey(userId, mainPriv, matchedPubKey);
 				showFlash('Key transferred successfully!');
 				goto('/');
 			}
@@ -100,8 +121,6 @@
 		}
 	}
 
-	// ── Generate new keys ────────────────────────────────────────────
-
 	async function generateNewKeys() {
 		genStep = 'generating';
 		genError = '';
@@ -110,29 +129,36 @@
 			// Generate a fresh main AGE keypair
 			const { publicKey: mainPub, privateKey: mainPriv } = generateKeypair();
 
-			// Generate a recovery AGE keypair; main priv is encrypted to recovery pub
-			const { publicKey: recoveryPub, privateKey: recoveryPriv } = generateKeypair();
-			const encryptedMainPriv = encrypt(mainPriv, [recoveryPub]);
+			// Generate random 256-bit AES key
+			const keyBytes = window.crypto.getRandomValues(new Uint8Array(32));
+			const aesKeyHex = Array.from(keyBytes).map(b => b.toString(16).padStart(2, '0')).join('');
 
 			if (genAsSecondary) {
+				// Encrypt main private key with AES key
+				const encryptedMainPriv = await aesEncrypt(mainPriv, aesKeyHex);
 				// Add alongside existing keys as a secondary key
 				await api.setupSecondaryKey({
 					public_key: mainPub,
 					encrypted_private_key: encryptedMainPriv
 				});
 			} else {
+				// Setup keys: generate recovery AGE keypair, encrypt recovery private key with AES key
+				const { publicKey: recoveryPub, privateKey: recoveryPriv } = generateKeypair();
+				const encryptedRecoveryPriv = await aesEncrypt(recoveryPriv, aesKeyHex);
+
 				// Fresh start: delete old keys then create new main key
 				if (hasKeysOnServer) {
 					await api.deleteKeys();
 				}
 				await api.setupKeys({
 					public_key: mainPub,
-					encrypted_private_key: encryptedMainPriv
+					recovery_public_key: recoveryPub,
+					recovery_encrypted_private_key: encryptedRecoveryPriv
 				});
 			}
 
 			await storePrivateKey(userId, mainPriv);
-			genRecoveryPrivateKey = recoveryPriv;
+			genRecoveryPrivateKey = aesKeyHex;
 			genStep = 'show_recovery';
 		} catch (e) {
 			genError = e.message;
@@ -259,10 +285,10 @@
 								This is the <strong>only time</strong> you'll see this key. Store it in a
 								password manager or write it down.
 							</p>
-							<label class="form-label fw-bold">Recovery Key (AGE private key):</label>
+							<label class="form-label fw-bold">Recovery Key (AES recovery key):</label>
 							<textarea
 								class="form-control font-monospace mb-3"
-								rows="3"
+								rows="2"
 								readonly
 								value={genRecoveryPrivateKey}
 							></textarea>

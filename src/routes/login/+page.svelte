@@ -2,6 +2,7 @@
 	import { api } from '$lib/api.js';
 	import { user, showError } from '$lib/store.js';
 	import { goto } from '$app/navigation';
+	import { getPublicKeyForLogin } from '$lib/crypto.js';
 
 	let email = $state('');
 	let password = $state('');
@@ -10,9 +11,13 @@
 	async function handleLogin() {
 		error = '';
 		try {
-			await api.login(email, password);
+			const pubKey = await getPublicKeyForLogin(email);
+			await api.login(email, password, pubKey);
 			const me = await api.me();
 			$user = me;
+			if (me && me.id) {
+				localStorage.setItem(`uid_${email.toLowerCase().trim()}`, me.id);
+			}
 			goto('/');
 		} catch (e) {
 			error = e.message;
