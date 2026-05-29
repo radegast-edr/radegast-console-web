@@ -18,7 +18,11 @@ async function request(method, path, body = null, isFormData = false) {
 
 	if (!resp.ok) {
 		const error = await resp.json().catch(() => ({ detail: resp.statusText }));
-		throw new Error(error.detail || 'Request failed');
+		// Pydantic validation errors return detail as an array of objects
+		const detail = Array.isArray(error.detail)
+			? error.detail.map((e) => e.msg || JSON.stringify(e)).join('; ')
+			: error.detail;
+		throw new Error(detail || 'Request failed');
 	}
 
 	if (resp.headers.get('content-type')?.includes('application/json')) {
@@ -50,13 +54,27 @@ export const api = {
 	removeMember: (teamId, userId) => request('DELETE', `/teams/${teamId}/members/${userId}`),
 	listTeamGroups: (teamId) => request('GET', `/teams/${teamId}/groups`),
 	createTeamGroup: (teamId, name) => request('POST', `/teams/${teamId}/groups`, { name }),
+	linkGroupToTeam: (teamId, groupId) => request('POST', `/teams/${teamId}/groups/${groupId}/link`),
+	listTeamDevices: (teamId) => request('GET', `/teams/${teamId}/devices`),
 
 	// Devices
 	createDevice: (name, group_id) => request('POST', '/devices/', { name, group_id }),
 	listDevices: () => request('GET', '/devices/'),
+	getDevice: (id) => request('GET', `/devices/${id}`),
+	renameDevice: (id, name) => request('PATCH', `/devices/${id}`, { name }),
 	addDeviceToGroup: (deviceId, groupId) =>
 		request('POST', `/devices/${deviceId}/groups/${groupId}`),
+	removeDeviceFromGroup: (deviceId, groupId) =>
+		request('DELETE', `/devices/${deviceId}/groups/${groupId}`),
 	deleteDevice: (deviceId) => request('DELETE', `/devices/${deviceId}`),
+
+	// Device Groups
+	listGroups: () => request('GET', '/groups/'),
+	getGroup: (id) => request('GET', `/groups/${id}`),
+	renameGroup: (id, name) => request('PATCH', `/groups/${id}`, { name }),
+	unlinkGroupFromTeam: (groupId, teamId) => request('DELETE', `/groups/${groupId}/teams/${teamId}`),
+	addDeviceToGroupViaGroup: (groupId, deviceId) => request('POST', `/groups/${groupId}/devices/${deviceId}`),
+	removeDeviceFromGroupViaGroup: (groupId, deviceId) => request('DELETE', `/groups/${groupId}/devices/${deviceId}`),
 
 	// Packs
 	listPacks: () => request('GET', '/packs/'),

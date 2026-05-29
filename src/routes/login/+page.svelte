@@ -44,8 +44,5 @@
 		<p class="mt-3 text-center">
 			Don't have an account? <a href="/register">Register</a>
 		</p>
-		<p class="text-center">
-			<a href="/keys/recovery">Recover keys</a>
-		</p>
 	</div>
 </div>

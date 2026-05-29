@@ -8,10 +8,15 @@
 	let team = $state(null);
 	let members = $state([]);
 	let groups = $state([]);
+	let teamDevices = $state([]);
 	let showInvite = $state(false);
 	let inviteEmail = $state('');
 	let showCreateGroup = $state(false);
 	let newGroupName = $state('');
+
+	// inline rename
+	let editingName = $state(false);
+	let editName = $state('');
 
 	let teamId = $derived(page.params.id);
 
@@ -21,9 +26,28 @@
 
 	async function loadTeam() {
 		try {
-			team = await api.getTeam(teamId);
-			members = await api.listMembers(teamId);
-			groups = await api.listTeamGroups(teamId);
+			[team, members, groups, teamDevices] = await Promise.all([
+				api.getTeam(teamId),
+				api.listMembers(teamId),
+				api.listTeamGroups(teamId),
+				api.listTeamDevices(teamId)
+			]);
+		} catch (e) {
+			showError(e.message);
+		}
+	}
+
+	function startRename() {
+		editName = team.name;
+		editingName = true;
+	}
+
+	async function saveName() {
+		try {
+			await api.updateTeam(teamId, { name: editName });
+			editingName = false;
+			await loadTeam();
+			showFlash('Team renamed');
 		} catch (e) {
 			showError(e.message);
 		}
@@ -74,26 +98,39 @@
 </script>
 
 {#if team}
-	<h2>{team.name}</h2>
+	<div class="d-flex align-items-center gap-2 mb-4">
+		{#if editingName}
+			<input class="form-control form-control-lg w-auto" bind:value={editName} />
+			<button class="btn btn-success btn-sm" onclick={saveName}>Save</button>
+			<button class="btn btn-outline-secondary btn-sm" onclick={() => (editingName = false)}>Cancel</button>
+		{:else}
+			<h2 class="mb-0">{team.name}</h2>
+			<button class="btn btn-outline-secondary btn-sm" onclick={startRename} title="Rename team">✎</button>
+		{/if}
+	</div>
 
-	<div class="row mt-4">
+	<div class="row mt-2">
 		<div class="col-md-6">
 			<div class="card">
-				<div class="card-header d-flex justify-content-between">
+				<div class="card-header d-flex justify-content-between align-items-center">
 					<span>Members</span>
-					<button class="btn btn-sm btn-outline-primary" onclick={() => (showInvite = true)}
-						>Invite</button
-					>
+					<button class="btn btn-sm btn-outline-primary" onclick={() => (showInvite = true)}>Invite</button>
 				</div>
 				<ul class="list-group list-group-flush">
 					{#each members as member}
 						<li class="list-group-item d-flex justify-content-between align-items-center">
 							<span>{member.email} <small class="text-muted">({member.role})</small></span>
-							<button
-								class="btn btn-sm btn-outline-danger"
-								onclick={() => removeMember(member.id)}
-								disabled={members.length <= 1}>Remove</button
+							<span
+								class="d-inline-block"
+								title={members.length <= 1 ? 'Cannot remove the last member' : ''}
 							>
+								<button
+									class="btn btn-sm btn-outline-danger"
+									onclick={() => removeMember(member.id)}
+									disabled={members.length <= 1}
+									style={members.length <= 1 ? 'pointer-events:none' : ''}>Remove</button
+								>
+							</span>
 						</li>
 					{/each}
 				</ul>
@@ -102,22 +139,54 @@
 
 		<div class="col-md-6">
 			<div class="card">
-				<div class="card-header d-flex justify-content-between">
+				<div class="card-header d-flex justify-content-between align-items-center">
 					<span>Device Groups</span>
-					<button
-						class="btn btn-sm btn-outline-primary"
-						onclick={() => (showCreateGroup = true)}>New Group</button
-					>
+					<button class="btn btn-sm btn-outline-primary" onclick={() => (showCreateGroup = true)}>New Group</button>
 				</div>
 				<ul class="list-group list-group-flush">
 					{#each groups as group}
-						<li class="list-group-item">{group.name}</li>
+						<li class="list-group-item">
+							<a href="/groups/{group.id}">{group.name}</a>
+						</li>
 					{:else}
 						<li class="list-group-item text-muted">No groups</li>
 					{/each}
 				</ul>
 			</div>
 		</div>
+	</div>
+
+	<!-- All devices in this team -->
+	<div class="card mt-4">
+		<div class="card-header d-flex justify-content-between align-items-center">
+			<span>All Devices ({teamDevices.length})</span>
+		</div>
+		{#if teamDevices.length === 0}
+			<div class="card-body text-muted">No devices in any group of this team.</div>
+		{:else}
+			<table class="table table-sm mb-0">
+				<thead>
+					<tr>
+						<th>Device</th>
+						<th>Signing Key</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each teamDevices as d}
+						<tr>
+							<td><a href="/devices/{d.id}">{d.name}</a></td>
+							<td>
+								{#if d.signature_public_key}
+									<span class="badge bg-success">Set</span>
+								{:else}
+									<span class="badge bg-secondary">Not set</span>
+								{/if}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		{/if}
 	</div>
 
 	<div class="card mt-4">

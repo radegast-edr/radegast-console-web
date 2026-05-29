@@ -31,6 +31,9 @@
 						<a class="nav-link" href="/teams">Teams</a>
 					</li>
 					<li class="nav-item">
+						<a class="nav-link" href="/groups">Groups</a>
+					</li>
+					<li class="nav-item">
 						<a class="nav-link" href="/devices">Devices</a>
 					</li>
 					<li class="nav-item">

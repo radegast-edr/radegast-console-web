@@ -6,12 +6,18 @@
 	import { goto } from '$app/navigation';
 
 	let teams = $state([]);
+	let groups = $state([]);
+	let devices = $state([]);
 
 	onMount(async () => {
 		try {
 			const me = await api.me();
 			$user = me;
-			teams = await api.listTeams();
+			[teams, groups, devices] = await Promise.all([
+				api.listTeams(),
+				api.listGroups(),
+				api.listDevices()
+			]);
 		} catch (e) {
 			goto('/login');
 		}
@@ -34,30 +40,54 @@
 	</div>
 {/if}
 
-<div class="row mt-4">
+<div class="row mt-4 g-3">
 	<div class="col-md-4">
-		<div class="card">
+		<div class="card h-100">
 			<div class="card-body">
 				<h5 class="card-title">Teams</h5>
-				<p class="card-text">{teams.length} team(s)</p>
+				<p class="card-text text-muted">{teams.length} team(s)</p>
+				<ul class="list-unstyled mb-3">
+					{#each teams.slice(0, 5) as t}
+						<li><a href="/teams/{t.id}">{t.name}</a></li>
+					{/each}
+				</ul>
 				<a href="/teams" class="btn btn-primary btn-sm">Manage Teams</a>
 			</div>
 		</div>
 	</div>
 	<div class="col-md-4">
-		<div class="card">
+		<div class="card h-100">
+			<div class="card-body">
+				<h5 class="card-title">Device Groups</h5>
+				<p class="card-text text-muted">{groups.length} group(s)</p>
+				<ul class="list-unstyled mb-3">
+					{#each groups.slice(0, 5) as g}
+						<li><a href="/groups/{g.id}">{g.name}</a></li>
+					{/each}
+				</ul>
+				<a href="/groups" class="btn btn-primary btn-sm">Manage Groups</a>
+			</div>
+		</div>
+	</div>
+	<div class="col-md-4">
+		<div class="card h-100">
 			<div class="card-body">
 				<h5 class="card-title">Devices</h5>
-				<p class="card-text">Manage your EDR devices</p>
+				<p class="card-text text-muted">{devices.length} device(s)</p>
+				<ul class="list-unstyled mb-3">
+					{#each devices.slice(0, 5) as d}
+						<li><a href="/devices/{d.id}">{d.name}</a></li>
+					{/each}
+				</ul>
 				<a href="/devices" class="btn btn-primary btn-sm">Manage Devices</a>
 			</div>
 		</div>
 	</div>
 	<div class="col-md-4">
-		<div class="card">
+		<div class="card h-100">
 			<div class="card-body">
 				<h5 class="card-title">Packs</h5>
-				<p class="card-text">Configuration packs</p>
+				<p class="card-text text-muted">Configuration packs</p>
 				<a href="/packs" class="btn btn-primary btn-sm">Browse Packs</a>
 			</div>
 		</div>
