@@ -10,6 +10,7 @@
 	let members = $state([]);
 	let groups = $state([]);
 	let teamDevices = $state([]);
+	let allTeams = $state([]);
 	let showInvite = $state(false);
 	let inviteEmail = $state('');
 	let showCreateGroup = $state(false);
@@ -20,6 +21,7 @@
 	let editName = $state('');
 
 	let teamId = $derived(page.params.id);
+	let eligibleTeams = $derived(team ? allTeams.filter((t) => t.id !== team.id) : []);
 
 	onMount(async () => {
 		await loadTeam();
@@ -27,11 +29,12 @@
 
 	async function loadTeam() {
 		try {
-			[team, members, groups, teamDevices] = await Promise.all([
+			[team, members, groups, teamDevices, allTeams] = await Promise.all([
 				api.getTeam(teamId),
 				api.listMembers(teamId),
 				api.listTeamGroups(teamId),
-				api.listTeamDevices(teamId)
+				api.listTeamDevices(teamId),
+				api.listTeams()
 			]);
 		} catch (e) {
 			showError(e.message);
@@ -189,10 +192,10 @@
 	</div>
 
 	<div class="card mt-4">
-		<div class="card-header">Permissions</div>
+		<div class="card-header">Permissions & Management</div>
 		<div class="card-body">
 			<div class="row g-3">
-				<div class="col-md-3">
+				<div class="col-md-2">
 					<label class="form-label">Pack</label>
 					<select
 						class="form-select"
@@ -204,7 +207,7 @@
 						<option value="write">Write</option>
 					</select>
 				</div>
-				<div class="col-md-3">
+				<div class="col-md-2">
 					<label class="form-label">Invite</label>
 					<select
 						class="form-select"
@@ -215,7 +218,7 @@
 						<option value="write">Write</option>
 					</select>
 				</div>
-				<div class="col-md-3">
+				<div class="col-md-2">
 					<label class="form-label">Admin</label>
 					<select
 						class="form-select"
@@ -226,7 +229,7 @@
 						<option value="write">Write</option>
 					</select>
 				</div>
-				<div class="col-md-3">
+				<div class="col-md-2">
 					<label class="form-label">Logs</label>
 					<select
 						class="form-select"
@@ -235,6 +238,19 @@
 					>
 						<option value="">None</option>
 						<option value="read">Read</option>
+					</select>
+				</div>
+				<div class="col-md-4">
+					<label class="form-label">Managing Team</label>
+					<select
+						class="form-select"
+						value={team.managing_team_id || ''}
+						onchange={(e) => updatePermission('managing_team_id', e.target.value ? Number(e.target.value) : null)}
+					>
+						<option value="">None (Self-managed)</option>
+						{#each eligibleTeams as t}
+							<option value={t.id}>{t.name}</option>
+						{/each}
 					</select>
 				</div>
 			</div>
