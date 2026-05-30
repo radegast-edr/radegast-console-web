@@ -1,5 +1,6 @@
 <script>
 	import { base } from '$app/paths';
+	import { onMount } from 'svelte';
 	import { api } from '$lib/api.js';
 	import { showFlash } from '$lib/store.js';
 
@@ -9,6 +10,37 @@
 	let error = $state('');
 	let success = $state(false);
 	let acceptedPolicies = $state(false);
+
+	let turnstileSiteKey = $state(null);
+	let turnstileToken = $state(null);
+
+	onMount(async () => {
+		try {
+			const config = await api.getAuthConfig();
+			turnstileSiteKey = config.turnstile_site_key;
+			if (turnstileSiteKey) {
+				const checkTurnstile = setInterval(() => {
+					if (window.turnstile) {
+						clearInterval(checkTurnstile);
+						window.turnstile.render('#cf-turnstile-container', {
+							sitekey: turnstileSiteKey,
+							callback: (token) => {
+								turnstileToken = token;
+							},
+							'error-callback': () => {
+								error = 'Failed to load or solve CAPTCHA. Please try again.';
+							},
+							'expired-callback': () => {
+								turnstileToken = null;
+							}
+						});
+					}
+				}, 100);
+			}
+		} catch (e) {
+			console.error('Failed to load auth config:', e);
+		}
+	});
 
 	async function handleRegister() {
 		error = '';
@@ -20,18 +52,30 @@
 			error = 'You must accept the Terms of Service and Privacy Policy to register.';
 			return;
 		}
+		if (turnstileSiteKey && !turnstileToken) {
+			error = 'Please complete the Cloudflare Turnstile challenge';
+			return;
+		}
 		try {
-			await api.register(email, password);
+			await api.register(email, password, turnstileToken);
 			success = true;
 			showFlash('Registration successful! Check your email to verify your account.');
 		} catch (e) {
 			error = e.message;
+			// Reset Turnstile on failure if rendered
+			if (window.turnstile && turnstileSiteKey) {
+				window.turnstile.reset('#cf-turnstile-container');
+				turnstileToken = null;
+			}
 		}
 	}
 </script>
 
 <svelte:head>
 	<title>Register - Radegast</title>
+	{#if turnstileSiteKey}
+		<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+	{/if}
 </svelte:head>
 
 <div class="row justify-content-center">
@@ -84,6 +128,11 @@
 						I accept the <a href="{base}/terms" target="_blank" onclick={(e) => e.stopPropagation()}>Terms of Service</a> and <a href="{base}/privacy" target="_blank" onclick={(e) => e.stopPropagation()}>Privacy Policy</a>
 					</label>
 				</div>
+				{#if turnstileSiteKey}
+					<div class="mb-3 d-flex justify-content-center">
+						<div id="cf-turnstile-container"></div>
+					</div>
+				{/if}
 				<button type="submit" class="btn btn-primary w-100">Register</button>
 			</form>
 			<p class="mt-3 text-center">

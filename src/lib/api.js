@@ -58,7 +58,7 @@ async function request(method, path, body = null, isFormData = false) {
 
 export const api = {
 	// Auth
-	register: (email, password) => request('POST', '/auth/register', { email, password }),
+	register: (email, password, turnstile_token = null) => request('POST', '/auth/register', { email, password, turnstile_token }),
 	login: (email, password, public_key = null) => request('POST', '/auth/login', { email, password, public_key }),
 	logout: () => request('POST', '/auth/logout'),
 	me: () => request('GET', '/auth/me'),
@@ -175,5 +175,6 @@ export const api = {
 	adminDeleteDevice: (id) => request('DELETE', `/admin/devices/${id}`),
 	adminListPacks: () => request('GET', '/admin/packs'),
 	adminDeletePack: (id) => request('DELETE', `/admin/packs/${id}`),
+	getAuthConfig: () => request('GET', '/auth/config'),
 	getBackendUrl: () => BACKEND_URL
 };
