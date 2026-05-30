@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api.js';
@@ -72,7 +73,7 @@
 	}
 
 	function finishSetup() {
-		goto('/');
+		goto(`${base}/`);
 	}
 </script>
 

@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import 'bootstrap/dist/css/bootstrap.min.css';
 	import Navbar from '$lib/components/Navbar.svelte';
 	import { onMount } from 'svelte';
@@ -23,20 +24,22 @@
 
 	onMount(async () => {
 		const path = $page.url.pathname;
+		const relativePath = path.startsWith(base) ? path.slice(base.length) : path;
 
-		if (PUBLIC_PREFIXES.some((p) => path.startsWith(p))) return;
+		if (PUBLIC_PREFIXES.some((p) => relativePath.startsWith(p))) return;
 
 		try {
 			const me = await api.me();
 			$user = me;
 		} catch {
-			goto('/login');
+			goto(`${base}/login`);
 		}
 	});
 
 	$effect(() => {
 		const path = $page.url.pathname;
-		if (PUBLIC_PREFIXES.some((p) => path.startsWith(p))) return;
+		const relativePath = path.startsWith(base) ? path.slice(base.length) : path;
+		if (PUBLIC_PREFIXES.some((p) => relativePath.startsWith(p))) return;
 
 		const currentUser = $user;
 		if (currentUser && !currentUser.has_keys && !generatingKeys && !showRecoveryModal && !setupError) {

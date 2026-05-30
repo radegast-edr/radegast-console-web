@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api.js';
@@ -93,7 +94,7 @@
 
 				await storePrivateKey(userId, mainPriv, matchedPubKey);
 				showFlash('Key transferred successfully!');
-				goto('/');
+				goto(`${base}/`);
 			}
 		} catch (e) {
 			clearInterval(pollInterval);
@@ -305,7 +306,7 @@
 							</div>
 							<button
 								class="btn btn-danger"
-								onclick={() => goto('/')}
+								onclick={() => goto(`${base}/`)}
 								disabled={!genConfirmed}
 							>
 								I've Saved It — Continue
@@ -317,7 +318,7 @@
 
 			<p class="text-muted">
 				No key in this browser? You can also
-				<a href="/keys/recovery">restore using your recovery key</a>.
+				<a href="{base}/keys/recovery">restore using your recovery key</a>.
 			</p>
 		{/if}
 	</div>

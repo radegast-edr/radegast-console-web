@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { api } from '$lib/api.js';
 	import { showFlash, showError } from '$lib/store.js';
@@ -103,7 +104,7 @@
 
 {#if group}
 	<div class="mb-4">
-		<a href="/groups" class="btn btn-outline-secondary btn-sm mb-2">← Back to Groups</a>
+		<a href="{base}/groups" class="btn btn-outline-secondary btn-sm mb-2">← Back to Groups</a>
 		<div class="d-flex align-items-center gap-2 mt-1">
 			{#if editingName}
 				<input class="form-control form-control-lg w-auto" bind:value={editName} />
@@ -134,7 +135,7 @@
 						{#each group.teams as team}
 							{@const isLast = (group.teams ?? []).length <= 1}
 							<tr>
-								<td><a href="/teams/{team.id}">{team.name}</a></td>
+								<td><a href="{base}/teams/{team.id}">{team.name}</a></td>
 								<td>
 									<span
 										class="d-inline-block"
@@ -186,7 +187,7 @@
 					<tbody>
 						{#each group.devices as device}
 							<tr>
-								<td><a href="/devices/{device.id}">{device.name}</a></td>
+								<td><a href="{base}/devices/{device.id}">{device.name}</a></td>
 								<td>
 									<button
 										class="btn btn-sm btn-outline-danger"

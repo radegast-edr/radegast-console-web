@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { api } from '$lib/api.js';
@@ -146,7 +147,7 @@
 				<ul class="list-group list-group-flush">
 					{#each groups as group}
 						<li class="list-group-item">
-							<a href="/groups/{group.id}">{group.name}</a>
+							<a href="{base}/groups/{group.id}">{group.name}</a>
 						</li>
 					{:else}
 						<li class="list-group-item text-muted">No groups</li>
@@ -174,7 +175,7 @@
 					{#each teamDevices as d}
 						<tr>
 							<td>
-								<a href="/devices/{d.id}">{d.name}</a>
+								<a href="{base}/devices/{d.id}">{d.name}</a>
 								{#if !d.signature_public_key}
 									<span class="badge bg-danger ms-2" title="Unsigned device! Signing key is not set.">Unsigned</span>
 								{/if}

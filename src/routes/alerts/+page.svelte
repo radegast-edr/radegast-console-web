@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api.js';
 	import { showError } from '$lib/store.js';
@@ -115,7 +116,7 @@
 
 {#if !privateKey}
 	<div class="alert alert-info">
-		No private key found in this browser. <a href="/keys/recovery">Recover your keys</a> to decrypt alerts.
+		No private key found in this browser. <a href="{base}/keys/recovery">Recover your keys</a> to decrypt alerts.
 	</div>
 {/if}
 
@@ -148,7 +149,7 @@
 						</td>
 						<td>
 							<a 
-								href="/devices/{log.device_id}" 
+								href="{base}/devices/{log.device_id}" 
 								onclick={(e) => e.stopPropagation()} 
 								class="text-decoration-none fw-bold link-secondary"
 							>

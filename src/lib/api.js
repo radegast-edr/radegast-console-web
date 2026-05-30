@@ -1,5 +1,23 @@
-import {PUBLIC_BACKEND_URL as BACKEND_URL} from '$env/static/public';
+import { base } from '$app/paths';
+import {PUBLIC_BACKEND_URL as BACKEND_URL_RAW} from '$env/static/public';
 import { goto } from '$app/navigation';
+
+let BACKEND_URL = BACKEND_URL_RAW;
+if (typeof window !== 'undefined') {
+	if (BACKEND_URL_RAW.startsWith('http')) {
+		try {
+			const url = new URL(BACKEND_URL_RAW);
+			if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+				url.hostname = window.location.hostname;
+				BACKEND_URL = url.origin + url.pathname;
+			}
+		} catch (e) {
+			console.error("Failed to parse PUBLIC_BACKEND_URL:", e);
+		}
+	} else if (BACKEND_URL_RAW.startsWith('/')) {
+		BACKEND_URL = window.location.origin + BACKEND_URL_RAW;
+	}
+}
 
 async function request(method, path, body = null, isFormData = false) {
 	const options = {
@@ -19,7 +37,7 @@ async function request(method, path, body = null, isFormData = false) {
 
 	if (resp.status === 401 && path !== '/auth/login') {
 		// Session expired or not logged in — send to login page
-		goto('/login');
+		goto(`${base}/login`);
 		throw new Error('Not authenticated');
 	}
 

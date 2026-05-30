@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { api } from '$lib/api.js';
 	import { showFlash, showError } from '$lib/store.js';
@@ -70,7 +71,7 @@
 
 {#if device}
 	<div class="mb-4">
-		<a href="/devices" class="btn btn-outline-secondary btn-sm mb-2">← Back to Devices</a>
+		<a href="{base}/devices" class="btn btn-outline-secondary btn-sm mb-2">← Back to Devices</a>
 		<div class="d-flex align-items-center gap-2 mt-1">
 			{#if editingName}
 				<input class="form-control form-control-lg w-auto" bind:value={editName} />
@@ -107,7 +108,7 @@
 					<tbody>
 						{#each device.groups as group}
 							<tr>
-								<td><a href="/groups/{group.id}">{group.name}</a></td>
+								<td><a href="{base}/groups/{group.id}">{group.name}</a></td>
 								<td>
 									<button
 										class="btn btn-sm btn-outline-danger"

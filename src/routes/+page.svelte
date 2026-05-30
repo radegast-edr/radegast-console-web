@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api.js';
 	import { user } from '$lib/store.js';
@@ -27,7 +28,7 @@
 			unreadCount = unreadRes.unread_count;
 			hasPrivateKey = !!(await getStoredPrivateKey(me.id));
 		} catch (e) {
-			goto('/login');
+			goto(`${base}/login`);
 		}
 
 		const interval = setInterval(refreshUnreadCount, 60000);
@@ -57,8 +58,8 @@
 			Your private key is not stored in this browser. You won't be able to decrypt logs until
 			you restore it.
 		</p>
-		<a href="/keys/recovery" class="btn btn-warning btn-sm me-2">Recover with Recovery Key</a>
-		<a href="/keys/transfer" class="btn btn-outline-secondary btn-sm"
+		<a href="{base}/keys/recovery" class="btn btn-warning btn-sm me-2">Recover with Recovery Key</a>
+		<a href="{base}/keys/transfer" class="btn btn-outline-secondary btn-sm"
 			>Transfer from Another Browser</a
 		>
 	</div>
@@ -72,10 +73,10 @@
 				<p class="card-text text-muted">{teams.length} team(s)</p>
 				<ul class="list-unstyled mb-3">
 					{#each teams.slice(0, 5) as t}
-						<li><a href="/teams/{t.id}">{t.name}</a></li>
+						<li><a href="{base}/teams/{t.id}">{t.name}</a></li>
 					{/each}
 				</ul>
-				<a href="/teams" class="btn btn-primary btn-sm">Manage Teams</a>
+				<a href="{base}/teams" class="btn btn-primary btn-sm">Manage Teams</a>
 			</div>
 		</div>
 	</div>
@@ -86,10 +87,10 @@
 				<p class="card-text text-muted">{groups.length} group(s)</p>
 				<ul class="list-unstyled mb-3">
 					{#each groups.slice(0, 5) as g}
-						<li><a href="/groups/{g.id}">{g.name}</a></li>
+						<li><a href="{base}/groups/{g.id}">{g.name}</a></li>
 					{/each}
 				</ul>
-				<a href="/groups" class="btn btn-primary btn-sm">Manage Groups</a>
+				<a href="{base}/groups" class="btn btn-primary btn-sm">Manage Groups</a>
 			</div>
 		</div>
 	</div>
@@ -100,10 +101,10 @@
 				<p class="card-text text-muted">{devices.length} device(s)</p>
 				<ul class="list-unstyled mb-3">
 					{#each devices.slice(0, 5) as d}
-						<li><a href="/devices/{d.id}">{d.name}</a></li>
+						<li><a href="{base}/devices/{d.id}">{d.name}</a></li>
 					{/each}
 				</ul>
-				<a href="/devices" class="btn btn-primary btn-sm">Manage Devices</a>
+				<a href="{base}/devices" class="btn btn-primary btn-sm">Manage Devices</a>
 			</div>
 		</div>
 	</div>
@@ -112,7 +113,7 @@
 			<div class="card-body">
 				<h5 class="card-title">Packs</h5>
 				<p class="card-text text-muted">Configuration packs</p>
-				<a href="/packs" class="btn btn-primary btn-sm">Browse Packs</a>
+				<a href="{base}/packs" class="btn btn-primary btn-sm">Browse Packs</a>
 			</div>
 		</div>
 	</div>
@@ -134,7 +135,7 @@
 						All alerts have been reviewed.
 					{/if}
 				</p>
-				<a href="/alerts" class="btn btn-{unreadCount > 0 ? 'danger' : 'primary'} btn-sm">View Alerts</a>
+				<a href="{base}/alerts" class="btn btn-{unreadCount > 0 ? 'danger' : 'primary'} btn-sm">View Alerts</a>
 			</div>
 		</div>
 	</div>

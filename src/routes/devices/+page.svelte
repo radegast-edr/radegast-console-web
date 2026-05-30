@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api.js';
 	import { showFlash, showError } from '$lib/store.js';
@@ -109,7 +110,7 @@
 			<tr>
 				<td>{device.id}</td>
 				<td>
-					<a href="/devices/{device.id}">{device.name}</a>
+					<a href="{base}/devices/{device.id}">{device.name}</a>
 					{#if !device.signature_public_key}
 						<span class="badge bg-danger ms-2" title="Unsigned device! Signing key is not set.">Unsigned</span>
 					{/if}

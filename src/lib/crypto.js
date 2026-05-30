@@ -10,6 +10,8 @@
  *   decrypt(identities, ciphertext) → { output, error }  (identities = newline-joined keys)
  */
 
+import { base } from '$app/paths';
+
 let wasmReady = false;
 /** @type {Promise<void>|null} */
 let initPromise = null;
@@ -23,11 +25,11 @@ export async function initAgeWasm() {
 
 	initPromise = (async () => {
 		if (!window.Go) {
-			await loadScript('/agewasm/wasm_exec.js');
+			await loadScript(`${base}/agewasm/wasm_exec.js`);
 		}
 		const go = new window.Go();
 		const result = await WebAssembly.instantiateStreaming(
-			fetch('/agewasm/main.wasm'),
+			fetch(`${base}/agewasm/main.wasm`),
 			go.importObject
 		);
 		go.run(result.instance);

@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { api } from '$lib/api.js';
 	import { showFlash } from '$lib/store.js';
 
@@ -35,7 +36,7 @@
 			<div class="alert alert-success">
 				Registration successful! Please check your email and click the verification link.
 			</div>
-			<p class="text-center"><a href="/login">Go to Login</a></p>
+			<p class="text-center"><a href="{base}/login">Go to Login</a></p>
 		{:else}
 			{#if error}
 				<div class="alert alert-danger">{error}</div>
@@ -69,7 +70,7 @@
 				<button type="submit" class="btn btn-primary w-100">Register</button>
 			</form>
 			<p class="mt-3 text-center">
-				Already have an account? <a href="/login">Login</a>
+				Already have an account? <a href="{base}/login">Login</a>
 			</p>
 		{/if}
 	</div>

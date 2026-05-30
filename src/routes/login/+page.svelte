@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { api } from '$lib/api.js';
 	import { user, showError } from '$lib/store.js';
 	import { goto } from '$app/navigation';
@@ -18,7 +19,7 @@
 			if (me && me.id) {
 				localStorage.setItem(`uid_${email.toLowerCase().trim()}`, me.id);
 			}
-			goto('/');
+			goto(`${base}/`);
 		} catch (e) {
 			error = e.message;
 		}
@@ -47,7 +48,7 @@
 			<button type="submit" class="btn btn-primary w-100">Login</button>
 		</form>
 		<p class="mt-3 text-center">
-			Don't have an account? <a href="/register">Register</a>
+			Don't have an account? <a href="{base}/register">Register</a>
 		</p>
 	</div>
 </div>

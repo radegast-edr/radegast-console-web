@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api.js';
 	import { user, showFlash, showError } from '$lib/store.js';
@@ -11,7 +12,7 @@
 
 	onMount(async () => {
 		if ($user?.role !== 'admin') {
-			goto('/');
+			goto(`${base}/`);
 			return;
 		}
 		await loadAll();
@@ -132,7 +133,7 @@
 				<tr>
 					<td>{d.id}</td>
 					<td>
-						<a href="/devices/{d.id}">{d.name}</a>
+						<a href="{base}/devices/{d.id}">{d.name}</a>
 						{#if !d.signature_public_key}
 							<span class="badge bg-danger ms-2" title="Unsigned device! Signing key is not set.">Unsigned</span>
 						{/if}

@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api.js';
 	import { showFlash, showError } from '$lib/store.js';
@@ -50,7 +51,7 @@
 
 <div class="list-group">
 	{#each teams as team}
-		<a href="/teams/{team.id}" class="list-group-item list-group-item-action">
+		<a href="{base}/teams/{team.id}" class="list-group-item list-group-item-action">
 			<div class="d-flex justify-content-between align-items-center">
 				<h5 class="mb-1">{team.name}</h5>
 				<div>

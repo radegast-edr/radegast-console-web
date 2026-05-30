@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api.js';
 	import { showError } from '$lib/store.js';
@@ -35,8 +36,8 @@
 			{#each groups as group}
 				<tr>
 					<td>{group.id}</td>
-					<td><a href="/groups/{group.id}">{group.name}</a></td>
-					<td><a href="/groups/{group.id}" class="btn btn-sm btn-outline-primary">Manage</a></td>
+					<td><a href="{base}/groups/{group.id}">{group.name}</a></td>
+					<td><a href="{base}/groups/{group.id}" class="btn btn-sm btn-outline-primary">Manage</a></td>
 				</tr>
 			{/each}
 		</tbody>
