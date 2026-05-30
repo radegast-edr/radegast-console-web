@@ -129,9 +129,15 @@
 				</div>
 			{:else}
 				<div class="mb-3">
-					<label class="form-label fw-semibold">2. Copy this token to configure your agent manually:</label>
-					<code class="d-block p-2 bg-dark text-light rounded font-monospace mb-2" style="user-select: all;">{newDeviceToken}</code>
-					<p class="text-muted small mb-0">Copy this token and configure it in your rustinel/agent settings.</p>
+					<label class="form-label fw-semibold">2. Run this command on your Windows device in an Administrator PowerShell prompt:</label>
+					<div class="input-group">
+						<code class="form-control bg-dark text-light p-2 font-monospace" style="user-select: all;">
+							$env:RADEGAST_TOKEN="{newDeviceToken}"; iwr -useb "{backendUrl}/device/install?os=windows" -OutFile install.bat; .\install.bat
+						</code>
+					</div>
+					<small class="form-text text-muted">
+						This will download portable Python, install <code>uv</code> and <code>radegast-agent</code>, download <code>rustinel</code>, and register background Scheduled Tasks.
+					</small>
 				</div>
 			{/if}
 
