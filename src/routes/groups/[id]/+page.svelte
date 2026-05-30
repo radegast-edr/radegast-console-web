@@ -3,12 +3,30 @@
 	import { page } from '$app/stores';
 	import { api } from '$lib/api.js';
 	import { showFlash, showError } from '$lib/store.js';
+	import Modal from '$lib/components/Modal.svelte';
 
 	let group = $state(null);
 	let allTeams = $state([]);
 	let allDevices = $state([]);
 	let addTeamId = $state('');
 	let addDeviceId = $state('');
+
+	// User teams and Pack Write Permissions
+	let userTeams = $state([]);
+	let hasPackWrite = $derived.by(() => {
+		if (!group || userTeams.length === 0) return false;
+		const userTeamIds = new Set(userTeams.map(t => t.id));
+		return (group.teams ?? []).some(t => userTeamIds.has(t.id) && t.permission_pack === 'write');
+	});
+
+	// Pack Management State
+	let enabledPacks = $state([]);
+	let showEnablePackModal = $state(false);
+	let availablePacks = $state([]);
+	let selectedPackId = $state('');
+	let packVersions = $state([]);
+	let selectedVersionId = $state('');
+	let autoupdate = $state(true);
 
 	// inline rename
 	let editingName = $state(false);
@@ -26,6 +44,7 @@
 				api.listDevices()
 			]);
 			group = g;
+			userTeams = teams;
 
 			const groupTeamIds = new Set((g.teams ?? []).map((t) => t.id));
 			allTeams = teams.filter((t) => !groupTeamIds.has(t.id));
@@ -34,6 +53,8 @@
 			const groupDeviceIds = new Set((g.devices ?? []).map((d) => d.id));
 			allDevices = devices.filter((d) => !groupDeviceIds.has(d.id));
 			addDeviceId = allDevices.length > 0 ? String(allDevices[0].id) : '';
+
+			await loadEnabledPacks(id);
 		} catch (e) {
 			showError(e.message);
 		}
@@ -92,6 +113,70 @@
 			await api.addDeviceToGroupViaGroup(group.id, Number(addDeviceId));
 			showFlash('Device added to group');
 			await loadGroup(group.id);
+		} catch (e) {
+			showError(e.message);
+		}
+	}
+
+	async function loadEnabledPacks(groupId) {
+		try {
+			enabledPacks = await api.listEnabledPacks(groupId);
+		} catch (e) {
+			showError(e.message);
+		}
+	}
+
+	async function disablePack(enabledId) {
+		if (!confirm('Disable this pack for the group?')) return;
+		try {
+			await api.disablePack(group.id, enabledId);
+			showFlash('Pack disabled');
+			await loadEnabledPacks(group.id);
+		} catch (e) {
+			showError(e.message);
+		}
+	}
+
+	async function openEnablePack() {
+		try {
+			availablePacks = await api.listPacks();
+			selectedPackId = availablePacks.length > 0 ? String(availablePacks[0].id) : '';
+			packVersions = [];
+			selectedVersionId = '';
+			autoupdate = true;
+			if (selectedPackId) {
+				await loadVersionsForSelectedPack(Number(selectedPackId));
+			}
+			showEnablePackModal = true;
+		} catch (e) {
+			showError(e.message);
+		}
+	}
+
+	async function handlePackChange(e) {
+		const packId = Number(e.target.value);
+		await loadVersionsForSelectedPack(packId);
+	}
+
+	async function loadVersionsForSelectedPack(packId) {
+		try {
+			packVersions = await api.listVersions(packId);
+			selectedVersionId = packVersions.length > 0 ? String(packVersions[0].id) : '';
+		} catch (e) {
+			showError(e.message);
+		}
+	}
+
+	async function enablePack() {
+		if (!selectedVersionId) {
+			showError('Please select a version');
+			return;
+		}
+		try {
+			await api.enablePack(group.id, Number(selectedVersionId), autoupdate);
+			showEnablePackModal = false;
+			showFlash('Pack enabled successfully');
+			await loadEnabledPacks(group.id);
 		} catch (e) {
 			showError(e.message);
 		}
@@ -214,6 +299,90 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- Packs section -->
+	<div class="card mb-4">
+		<div class="card-header d-flex justify-content-between align-items-center">
+			<h5 class="mb-0">Enabled Packs</h5>
+			{#if hasPackWrite}
+				<button class="btn btn-sm btn-primary" onclick={openEnablePack}>Enable Pack</button>
+			{/if}
+		</div>
+		<div class="card-body">
+			{#if enabledPacks.length === 0}
+				<p class="text-muted">No packs enabled for this group.</p>
+			{:else}
+				<table class="table table-sm mb-0 align-middle">
+					<thead>
+						<tr>
+							<th>Pack Name</th>
+							<th>Version</th>
+							<th>Autoupdate</th>
+							{#if hasPackWrite}
+								<th></th>
+							{/if}
+						</tr>
+					</thead>
+					<tbody>
+						{#each enabledPacks as pe}
+							<tr>
+								<td class="fw-bold">{pe.pack_name}</td>
+								<td><span class="badge bg-success">{pe.version}</span></td>
+								<td>
+									{#if pe.autoupdate}
+										<span class="text-success">✓ Yes</span>
+									{:else}
+										<span class="text-muted">✗ No</span>
+									{/if}
+								</td>
+								{#if hasPackWrite}
+									<td>
+										<button
+											class="btn btn-sm btn-outline-danger"
+											onclick={() => disablePack(pe.id)}>Disable</button
+										>
+									</td>
+								{/if}
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			{/if}
+		</div>
+	</div>
+
+	<!-- Enable Pack Modal -->
+	<Modal show={showEnablePackModal} title="Enable Pack for Group" onClose={() => (showEnablePackModal = false)}>
+		<form onsubmit={(e) => { e.preventDefault(); enablePack(); }}>
+			<div class="mb-3">
+				<label for="selectPack" class="form-label">Select Pack</label>
+				<select class="form-select" id="selectPack" bind:value={selectedPackId} onchange={handlePackChange} required>
+					{#each availablePacks as p}
+						<option value={String(p.id)}>{p.name}</option>
+					{/each}
+				</select>
+			</div>
+			<div class="mb-3">
+				<label for="selectVersion" class="form-label">Select Version</label>
+				{#if packVersions.length === 0}
+					<p class="text-danger small">No versions available for this pack. Upload a version first.</p>
+				{:else}
+					<select class="form-select" id="selectVersion" bind:value={selectedVersionId} required>
+						{#each packVersions as v}
+							<option value={String(v.id)}>{v.version}</option>
+						{/each}
+					</select>
+				{/if}
+			</div>
+			<div class="form-check mb-3">
+				<input class="form-check-input" type="checkbox" id="autoupdate" bind:checked={autoupdate} />
+				<label class="form-check-label" for="autoupdate">
+					Automatically update to newer versions
+				</label>
+			</div>
+			<button type="submit" class="btn btn-primary" disabled={packVersions.length === 0}>Enable Pack</button>
+		</form>
+	</Modal>
 {:else}
 	<p>Loading…</p>
 {/if}

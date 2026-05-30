@@ -111,6 +111,7 @@ export const api = {
 	// Packs
 	listPacks: () => request('GET', '/packs/'),
 	createPack: (name, description) => request('POST', '/packs/', { name, description }),
+	updatePack: (id, name, description) => request('PATCH', `/packs/${id}`, { name, description }),
 	getPack: (id) => request('GET', `/packs/${id}`),
 	listVersions: (packId) => request('GET', `/packs/${packId}/versions`),
 	uploadVersion: (packId, version, file) => {
