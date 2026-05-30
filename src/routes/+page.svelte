@@ -67,6 +67,28 @@
 
 <div class="row mt-4 g-3">
 	<div class="col-md-4">
+		<div class="card h-100 border-{unreadCount > 0 ? 'danger' : 'primary'} shadow-sm">
+			<div class="card-body">
+				<h5 class="card-title text-{unreadCount > 0 ? 'danger' : 'primary'} fw-bold d-flex align-items-center justify-content-between">
+					<span>Alerts</span>
+					{#if unreadCount > 0}
+						<span class="badge bg-danger">{unreadCount} unread</span>
+					{:else}
+						<span class="badge bg-primary">0 unread</span>
+					{/if}
+				</h5>
+				<p class="card-text text-muted">
+					{#if unreadCount > 0}
+						You have <strong>{unreadCount}</strong> unread alert(s) requiring attention.
+					{:else}
+						All alerts have been reviewed.
+					{/if}
+				</p>
+				<a href="{base}/alerts" class="btn btn-{unreadCount > 0 ? 'danger' : 'primary'} btn-sm">View Alerts</a>
+			</div>
+		</div>
+	</div>
+	<div class="col-md-4">
 		<div class="card h-100">
 			<div class="card-body">
 				<h5 class="card-title">Teams</h5>
@@ -114,28 +136,6 @@
 				<h5 class="card-title">Packs</h5>
 				<p class="card-text text-muted">Configuration packs</p>
 				<a href="{base}/packs" class="btn btn-primary btn-sm">Browse Packs</a>
-			</div>
-		</div>
-	</div>
-	<div class="col-md-4">
-		<div class="card h-100 border-{unreadCount > 0 ? 'danger' : 'primary'} shadow-sm">
-			<div class="card-body">
-				<h5 class="card-title text-{unreadCount > 0 ? 'danger' : 'primary'} fw-bold d-flex align-items-center justify-content-between">
-					<span>Alerts</span>
-					{#if unreadCount > 0}
-						<span class="badge bg-danger">{unreadCount} unread</span>
-					{:else}
-						<span class="badge bg-primary">0 unread</span>
-					{/if}
-				</h5>
-				<p class="card-text text-muted">
-					{#if unreadCount > 0}
-						You have <strong>{unreadCount}</strong> unread alert(s) requiring attention.
-					{:else}
-						All alerts have been reviewed.
-					{/if}
-				</p>
-				<a href="{base}/alerts" class="btn btn-{unreadCount > 0 ? 'danger' : 'primary'} btn-sm">View Alerts</a>
 			</div>
 		</div>
 	</div>

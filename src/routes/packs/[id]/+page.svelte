@@ -133,6 +133,23 @@
 		}
 	}
 
+	async function downloadVersionFile(v) {
+		try {
+			const res = await api.downloadVersion(v.id);
+			const blob = await res.blob();
+			const url = window.URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `${pack.name}-${v.version}.zip`;
+			document.body.appendChild(a);
+			a.click();
+			window.URL.revokeObjectURL(url);
+			document.body.removeChild(a);
+		} catch (e) {
+			showError(e.message);
+		}
+	}
+
 	async function saveGroupAccess() {
 		savingAccess = true;
 		try {
@@ -225,20 +242,27 @@
 							<table class="table table-striped align-middle mb-0">
 								<thead>
 									<tr>
-										<th class="ps-4">Version</th>
-										<th>Released Date</th>
+										<th class="ps-4" style="width: 20%">Version</th>
+										<th style="width: 40%">Release Notes</th>
+										<th style="width: 25%">Released Date</th>
+										<th class="text-end pe-4" style="width: 15%">Actions</th>
 									</tr>
 								</thead>
 								<tbody>
 									{#each versions as v}
 										<tr>
-											<td class="ps-4 fw-bold text-success">
-												{v.version}
-												{#if v.release_notes}
-													<div class="fw-normal text-muted small mt-1" style="white-space: pre-wrap;">{v.release_notes}</div>
-												{/if}
-											</td>
+											<td class="ps-4 fw-bold text-success">{v.version}</td>
+											<td class="text-muted small" style="white-space: pre-wrap;">{v.release_notes || '—'}</td>
 											<td class="text-muted small">{new Date(v.released).toLocaleString()}</td>
+											<td class="text-end pe-4">
+												<button
+													class="btn btn-sm btn-outline-primary"
+													onclick={() => downloadVersionFile(v)}
+													title="Download zip file"
+												>
+													Download
+												</button>
+											</td>
 										</tr>
 									{/each}
 								</tbody>

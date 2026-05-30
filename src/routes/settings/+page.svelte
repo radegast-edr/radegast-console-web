@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api.js';
 	import { showFlash, showError } from '$lib/store.js';
@@ -311,7 +312,7 @@
 							id="notifyDeviceLog"
 							bind:checked={notifications.notify_device_log}
 						/>
-						<label class="form-check-label" for="notifyDeviceLog">New device log entry</label>
+						<label class="form-check-label" for="notifyDeviceLog">New alert notification</label>
 					</div>
 					<button class="btn btn-primary" onclick={saveNotifications} disabled={notifSaving}>
 						{notifSaving ? 'Saving…' : 'Save Preferences'}
@@ -458,6 +459,22 @@
 						</button>
 					</div>
 				{/if}
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="row g-4 mt-2">
+	<!-- Legal & Policies Card -->
+	<div class="col-12 mb-4">
+		<div class="card">
+			<div class="card-header"><h5 class="mb-0">Legal & Policies</h5></div>
+			<div class="card-body">
+				<p class="text-muted small">You can review our legal policies and agreements at any time.</p>
+				<div class="d-flex gap-3">
+					<a href="{base}/terms" target="_blank" class="btn btn-outline-secondary btn-sm">Terms of Service</a>
+					<a href="{base}/privacy" target="_blank" class="btn btn-outline-secondary btn-sm">Privacy Policy</a>
+				</div>
 			</div>
 		</div>
 	</div>

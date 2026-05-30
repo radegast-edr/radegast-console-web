@@ -8,11 +8,16 @@
 	let confirmPassword = $state('');
 	let error = $state('');
 	let success = $state(false);
+	let acceptedPolicies = $state(false);
 
 	async function handleRegister() {
 		error = '';
 		if (password !== confirmPassword) {
 			error = 'Passwords do not match';
+			return;
+		}
+		if (!acceptedPolicies) {
+			error = 'You must accept the Terms of Service and Privacy Policy to register.';
 			return;
 		}
 		try {
@@ -66,6 +71,18 @@
 						bind:value={confirmPassword}
 						required
 					/>
+				</div>
+				<div class="mb-3 form-check">
+					<input
+						type="checkbox"
+						class="form-check-input"
+						id="acceptPolicies"
+						bind:checked={acceptedPolicies}
+						required
+					/>
+					<label class="form-check-label small text-muted" for="acceptPolicies">
+						I accept the <a href="{base}/terms" target="_blank" onclick={(e) => e.stopPropagation()}>Terms of Service</a> and <a href="{base}/privacy" target="_blank" onclick={(e) => e.stopPropagation()}>Privacy Policy</a>
+					</label>
 				</div>
 				<button type="submit" class="btn btn-primary w-100">Register</button>
 			</form>

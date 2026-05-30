@@ -115,6 +115,7 @@ export const api = {
 	deletePack: (id) => request('DELETE', `/packs/${id}`),
 	getPack: (id) => request('GET', `/packs/${id}`),
 	listVersions: (packId) => request('GET', `/packs/${packId}/versions`),
+	downloadVersion: (versionId) => request('GET', `/packs/download/${versionId}`),
 	uploadVersion: (packId, version, file, releaseNotes = '') => {
 		const formData = new FormData();
 		formData.append('file', file);
