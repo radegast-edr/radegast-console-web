@@ -12,7 +12,7 @@
 	let page = $state(1);
 	let limit = 100;
 	let devices = $state([]);
-	let deviceMap = $derived(new Map(devices.map(d => [d.id, d.name])));
+	let deviceMap = $derived(new Map(devices.map(d => [d.id, d])));
 
 	async function loadAlerts() {
 		try {
@@ -99,6 +99,26 @@
 		await loadAlerts();
 		loading = false;
 	}
+
+	function isDeviceActive(lastSeen) {
+		if (!lastSeen) return false;
+		let cleanStr = lastSeen;
+		if (typeof lastSeen === 'string' && !lastSeen.endsWith('Z') && !lastSeen.includes('+')) {
+			cleanStr = lastSeen + 'Z';
+		}
+		const lastSeenDate = new Date(cleanStr);
+		const diffMs = new Date() - lastSeenDate;
+		return diffMs < 10 * 60 * 1000;
+	}
+
+	function formatFullDateTime(dt) {
+		if (!dt) return 'Never';
+		let cleanStr = dt;
+		if (typeof dt === 'string' && !dt.endsWith('Z') && !dt.includes('+')) {
+			cleanStr = dt + 'Z';
+		}
+		return new Date(cleanStr).toLocaleString();
+	}
 </script>
 
 <svelte:head>
@@ -134,6 +154,7 @@
 			</thead>
 			<tbody>
 				{#each logs as log}
+					{@const devObj = deviceMap.get(log.device_id)}
 					<tr 
 						onclick={() => handleAlertClick(log)}
 						style="cursor: pointer; transition: background-color 0.2s;"
@@ -153,8 +174,16 @@
 								onclick={(e) => e.stopPropagation()} 
 								class="text-decoration-none fw-bold link-secondary"
 							>
-								{deviceMap.get(log.device_id) || `Device #${log.device_id}`}
+								{devObj ? devObj.name : `Device #${log.device_id}`}
 							</a>
+							{#if devObj}
+								{#if isDeviceActive(devObj.last_seen)}
+									<span class="badge bg-success ms-2">Online</span>
+								{:else}
+									<span class="badge bg-secondary ms-2">Offline</span>
+									<div class="small text-muted mt-1">Last seen: {formatFullDateTime(devObj.last_seen)}</div>
+								{/if}
+							{/if}
 							{#if !log.signature}
 								<span class="badge bg-danger ms-2" title="Unsigned alert! Content integrity cannot be guaranteed.">Unsigned</span>
 							{/if}

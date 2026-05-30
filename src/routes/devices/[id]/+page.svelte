@@ -63,6 +63,26 @@
 			showError(e.message);
 		}
 	}
+
+	function isDeviceActive(lastSeen) {
+		if (!lastSeen) return false;
+		let cleanStr = lastSeen;
+		if (typeof lastSeen === 'string' && !lastSeen.endsWith('Z') && !lastSeen.includes('+')) {
+			cleanStr = lastSeen + 'Z';
+		}
+		const lastSeenDate = new Date(cleanStr);
+		const diffMs = new Date() - lastSeenDate;
+		return diffMs < 10 * 60 * 1000;
+	}
+
+	function formatFullDateTime(dt) {
+		if (!dt) return 'Never';
+		let cleanStr = dt;
+		if (typeof dt === 'string' && !dt.endsWith('Z') && !dt.includes('+')) {
+			cleanStr = dt + 'Z';
+		}
+		return new Date(cleanStr).toLocaleString();
+	}
 </script>
 
 <svelte:head>
@@ -83,6 +103,14 @@
 			{/if}
 		</div>
 		<p class="text-muted mt-1">
+			Status:
+			{#if isDeviceActive(device.last_seen)}
+				<span class="badge bg-success">Online</span>
+			{:else}
+				<span class="badge bg-secondary">Offline</span>
+				<span class="small ms-2">Last seen: {formatFullDateTime(device.last_seen)}</span>
+			{/if}
+			<span class="mx-2">|</span>
 			Signing key:
 			{#if device.signature_public_key}
 				<span class="badge bg-success">Set</span>

@@ -181,6 +181,17 @@
 			showError(e.message);
 		}
 	}
+
+	function isDeviceActive(lastSeen) {
+		if (!lastSeen) return false;
+		let cleanStr = lastSeen;
+		if (typeof lastSeen === 'string' && !lastSeen.endsWith('Z') && !lastSeen.includes('+')) {
+			cleanStr = lastSeen + 'Z';
+		}
+		const lastSeenDate = new Date(cleanStr);
+		const diffMs = new Date() - lastSeenDate;
+		return diffMs < 10 * 60 * 1000;
+	}
 </script>
 
 <svelte:head>
@@ -266,6 +277,7 @@
 					<thead>
 						<tr>
 							<th>Device</th>
+							<th>Status</th>
 							<th></th>
 						</tr>
 					</thead>
@@ -273,6 +285,13 @@
 						{#each group.devices as device}
 							<tr>
 								<td><a href="{base}/devices/{device.id}">{device.name}</a></td>
+								<td>
+									{#if isDeviceActive(device.last_seen)}
+										<span class="badge bg-success">Online</span>
+									{:else}
+										<span class="badge bg-secondary">Offline</span>
+									{/if}
+								</td>
 								<td>
 									<button
 										class="btn btn-sm btn-outline-danger"
