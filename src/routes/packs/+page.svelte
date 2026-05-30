@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api.js';
 	import { user, showFlash, showError } from '$lib/store.js';
@@ -11,6 +12,7 @@
 	let showUpload = $state(false);
 	let uploadPackId = $state(null);
 	let uploadVersion = $state('');
+	let uploadReleaseNotes = $state('');
 	let uploadFile = $state(null);
 
 	// Edit Pack State
@@ -89,6 +91,7 @@
 	function openUpload(packId) {
 		uploadPackId = packId;
 		uploadVersion = '';
+		uploadReleaseNotes = '';
 		uploadFile = null;
 		showUpload = true;
 	}
@@ -99,7 +102,7 @@
 			return;
 		}
 		try {
-			await api.uploadVersion(uploadPackId, uploadVersion, uploadFile);
+			await api.uploadVersion(uploadPackId, uploadVersion, uploadFile, uploadReleaseNotes);
 			showUpload = false;
 			showFlash('Version uploaded');
 			await loadPacks();
@@ -125,7 +128,9 @@
 		<div class="col-md-6 col-lg-4 mb-3">
 			<div class="card h-100">
 				<div class="card-body d-flex flex-column">
-					<h5 class="card-title fw-bold text-primary">{pack.name}</h5>
+					<h5 class="card-title fw-bold text-primary">
+						<a href="{base}/packs/{pack.id}" class="text-decoration-none">{pack.name}</a>
+					</h5>
 					<p class="card-text text-muted flex-grow-1">{pack.description || 'No description'}</p>
 					<div class="mt-3 d-flex gap-2 flex-wrap">
 						<button
@@ -202,7 +207,12 @@
 				<tbody>
 					{#each packVersions as v}
 						<tr>
-							<td class="fw-bold text-success">{v.version}</td>
+							<td class="fw-bold text-success">
+								{v.version}
+								{#if v.release_notes}
+									<div class="fw-normal text-muted small mt-1" style="white-space: pre-wrap;">{v.release_notes}</div>
+								{/if}
+							</td>
 							<td class="text-muted small">{new Date(v.released).toLocaleString()}</td>
 						</tr>
 					{/each}
@@ -235,6 +245,16 @@
 				onchange={(e) => (uploadFile = e.target.files[0])}
 				required
 			/>
+		</div>
+		<div class="mb-3">
+			<label for="releaseNotes" class="form-label">Release Notes (Optional)</label>
+			<textarea
+				class="form-control"
+				id="releaseNotes"
+				bind:value={uploadReleaseNotes}
+				rows="3"
+				placeholder="Add release notes for this version..."
+			></textarea>
 		</div>
 		<button type="submit" class="btn btn-primary">Upload</button>
 	</form>

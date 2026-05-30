@@ -112,11 +112,15 @@ export const api = {
 	listPacks: () => request('GET', '/packs/'),
 	createPack: (name, description) => request('POST', '/packs/', { name, description }),
 	updatePack: (id, name, description) => request('PATCH', `/packs/${id}`, { name, description }),
+	deletePack: (id) => request('DELETE', `/packs/${id}`),
 	getPack: (id) => request('GET', `/packs/${id}`),
 	listVersions: (packId) => request('GET', `/packs/${packId}/versions`),
-	uploadVersion: (packId, version, file) => {
+	uploadVersion: (packId, version, file, releaseNotes = '') => {
 		const formData = new FormData();
 		formData.append('file', file);
+		if (releaseNotes) {
+			formData.append('release_notes', releaseNotes);
+		}
 		return request('POST', `/packs/${packId}/versions?version=${version}`, formData, true);
 	},
 	enablePack: (groupId, packVersionId, autoupdate = true) =>
