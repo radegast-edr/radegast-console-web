@@ -92,6 +92,7 @@
 		try {
 			await api.updateTeam(teamId, { [field]: value || null });
 			await loadTeam();
+			showFlash('Permissions updated successfully');
 		} catch (e) {
 			showError(e.message);
 		}
