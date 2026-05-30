@@ -12,6 +12,7 @@
 	let newDeviceGroupId = $state('');
 	/** @type {Array<{id: number, teamName: string, name: string}>} */
 	let availableGroups = $state([]);
+	let selectedOS = $state('linux');
 
 	onMount(async () => {
 		await loadDevices();
@@ -30,6 +31,7 @@
 		newDeviceName = '';
 		newDeviceGroupId = '';
 		availableGroups = [];
+		selectedOS = 'linux';
 
 		try {
 			const teams = await api.listTeams();
@@ -87,13 +89,56 @@
 </div>
 
 {#if newDeviceToken}
-	<div class="alert alert-warning">
-		<h5>Device Token (shown once)</h5>
-		<code class="d-block p-2 bg-dark text-light rounded">{newDeviceToken}</code>
-		<p class="mt-2 mb-0">Copy this token and configure it in your rustinel wrapper.</p>
-		<button class="btn btn-sm btn-outline-secondary mt-2" onclick={() => (newDeviceToken = '')}
-			>Dismiss</button
-		>
+	{@const backendUrl = api.getBackendUrl().replace(/\/$/, '')}
+	<div class="card border-warning mb-4 shadow-sm">
+		<div class="card-header bg-warning-subtle text-warning-emphasis py-3">
+			<h5 class="mb-0 fw-bold">Device Created: Setup Agent</h5>
+		</div>
+		<div class="card-body">
+			<div class="mb-3">
+				<label class="form-label fw-semibold">1. Select Target Operating System:</label>
+				<div class="btn-group d-block" role="group">
+					<button
+						type="button"
+						class="btn {selectedOS === 'linux' ? 'btn-primary' : 'btn-outline-primary'}"
+						onclick={() => (selectedOS = 'linux')}
+					>
+						Linux
+					</button>
+					<button
+						type="button"
+						class="btn {selectedOS === 'windows' ? 'btn-primary' : 'btn-outline-primary'}"
+						onclick={() => (selectedOS = 'windows')}
+					>
+						Windows
+					</button>
+				</div>
+			</div>
+
+			{#if selectedOS === 'linux'}
+				<div class="mb-3">
+					<label class="form-label fw-semibold">2. Run this command on your Linux device as root:</label>
+					<div class="input-group">
+						<code class="form-control bg-dark text-light p-2 font-monospace" style="user-select: all;">
+							curl -sSL "{backendUrl}/device/install?os=linux" | sudo RADEGAST_TOKEN="{newDeviceToken}" sh
+						</code>
+					</div>
+					<small class="form-text text-muted">
+						This will verify system requirements, install <code>uv</code> and <code>radegast-agent</code>, download <code>rustinel</code>, and configure systemd services.
+					</small>
+				</div>
+			{:else}
+				<div class="mb-3">
+					<label class="form-label fw-semibold">2. Copy this token to configure your agent manually:</label>
+					<code class="d-block p-2 bg-dark text-light rounded font-monospace mb-2" style="user-select: all;">{newDeviceToken}</code>
+					<p class="text-muted small mb-0">Copy this token and configure it in your rustinel/agent settings.</p>
+				</div>
+			{/if}
+
+			<button class="btn btn-secondary btn-sm" onclick={() => (newDeviceToken = '')}>
+				Dismiss
+			</button>
+		</div>
 	</div>
 {/if}
 

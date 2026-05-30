@@ -156,5 +156,6 @@ export const api = {
 	adminListDevices: () => request('GET', '/admin/devices'),
 	adminDeleteDevice: (id) => request('DELETE', `/admin/devices/${id}`),
 	adminListPacks: () => request('GET', '/admin/packs'),
-	adminDeletePack: (id) => request('DELETE', `/admin/packs/${id}`)
+	adminDeletePack: (id) => request('DELETE', `/admin/packs/${id}`),
+	getBackendUrl: () => BACKEND_URL
 };
