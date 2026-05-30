@@ -44,7 +44,7 @@
 				<li>Authenticate your account session and manage your EDR consoles.</li>
 				<li>Monitor device online/offline status in the console view.</li>
 				<li>Verify integrity signatures on host alerts.</li>
-				<li>Send alert notifications (such as user login alerts, recovery key activations, key transfer updates, and device log summaries) to your email based on your notification settings.</li>
+				<li>Send email communications (such as user login alerts, recovery key activations, key transfer updates, device log summaries, and platform downtime and maintenance alerts) based on the preferences you select in your notification settings.</li>
 			</ul>
 		</section>
 

@@ -12,7 +12,7 @@
 	let pwSaving = $state(false);
 
 	// Notification prefs
-	/** @type {{notify_login: boolean, notify_new_keys: boolean, notify_recovery_used: boolean, notify_keys_transferred: boolean, notify_device_log: boolean}|null} */
+	/** @type {{notify_login: boolean, notify_new_keys: boolean, notify_recovery_used: boolean, notify_keys_transferred: boolean, notify_device_log: boolean, notify_downtime_maintenance: boolean}|null} */
 	let notifications = $state(null);
 	let notifSaving = $state(false);
 
@@ -313,6 +313,15 @@
 							bind:checked={notifications.notify_device_log}
 						/>
 						<label class="form-check-label" for="notifyDeviceLog">New alert notification</label>
+					</div>
+					<div class="form-check form-switch mb-3">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="notifyDowntimeMaintenance"
+							bind:checked={notifications.notify_downtime_maintenance}
+						/>
+						<label class="form-check-label" for="notifyDowntimeMaintenance">Platform downtime and maintenance emails</label>
 					</div>
 					<button class="btn btn-primary" onclick={saveNotifications} disabled={notifSaving}>
 						{notifSaving ? 'Saving…' : 'Save Preferences'}

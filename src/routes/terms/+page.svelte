@@ -58,6 +58,13 @@
 			</p>
 		</section>
 
+		<section class="mb-4">
+			<h4 class="fw-bold">7. Email Communications</h4>
+			<p>
+				By using the Service, you agree that the console may send you emails (such as login alerts, weekly activity reports, downtime notifications, and security logs) based on your selected notification preferences. You can customize your settings or opt-out of notifications at any time in your Settings panel.
+			</p>
+		</section>
+
 		<div class="mt-4 text-center">
 			<a href="{base}/register" class="btn btn-outline-primary px-4">Back to Registration</a>
 		</div>
