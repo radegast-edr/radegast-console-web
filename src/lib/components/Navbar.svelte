@@ -3,6 +3,7 @@
 	import { user, flash } from '$lib/store.js';
 	import { api } from '$lib/api.js';
 	import { goto } from '$app/navigation';
+	import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
 	async function logout() {
 		await api.logout();
@@ -46,6 +47,9 @@
 					{#if $user.role === 'admin'}
 						<li class="nav-item">
 							<a class="nav-link" href="{base}/admin">Admin</a>
+						</li>
+						<li class="nav-item">
+							<a class="nav-link" href="{base}/releases">Releases</a>
 						</li>
 					{/if}
 				</ul>

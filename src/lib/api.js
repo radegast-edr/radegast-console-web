@@ -150,6 +150,24 @@ export const api = {
 	markLogSeen: (id) => request('POST', `/logs/${id}/seen`),
 	markAllLogsSeen: () => request('POST', '/logs/seen/all'),
 
+	// Releases
+	listReleases: () => request('GET', '/releases/'),
+	uploadRelease: (version, os, arch, file) => {
+		const fd = new FormData();
+		fd.append('version', version);
+		fd.append('os', os);
+		fd.append('arch', arch);
+		fd.append('file', file);
+		return request('POST', '/releases/', fd, true);
+	},
+	deleteRelease: (version, os, arch) =>
+		request('DELETE', `/releases/${encodeURIComponent(version)}/${encodeURIComponent(os)}/${encodeURIComponent(arch)}`),
+	downloadReleaseUrl: (version, os, arch) =>
+		`${BACKEND_URL}/releases/${encodeURIComponent(version)}/${encodeURIComponent(os)}/${encodeURIComponent(arch)}/download`,
+
+	// Auth — email verification
+	verifyEmail: (token) => request('GET', `/auth/verify?token=${encodeURIComponent(token)}`),
+
 	// Admin
 	adminListUsers: () => request('GET', '/admin/users'),
 	adminDeleteUser: (id) => request('DELETE', `/admin/users/${id}`),

@@ -13,7 +13,7 @@
 	let { children } = $props();
 
 	// Routes that are fully public (no auth needed)
-	const PUBLIC_PREFIXES = ['/login', '/register', '/terms', '/privacy'];
+	const PUBLIC_PREFIXES = ['/login', '/register', '/verify', '/terms', '/privacy'];
 
 	// Automatic key generation states
 	let generatingKeys = $state(false);
