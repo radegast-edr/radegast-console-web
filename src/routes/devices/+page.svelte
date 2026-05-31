@@ -96,7 +96,6 @@
 <table class="table table-striped">
 	<thead>
 		<tr>
-			<th>ID</th>
 			<th>Name</th>
 			<th>Status</th>
 			<th>Actions</th>
@@ -105,7 +104,6 @@
 	<tbody>
 		{#each devices as device}
 			<tr>
-				<td>{device.id}</td>
 				<td>
 					<a href="{base}/devices/{device.id}">{device.name}</a>
 					{#if !device.signature_public_key}
@@ -130,7 +128,7 @@
 				</td>
 			</tr>
 		{:else}
-			<tr><td colspan="4" class="text-muted">No devices found</td></tr>
+			<tr><td colspan="3" class="text-muted">No devices found</td></tr>
 		{/each}
 	</tbody>
 </table>

@@ -49,28 +49,42 @@
 	<button class="btn btn-primary" onclick={() => (showCreate = true)}>Create Team</button>
 </div>
 
-<div class="list-group">
-	{#each teams as team}
-		<a href="{base}/teams/{team.id}" class="list-group-item list-group-item-action">
-			<div class="d-flex justify-content-between align-items-center">
-				<h5 class="mb-1">{team.name}</h5>
-				<div>
-					{#if team.permission_pack}
-						<span class="badge bg-primary me-1">Pack: {team.permission_pack}</span>
-					{/if}
-					{#if team.permission_logs}
-						<span class="badge bg-info me-1">Logs: {team.permission_logs}</span>
-					{/if}
-					{#if team.permission_admin}
-						<span class="badge bg-warning me-1">Admin</span>
-					{/if}
-				</div>
-			</div>
-		</a>
-	{:else}
-		<p class="text-muted">No teams yet.</p>
-	{/each}
-</div>
+{#if teams.length === 0}
+	<p class="text-muted">No teams yet.</p>
+{:else}
+	<table class="table table-striped">
+		<thead>
+			<tr>
+				<th>Name</th>
+				<th>Permissions</th>
+				<th>Actions</th>
+			</tr>
+		</thead>
+		<tbody>
+			{#each teams as team}
+				<tr>
+					<td>
+						<a href="{base}/teams/{team.id}">{team.name}</a>
+					</td>
+					<td>
+						{#if team.permission_pack}
+							<span class="badge bg-primary me-1">Pack: {team.permission_pack}</span>
+						{/if}
+						{#if team.permission_logs}
+							<span class="badge bg-info me-1">Logs: {team.permission_logs}</span>
+						{/if}
+						{#if team.permission_admin}
+							<span class="badge bg-warning me-1">Admin</span>
+						{/if}
+					</td>
+					<td>
+						<a href="{base}/teams/{team.id}" class="btn btn-sm btn-outline-primary">Manage</a>
+					</td>
+				</tr>
+			{/each}
+		</tbody>
+	</table>
+{/if}
 
 <Modal show={showCreate} title="Create Team" onClose={() => (showCreate = false)}>
 	<form onsubmit={(e) => { e.preventDefault(); createTeam(); }}>
