@@ -166,8 +166,9 @@
 						If you clear your browser data or log in on a new device, you will need this key to read your logs.
 					</div>
 					<div class="mb-3">
-						<label class="form-label fw-bold small text-secondary">Recovery Key (AES recovery key):</label>
+						<label for="layout-recovery-key" class="form-label fw-bold small text-secondary">Recovery Key (AES recovery key):</label>
 						<textarea
+							id="layout-recovery-key"
 							class="form-control font-monospace text-center fw-bold bg-light py-2"
 							rows="1"
 							readonly

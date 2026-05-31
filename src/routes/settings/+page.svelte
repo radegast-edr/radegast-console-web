@@ -606,8 +606,9 @@
 							<strong>Write this key down or save it in a password manager.</strong> You will never see it again.
 						</p>
 						<div class="mb-3">
-							<label class="form-label fw-bold">New Recovery Key (AES hex key):</label>
+							<label for="settings-recovery-key" class="form-label fw-bold">New Recovery Key (AES hex key):</label>
 							<textarea
+								id="settings-recovery-key"
 								class="form-control font-monospace text-center fw-bold"
 								rows="1"
 								readonly

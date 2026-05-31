@@ -286,8 +286,9 @@
 								This is the <strong>only time</strong> you'll see this key. Store it in a
 								password manager or write it down.
 							</p>
-							<label class="form-label fw-bold">Recovery Key (AES recovery key):</label>
+							<label for="transfer-recovery-key" class="form-label fw-bold">Recovery Key (AES recovery key):</label>
 							<textarea
+								id="transfer-recovery-key"
 								class="form-control font-monospace mb-3"
 								rows="2"
 								readonly

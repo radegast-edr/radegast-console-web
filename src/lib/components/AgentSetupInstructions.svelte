@@ -16,8 +16,8 @@
 		</div>
 		<div class="card-body">
 			<div class="mb-3">
-				<label class="form-label fw-semibold">1. Select Target Operating System:</label>
-				<div class="btn-group d-block" role="group">
+				<label for="agent-os-group" class="form-label fw-semibold">1. Select Target Operating System:</label>
+				<div id="agent-os-group" class="btn-group d-block" role="group">
 					<button
 						type="button"
 						class="btn {selectedOS === 'linux' ? 'btn-primary' : 'btn-outline-primary'}"
@@ -37,9 +37,9 @@
 
 			{#if selectedOS === 'linux'}
 				<div class="mb-3">
-					<label class="form-label fw-semibold">2. Run this command on your Linux device as root:</label>
+					<label for="linux-install-cmd" class="form-label fw-semibold">2. Run this command on your Linux device as root:</label>
 					<div class="input-group">
-						<code class="form-control bg-dark text-light p-2 font-monospace" style="user-select: all;">
+						<code id="linux-install-cmd" class="form-control bg-dark text-light p-2 font-monospace" style="user-select: all;">
 							curl -sSL "{backendUrl}/device/install?os=linux" | sudo RADEGAST_TOKEN="{token}" sh
 						</code>
 					</div>
@@ -49,9 +49,9 @@
 				</div>
 			{:else}
 				<div class="mb-3">
-					<label class="form-label fw-semibold">2. Run this command on your Windows device in an Administrator PowerShell prompt:</label>
+					<label for="win-install-cmd" class="form-label fw-semibold">2. Run this command on your Windows device in an Administrator PowerShell prompt:</label>
 					<div class="input-group">
-						<code class="form-control bg-dark text-light p-2 font-monospace" style="user-select: all;">
+						<code id="win-install-cmd" class="form-control bg-dark text-light p-2 font-monospace" style="user-select: all;">
 							$env:RADEGAST_TOKEN="{token}"; iwr -useb "{backendUrl}/device/install?os=windows" -OutFile install.bat; .\install.bat
 						</code>
 					</div>

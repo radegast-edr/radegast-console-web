@@ -196,8 +196,9 @@
 		<div class="card-body">
 			<div class="row g-3">
 				<div class="col-md-2">
-					<label class="form-label">Pack</label>
+					<label for="team-perm-pack" class="form-label">Pack</label>
 					<select
+						id="team-perm-pack"
 						class="form-select"
 						value={team.permission_pack || ''}
 						onchange={(e) => updatePermission('permission_pack', e.target.value)}
@@ -208,8 +209,9 @@
 					</select>
 				</div>
 				<div class="col-md-2">
-					<label class="form-label">Invite</label>
+					<label for="team-perm-invite" class="form-label">Invite</label>
 					<select
+						id="team-perm-invite"
 						class="form-select"
 						value={team.permission_invite || ''}
 						onchange={(e) => updatePermission('permission_invite', e.target.value)}
@@ -219,8 +221,9 @@
 					</select>
 				</div>
 				<div class="col-md-2">
-					<label class="form-label">Admin</label>
+					<label for="team-perm-admin" class="form-label">Admin</label>
 					<select
+						id="team-perm-admin"
 						class="form-select"
 						value={team.permission_admin || ''}
 						onchange={(e) => updatePermission('permission_admin', e.target.value)}
@@ -230,8 +233,9 @@
 					</select>
 				</div>
 				<div class="col-md-2">
-					<label class="form-label">Logs</label>
+					<label for="team-perm-logs" class="form-label">Logs</label>
 					<select
+						id="team-perm-logs"
 						class="form-select"
 						value={team.permission_logs || ''}
 						onchange={(e) => updatePermission('permission_logs', e.target.value)}
@@ -241,8 +245,9 @@
 					</select>
 				</div>
 				<div class="col-md-4">
-					<label class="form-label">Managing Team</label>
+					<label for="team-managing-team" class="form-label">Managing Team</label>
 					<select
+						id="team-managing-team"
 						class="form-select"
 						value={team.managing_team_id || ''}
 						onchange={(e) => updatePermission('managing_team_id', e.target.value ? Number(e.target.value) : null)}

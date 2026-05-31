@@ -186,20 +186,20 @@
 							<div id="collapseLinux" class="accordion-collapse collapse show" aria-labelledby="headingLinux" data-bs-parent="#endpointsAccordion">
 								<div class="accordion-body bg-white pt-2">
 									<div class="mb-3">
-										<label class="form-label small fw-bold text-secondary mb-1">Direct Download Link (amd64):</label>
+										<label for="linux-dl-amd64" class="form-label small fw-bold text-secondary mb-1">Direct Download Link (amd64):</label>
 										<div class="input-group">
-											<input type="text" class="form-control form-control-sm font-monospace text-muted" readonly value="{backendUrl}/api/v1/device/rustinel/download?os=linux&arch=amd64&version={currentVersion}" />
+											<input id="linux-dl-amd64" type="text" class="form-control form-control-sm font-monospace text-muted" readonly value="{backendUrl}/api/v1/device/rustinel/download?os=linux&arch=amd64&version={currentVersion}" />
 										</div>
 									</div>
 									<div class="mb-3">
-										<label class="form-label small fw-bold text-secondary mb-1">Direct Download Link (arm64):</label>
+										<label for="linux-dl-arm64" class="form-label small fw-bold text-secondary mb-1">Direct Download Link (arm64):</label>
 										<div class="input-group">
-											<input type="text" class="form-control form-control-sm font-monospace text-muted" readonly value="{backendUrl}/api/v1/device/rustinel/download?os=linux&arch=arm64&version={currentVersion}" />
+											<input id="linux-dl-arm64" type="text" class="form-control form-control-sm font-monospace text-muted" readonly value="{backendUrl}/api/v1/device/rustinel/download?os=linux&arch=arm64&version={currentVersion}" />
 										</div>
 									</div>
 									<div class="mb-0">
-										<label class="form-label small fw-bold text-secondary mb-1">curl Download Command:</label>
-										<pre class="bg-dark text-light p-2 rounded small font-monospace mb-0" style="white-space: pre-wrap; word-break: break-all; user-select: all;">curl -L -o rustinel.zip "{backendUrl}/api/v1/device/rustinel/download?os=linux&arch=amd64&version={currentVersion}"</pre>
+										<label for="linux-curl-cmd" class="form-label small fw-bold text-secondary mb-1">curl Download Command:</label>
+										<pre id="linux-curl-cmd" class="bg-dark text-light p-2 rounded small font-monospace mb-0" style="white-space: pre-wrap; word-break: break-all; user-select: all;">curl -L -o rustinel.zip "{backendUrl}/api/v1/device/rustinel/download?os=linux&arch=amd64&version={currentVersion}"</pre>
 									</div>
 								</div>
 							</div>
@@ -215,20 +215,20 @@
 							<div id="collapseWindows" class="accordion-collapse collapse" aria-labelledby="headingWindows" data-bs-parent="#endpointsAccordion">
 								<div class="accordion-body bg-white pt-2">
 									<div class="mb-3">
-										<label class="form-label small fw-bold text-secondary mb-1">Direct Download Link (amd64):</label>
+										<label for="win-dl-amd64" class="form-label small fw-bold text-secondary mb-1">Direct Download Link (amd64):</label>
 										<div class="input-group">
-											<input type="text" class="form-control form-control-sm font-monospace text-muted" readonly value="{backendUrl}/api/v1/device/rustinel/download?os=windows&arch=amd64&version={currentVersion}" />
+											<input id="win-dl-amd64" type="text" class="form-control form-control-sm font-monospace text-muted" readonly value="{backendUrl}/api/v1/device/rustinel/download?os=windows&arch=amd64&version={currentVersion}" />
 										</div>
 									</div>
 									<div class="mb-3">
-										<label class="form-label small fw-bold text-secondary mb-1">Direct Download Link (arm64):</label>
+										<label for="win-dl-arm64" class="form-label small fw-bold text-secondary mb-1">Direct Download Link (arm64):</label>
 										<div class="input-group">
-											<input type="text" class="form-control form-control-sm font-monospace text-muted" readonly value="{backendUrl}/api/v1/device/rustinel/download?os=windows&arch=arm64&version={currentVersion}" />
+											<input id="win-dl-arm64" type="text" class="form-control form-control-sm font-monospace text-muted" readonly value="{backendUrl}/api/v1/device/rustinel/download?os=windows&arch=arm64&version={currentVersion}" />
 										</div>
 									</div>
 									<div class="mb-0">
-										<label class="form-label small fw-bold text-secondary mb-1">PowerShell Download Command:</label>
-										<pre class="bg-dark text-light p-2 rounded small font-monospace mb-0" style="white-space: pre-wrap; word-break: break-all; user-select: all;">Invoke-WebRequest -Uri "{backendUrl}/api/v1/device/rustinel/download?os=windows&arch=amd64&version={currentVersion}" -OutFile "rustinel.zip"</pre>
+										<label for="win-ps-cmd" class="form-label small fw-bold text-secondary mb-1">PowerShell Download Command:</label>
+										<pre id="win-ps-cmd" class="bg-dark text-light p-2 rounded small font-monospace mb-0" style="white-space: pre-wrap; word-break: break-all; user-select: all;">Invoke-WebRequest -Uri "{backendUrl}/api/v1/device/rustinel/download?os=windows&arch=amd64&version={currentVersion}" -OutFile "rustinel.zip"</pre>
 									</div>
 								</div>
 							</div>
@@ -244,8 +244,8 @@
 <Modal show={showUpload} title="Upload OS/Arch Artifact" onClose={() => (showUpload = false)}>
 	<form onsubmit={(e) => { e.preventDefault(); uploadArtifact(); }}>
 		<div class="mb-3">
-			<label class="form-label">Version</label>
-			<input type="text" class="form-control font-monospace" value={currentVersion} disabled />
+			<label for="upload-version" class="form-label">Version</label>
+			<input id="upload-version" type="text" class="form-control font-monospace" value={currentVersion} disabled />
 			<div class="form-text">Artifacts will be added to release version {currentVersion}.</div>
 		</div>
 		<div class="row g-3 mb-3">

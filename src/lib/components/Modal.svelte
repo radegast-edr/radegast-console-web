@@ -11,7 +11,7 @@
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title">{title}</h5>
-					<button type="button" class="btn-close" onclick={onClose}></button>
+					<button type="button" class="btn-close" aria-label="Close" onclick={onClose}></button>
 				</div>
 				<div class="modal-body">
 					{@render children()}

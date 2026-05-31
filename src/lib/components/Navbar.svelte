@@ -20,6 +20,7 @@
 			type="button"
 			data-bs-toggle="collapse"
 			data-bs-target="#navbarNav"
+			aria-label="Toggle navigation"
 		>
 			<span class="navbar-toggler-icon"></span>
 		</button>
@@ -79,7 +80,7 @@
 	<div class="container mt-2">
 		<div class="alert alert-{$flash.type} alert-dismissible fade show" role="alert">
 			{$flash.message}
-			<button type="button" class="btn-close" onclick={() => ($flash = null)}></button>
+			<button type="button" class="btn-close" aria-label="Close" onclick={() => ($flash = null)}></button>
 		</div>
 	</div>
 {/if}
