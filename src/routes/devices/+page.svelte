@@ -4,6 +4,8 @@
 	import { api } from '$lib/api.js';
 	import { showFlash, showError } from '$lib/store.js';
 	import Modal from '$lib/components/Modal.svelte';
+	import { isDeviceActive, formatFullDateTime } from '$lib/utils.js';
+	import AgentSetupInstructions from '$lib/components/AgentSetupInstructions.svelte';
 
 	let devices = $state([]);
 	let showCreate = $state(false);
@@ -12,7 +14,6 @@
 	let newDeviceGroupId = $state('');
 	/** @type {Array<{id: number, teamName: string, name: string}>} */
 	let availableGroups = $state([]);
-	let selectedOS = $state('linux');
 
 	onMount(async () => {
 		await loadDevices();
@@ -31,7 +32,6 @@
 		newDeviceName = '';
 		newDeviceGroupId = '';
 		availableGroups = [];
-		selectedOS = 'linux';
 
 		try {
 			const teams = await api.listTeams();
@@ -88,71 +88,17 @@
 	>
 </div>
 
-{#if newDeviceToken}
-	{@const backendUrl = api.getBackendUrl().replace(/\/$/, '')}
-	<div class="card border-warning mb-4 shadow-sm">
-		<div class="card-header bg-warning-subtle text-warning-emphasis py-3">
-			<h5 class="mb-0 fw-bold">Device Created: Setup Agent</h5>
-		</div>
-		<div class="card-body">
-			<div class="mb-3">
-				<label class="form-label fw-semibold">1. Select Target Operating System:</label>
-				<div class="btn-group d-block" role="group">
-					<button
-						type="button"
-						class="btn {selectedOS === 'linux' ? 'btn-primary' : 'btn-outline-primary'}"
-						onclick={() => (selectedOS = 'linux')}
-					>
-						Linux
-					</button>
-					<button
-						type="button"
-						class="btn {selectedOS === 'windows' ? 'btn-primary' : 'btn-outline-primary'}"
-						onclick={() => (selectedOS = 'windows')}
-					>
-						Windows
-					</button>
-				</div>
-			</div>
-
-			{#if selectedOS === 'linux'}
-				<div class="mb-3">
-					<label class="form-label fw-semibold">2. Run this command on your Linux device as root:</label>
-					<div class="input-group">
-						<code class="form-control bg-dark text-light p-2 font-monospace" style="user-select: all;">
-							curl -sSL "{backendUrl}/device/install?os=linux" | sudo RADEGAST_TOKEN="{newDeviceToken}" sh
-						</code>
-					</div>
-					<small class="form-text text-muted">
-						This will verify system requirements, install <code>uv</code> and <code>radegast-agent</code>, download <code>rustinel</code>, and configure systemd services.
-					</small>
-				</div>
-			{:else}
-				<div class="mb-3">
-					<label class="form-label fw-semibold">2. Run this command on your Windows device in an Administrator PowerShell prompt:</label>
-					<div class="input-group">
-						<code class="form-control bg-dark text-light p-2 font-monospace" style="user-select: all;">
-							$env:RADEGAST_TOKEN="{newDeviceToken}"; iwr -useb "{backendUrl}/device/install?os=windows" -OutFile install.bat; .\install.bat
-						</code>
-					</div>
-					<small class="form-text text-muted">
-						This will download portable Python, install <code>uv</code> and <code>radegast-agent</code>, download <code>rustinel</code>, and register background Scheduled Tasks.
-					</small>
-				</div>
-			{/if}
-
-			<button class="btn btn-secondary btn-sm" onclick={() => (newDeviceToken = '')}>
-				Dismiss
-			</button>
-		</div>
-	</div>
-{/if}
+<AgentSetupInstructions
+	token={newDeviceToken}
+	onDismiss={() => (newDeviceToken = '')}
+/>
 
 <table class="table table-striped">
 	<thead>
 		<tr>
 			<th>ID</th>
 			<th>Name</th>
+			<th>Status</th>
 			<th>Actions</th>
 		</tr>
 	</thead>
@@ -164,6 +110,16 @@
 					<a href="{base}/devices/{device.id}">{device.name}</a>
 					{#if !device.signature_public_key}
 						<span class="badge bg-danger ms-2" title="Unsigned device! Signing key is not set.">Unsigned</span>
+					{/if}
+				</td>
+				<td>
+					{#if isDeviceActive(device.last_seen)}
+						<span class="badge bg-success">Online</span>
+					{:else}
+						<span class="badge bg-secondary">Offline</span>
+						{#if device.last_seen}
+							<span class="small ms-2">Last seen: {formatFullDateTime(device.last_seen)}</span>
+						{/if}
 					{/if}
 				</td>
 				<td>

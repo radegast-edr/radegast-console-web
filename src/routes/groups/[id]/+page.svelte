@@ -4,6 +4,7 @@
 	import { api } from '$lib/api.js';
 	import { showFlash, showError } from '$lib/store.js';
 	import Modal from '$lib/components/Modal.svelte';
+	import { isDeviceActive } from '$lib/utils.js';
 
 	let group = $state(null);
 	let allTeams = $state([]);
@@ -180,17 +181,6 @@
 		} catch (e) {
 			showError(e.message);
 		}
-	}
-
-	function isDeviceActive(lastSeen) {
-		if (!lastSeen) return false;
-		let cleanStr = lastSeen;
-		if (typeof lastSeen === 'string' && !lastSeen.endsWith('Z') && !lastSeen.includes('+')) {
-			cleanStr = lastSeen + 'Z';
-		}
-		const lastSeenDate = new Date(cleanStr);
-		const diffMs = new Date() - lastSeenDate;
-		return diffMs < 10 * 60 * 1000;
 	}
 </script>
 

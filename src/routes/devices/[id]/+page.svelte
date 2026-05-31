@@ -3,10 +3,13 @@
 	import { page } from '$app/stores';
 	import { api } from '$lib/api.js';
 	import { showFlash, showError } from '$lib/store.js';
+	import { isDeviceActive, formatFullDateTime } from '$lib/utils.js';
+	import AgentSetupInstructions from '$lib/components/AgentSetupInstructions.svelte';
 
 	let device = $state(null);
 	let allGroups = $state([]);
 	let addGroupId = $state('');
+	let newDeviceToken = $state('');
 
 	// inline rename
 	let editingName = $state(false);
@@ -64,24 +67,16 @@
 		}
 	}
 
-	function isDeviceActive(lastSeen) {
-		if (!lastSeen) return false;
-		let cleanStr = lastSeen;
-		if (typeof lastSeen === 'string' && !lastSeen.endsWith('Z') && !lastSeen.includes('+')) {
-			cleanStr = lastSeen + 'Z';
+	async function confirmReinstall() {
+		const msg = 'Are you sure you want to reinstall this device? The token will be changed, but the signing key cannot be changed and must be backed-up manually if moving to another device.';
+		if (!confirm(msg)) return;
+		try {
+			const res = await api.reinstallDevice(device.id);
+			newDeviceToken = res.token;
+			showFlash('Device token reset. Please follow the instructions to install the agent.');
+		} catch (e) {
+			showError(e.message);
 		}
-		const lastSeenDate = new Date(cleanStr);
-		const diffMs = new Date() - lastSeenDate;
-		return diffMs < 10 * 60 * 1000;
-	}
-
-	function formatFullDateTime(dt) {
-		if (!dt) return 'Never';
-		let cleanStr = dt;
-		if (typeof dt === 'string' && !dt.endsWith('Z') && !dt.includes('+')) {
-			cleanStr = dt + 'Z';
-		}
-		return new Date(cleanStr).toLocaleString();
 	}
 </script>
 
@@ -91,7 +86,10 @@
 
 {#if device}
 	<div class="mb-4">
-		<a href="{base}/devices" class="btn btn-outline-secondary btn-sm mb-2">← Back to Devices</a>
+		<div class="d-flex justify-content-between align-items-center mb-2">
+			<a href="{base}/devices" class="btn btn-outline-secondary btn-sm">← Back to Devices</a>
+			<button class="btn btn-warning btn-sm" onclick={confirmReinstall}>Reinstall Device</button>
+		</div>
 		<div class="d-flex align-items-center gap-2 mt-1">
 			{#if editingName}
 				<input class="form-control form-control-lg w-auto" bind:value={editName} />
@@ -119,6 +117,12 @@
 			{/if}
 		</p>
 	</div>
+
+	<AgentSetupInstructions
+		token={newDeviceToken}
+		isReinstall={true}
+		onDismiss={() => (newDeviceToken = '')}
+	/>
 
 	<div class="card mb-4">
 		<div class="card-header"><h5 class="mb-0">Device Groups</h5></div>

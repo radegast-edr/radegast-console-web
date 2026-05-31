@@ -99,6 +99,7 @@ export const api = {
 	removeDeviceFromGroup: (deviceId, groupId) =>
 		request('DELETE', `/devices/${deviceId}/groups/${groupId}`),
 	deleteDevice: (deviceId) => request('DELETE', `/devices/${deviceId}`),
+	reinstallDevice: (deviceId) => request('POST', `/devices/${deviceId}/reinstall`),
 
 	// Device Groups
 	listGroups: () => request('GET', '/groups/'),
