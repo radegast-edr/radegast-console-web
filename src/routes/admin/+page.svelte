@@ -9,6 +9,7 @@
 	let devices = $state([]);
 	let packs = $state([]);
 	let activeTab = $state('users');
+	let resetPasswordResult = $state(null);
 
 	onMount(async () => {
 		if ($user?.role !== 'admin') {
@@ -34,6 +35,18 @@
 			await api.adminDeleteUser(id);
 			await loadAll();
 			showFlash('User deleted');
+		} catch (e) {
+			showError(e.message);
+		}
+	}
+
+	async function resetUserPassword(u) {
+		if (!confirm(`Are you sure you want to reset the password and clear all MFA devices for user ${u.email}?`)) return;
+		try {
+			await api.adminResetUserPassword(u.id);
+			resetPasswordResult = { email: u.email };
+			showFlash('User password reset successfully and MFA cleared');
+			await loadAll();
 		} catch (e) {
 			showError(e.message);
 		}
@@ -91,6 +104,16 @@
 </ul>
 
 {#if activeTab === 'users'}
+	{#if resetPasswordResult}
+		<div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-4" role="alert" style="border-radius: 12px; padding: 1.25rem;">
+			<h6 class="fw-bold mb-1">🔑 Password Reset Successful</h6>
+			<p class="mb-0 small text-dark-emphasis">
+				The password for <strong>{resetPasswordResult.email}</strong> has been reset. The user was emailed the new password.
+			</p>
+			<button type="button" class="btn-close" onclick={() => (resetPasswordResult = null)} aria-label="Close"></button>
+		</div>
+	{/if}
+
 	<table class="table table-striped">
 		<thead>
 			<tr>
@@ -98,6 +121,7 @@
 				<th>Email</th>
 				<th>Role</th>
 				<th>Verified</th>
+				<th>Configured MFA</th>
 				<th>Actions</th>
 			</tr>
 		</thead>
@@ -109,6 +133,23 @@
 					<td><span class="badge bg-secondary">{u.role}</span></td>
 					<td>{u.verified ? '✓' : '✗'}</td>
 					<td>
+						{#if u.mfa_configured_level === 'hardware_token'}
+							<span class="badge bg-success">Hardware token</span>
+						{:else if u.mfa_configured_level === 'otp'}
+							<span class="badge bg-primary">OTP</span>
+						{:else}
+							<span class="badge bg-light text-dark">None</span>
+						{/if}
+						{#if u.mfa_setup_missing}
+							<span class="badge bg-danger ms-1" title="Missing required setup">Setup Missing</span>
+						{/if}
+					</td>
+					<td>
+						<button
+							class="btn btn-sm btn-outline-warning me-2"
+							onclick={() => resetUserPassword(u)}
+							disabled={u.id === $user?.id}>Reset Password & MFA</button
+						>
 						<button
 							class="btn btn-sm btn-outline-danger"
 							onclick={() => deleteUser(u.id)}

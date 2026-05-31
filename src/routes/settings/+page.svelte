@@ -2,7 +2,7 @@
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api.js';
-	import { showFlash, showError } from '$lib/store.js';
+	import { showFlash, showError, user } from '$lib/store.js';
 	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt, getStoredPublicKey } from '$lib/crypto.js';
 
 	// Password change
@@ -64,6 +64,7 @@
 			// not logged in
 		}
 		await loadKeys();
+		await loadMfaSettings();
 	});
 
 	async function loadKeys() {
@@ -206,6 +207,153 @@
 			notifSaving = false;
 		}
 	}
+
+	/** @type {{otp_enabled: boolean, hardware_tokens: Array<{id: number, name: string}>, required_level: string, current_level: string}|null} */
+	let mfaSettings = $state(null);
+	let mfaLoading = $state(true);
+	let otpSetupActive = $state(false);
+	let otpSetupData = $state(null);
+	let hardwareTokenName = $state('');
+	let hardwareTokenRegistering = $state(false);
+	let otpCode = $state('');
+	let hardwareTokenSetupActive = $state(false);
+
+	async function loadMfaSettings() {
+		mfaLoading = true;
+		try {
+			mfaSettings = await api.getMfaSettings();
+			const me = await api.me();
+			$user = me;
+		} catch (e) {
+			showError('Failed to load MFA settings: ' + e.message);
+		} finally {
+			mfaLoading = false;
+		}
+	}
+
+	async function startOtpSetup() {
+		try {
+			otpSetupData = await api.setupMfaOtp();
+			otpSetupActive = true;
+		} catch (e) {
+			showError('Failed to start OTP setup: ' + e.message);
+		}
+	}
+
+	async function confirmOtpSetup() {
+		if (!otpCode.trim()) {
+			showError('Please enter the verification code.');
+			return;
+		}
+		try {
+			await api.verifyMfaOtp(otpCode);
+			showFlash('MFA OTP enabled successfully.');
+			otpSetupActive = false;
+			otpSetupData = null;
+			otpCode = '';
+			await loadMfaSettings();
+		} catch (e) {
+			showError('Failed to verify OTP: ' + e.message);
+		}
+	}
+
+	async function disableOtp() {
+		openConfirmModal(
+			'Disable Authenticator App MFA',
+			'Are you sure you want to disable OTP MFA on your account? This might lower your security level below role requirements.',
+			async () => {
+				try {
+					await api.disableMfaOtp();
+					showFlash('OTP MFA disabled successfully.');
+					await loadMfaSettings();
+				} catch (e) {
+					showError('Failed to disable OTP: ' + e.message);
+				}
+			}
+		);
+	}
+
+	function bufferFromBase64url(str) {
+		let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+		while (base64.length % 4) {
+			base64 += '=';
+		}
+		const binary = window.atob(base64);
+		const bytes = new Uint8Array(binary.length);
+		for (let i = 0; i < binary.length; i++) {
+			bytes[i] = binary.charCodeAt(i);
+		}
+		return bytes.buffer;
+	}
+
+	function base64urlFromBuffer(buffer) {
+		const bytes = new Uint8Array(buffer);
+		let binary = '';
+		for (let i = 0; i < bytes.byteLength; i++) {
+			binary += String.fromCharCode(bytes[i]);
+		}
+		const base64 = window.btoa(binary);
+		return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+	}
+
+	async function registerHardwareToken() {
+		if (!hardwareTokenName.trim()) {
+			showError('Please enter a name for the new Hardware token.');
+			return;
+		}
+		hardwareTokenRegistering = true;
+		try {
+			const setupRes = await api.setupMfaHardwareToken();
+			const options = setupRes.options;
+
+			options.challenge = bufferFromBase64url(options.challenge);
+			options.user.id = bufferFromBase64url(options.user.id);
+			if (options.excludeCredentials) {
+				options.excludeCredentials = options.excludeCredentials.map(c => ({
+					...c,
+					id: bufferFromBase64url(c.id)
+				}));
+			}
+
+			const credential = await navigator.credentials.create({ publicKey: options });
+
+			const credentialResponse = {
+				id: credential.id,
+				rawId: base64urlFromBuffer(credential.rawId),
+				type: credential.type,
+				response: {
+					clientDataJSON: base64urlFromBuffer(credential.response.clientDataJSON),
+					attestationObject: base64urlFromBuffer(credential.response.attestationObject),
+				}
+			};
+
+			await api.verifyMfaHardwareToken(setupRes.registration_token, credentialResponse, hardwareTokenName.trim());
+			showFlash('Hardware token registered successfully!');
+			hardwareTokenName = '';
+			hardwareTokenSetupActive = false;
+			await loadMfaSettings();
+		} catch (e) {
+			showError('Failed to register Hardware token: ' + e.message);
+		} finally {
+			hardwareTokenRegistering = false;
+		}
+	}
+
+	async function deleteHardwareToken(id) {
+		openConfirmModal(
+			'Delete Security Key',
+			'Are you sure you want to delete this security key? You will no longer be able to use it to log in.',
+			async () => {
+				try {
+					await api.deleteMfaHardwareToken(id);
+					showFlash('Hardware token deleted successfully.');
+					await loadMfaSettings();
+				} catch (e) {
+					showError('Failed to delete Hardware token: ' + e.message);
+				}
+			}
+		);
+	}
 </script>
 
 <svelte:head>
@@ -229,6 +377,7 @@
 							id="oldPassword"
 							bind:value={oldPassword}
 							required
+							autocomplete="current-password"
 						/>
 					</div>
 					<div class="mb-3">
@@ -240,6 +389,7 @@
 							bind:value={newPassword}
 							minlength="8"
 							required
+							autocomplete="new-password"
 						/>
 					</div>
 					<div class="mb-3">
@@ -250,6 +400,7 @@
 							id="confirmPassword"
 							bind:value={confirmPassword}
 							required
+							autocomplete="new-password"
 						/>
 					</div>
 					<button type="submit" class="btn btn-primary" disabled={pwSaving}>
@@ -466,6 +617,125 @@
 						<button class="btn btn-danger btn-sm" onclick={() => { addKeyStep = 'idle'; generatedRecoveryKey = ''; }}>
 							I have securely saved this recovery key
 						</button>
+					</div>
+				{/if}
+			</div>
+		</div>
+	</div>
+</div>
+<div class="row g-4 mt-2">
+	<!-- Multi-Factor Authentication (MFA) -->
+	<div class="col-12">
+		<div class="card">
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<h5 class="mb-0">Multi-Factor Authentication (MFA)</h5>
+				{#if mfaSettings}
+					<span class="badge bg-secondary">Required Level: {mfaSettings.required_level.toUpperCase()}</span>
+				{/if}
+			</div>
+			<div class="card-body">
+				{#if mfaLoading}
+					<div class="text-muted">Loading MFA preferences…</div>
+				{:else}
+					<p class="text-muted small">
+						Configure additional security verification methods. Required MFA level for your role is <strong>{mfaSettings.required_level}</strong> (current session level: <strong>{mfaSettings.current_level}</strong>).
+					</p>
+
+					<div class="row g-4">
+						<!-- OTP (Authenticator App) -->
+						<div class="col-md-6">
+							<div class="p-3 border rounded">
+								<h6 class="fw-bold mb-2">Google Authenticator / TOTP</h6>
+								<p class="text-muted small mb-3">Use a mobile authenticator app (like Google Authenticator or Authy) to scan a QR code and generate temporary verification codes.</p>
+
+								{#if mfaSettings.otp_enabled}
+									<div class="d-flex align-items-center gap-2 mb-3">
+										<span class="badge bg-success">Enabled</span>
+										<span class="text-muted small">Authenticator app active</span>
+									</div>
+									{#if (['otp', 'hardware_token', 'token'].includes(mfaSettings.required_level) && mfaSettings.hardware_tokens.length === 0)}
+										<p class="text-muted small mb-0">⚠️ Cannot disable — OTP is required for your role and you have no hardware token registered.</p>
+									{:else}
+										<button class="btn btn-outline-danger btn-sm" onclick={disableOtp}>
+											Disable OTP
+										</button>
+									{/if}
+								{:else if otpSetupActive}
+									<div class="mb-3 p-3 bg-light rounded text-center">
+										<p class="small fw-semibold mb-2">1. Scan QR code or enter manual secret key:</p>
+										<div class="bg-white p-2 border d-inline-block mb-3">
+											<code class="d-block text-break small p-2" style="max-width: 250px; margin: 0 auto; white-space: normal;">{otpSetupData.provisioning_uri}</code>
+										</div>
+										<p class="small text-muted mb-2">Secret: <code>{otpSetupData.secret}</code></p>
+
+										<div class="mt-3" style="max-width: 250px; margin: 0 auto;">
+											<label for="otpCodeInput" class="form-label small fw-bold">2. Enter verification code:</label>
+											<input type="text" id="otpCodeInput" class="form-control text-center font-monospace" placeholder="e.g. 123456" bind:value={otpCode} />
+											<div class="mt-2 d-flex gap-2 justify-content-center">
+												<button class="btn btn-sm btn-primary" onclick={confirmOtpSetup}>Verify & Enable</button>
+												<button class="btn btn-sm btn-outline-secondary" onclick={() => { otpSetupActive = false; otpSetupData = null; }}>Cancel</button>
+											</div>
+										</div>
+									</div>
+								{:else}
+									<div class="d-flex align-items-center gap-2 mb-3">
+										<span class="badge bg-secondary">Disabled</span>
+									</div>
+									<button class="btn btn-primary btn-sm" onclick={startOtpSetup}>
+										Setup Authenticator App
+									</button>
+								{/if}
+							</div>
+						</div>
+
+						<!-- WebAuthn (Hardware Tokens / Security Keys) -->
+						<div class="col-md-6">
+							<div class="p-3 border rounded">
+								<h6 class="fw-bold mb-2">Hardware Tokens / Security Keys</h6>
+								<p class="text-muted small mb-3">Register a physical hardware security key utilizing standard WebAuthn/FIDO2 protocols for maximum security.</p>
+
+								<div class="mb-3">
+									{#if mfaSettings.hardware_tokens.length > 0}
+										<div class="list-group mb-2">
+											{#each mfaSettings.hardware_tokens as tk}
+												<div class="list-group-item d-flex justify-content-between align-items-center p-2">
+													<div class="d-flex align-items-center gap-2">
+														<span class="fs-6">🔑</span>
+														<span class="small fw-semibold">{tk.name}</span>
+													</div>
+													{#if !(['hardware_token', 'token'].includes(mfaSettings.required_level) && mfaSettings.hardware_tokens.length === 1)}
+														<button class="btn btn-sm btn-outline-danger py-0 px-2 fs-6" onclick={() => deleteHardwareToken(tk.id)} title="Delete device">&times;</button>
+													{:else}
+														<span class="text-muted small" title="Required — cannot delete last hardware token">🔒</span>
+													{/if}
+												</div>
+											{/each}
+										</div>
+									{:else}
+										<span class="text-muted small d-block mb-2">No security keys registered.</span>
+									{/if}
+								</div>
+
+								{#if hardwareTokenSetupActive}
+									<div class="mb-3 p-3 bg-light rounded text-center">
+										<div class="mb-3" style="max-width: 250px; margin: 0 auto;">
+											<label for="tokenNameInput" class="form-label small fw-bold">Enter device name:</label>
+											<input type="text" id="tokenNameInput" class="form-control form-control-sm text-center" placeholder="e.g. Work security key" bind:value={hardwareTokenName} />
+											<div class="mt-2 d-flex gap-2 justify-content-center">
+												<button class="btn btn-sm btn-primary" onclick={registerHardwareToken} disabled={hardwareTokenRegistering || !hardwareTokenName.trim()}>
+													{hardwareTokenRegistering ? 'Inserting…' : 'Register Key'}
+												</button>
+												<button class="btn btn-sm btn-outline-secondary" onclick={() => { hardwareTokenSetupActive = false; hardwareTokenName = ''; }}>Cancel</button>
+											</div>
+										</div>
+									</div>
+								{:else}
+									<button class="btn btn-primary btn-sm" onclick={() => hardwareTokenSetupActive = true}>
+										Register Hardware token
+									</button>
+								{/if}
+							</div>
+						</div>
 					</div>
 				{/if}
 			</div>

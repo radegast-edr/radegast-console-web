@@ -93,7 +93,7 @@
 			<form onsubmit={(e) => { e.preventDefault(); handleRegister(); }}>
 				<div class="mb-3">
 					<label for="email" class="form-label">Email</label>
-					<input type="email" class="form-control" id="email" bind:value={email} required />
+					<input type="email" class="form-control" id="email" bind:value={email} required autocomplete="email" />
 				</div>
 				<div class="mb-3">
 					<label for="password" class="form-label">Password</label>
@@ -104,6 +104,7 @@
 						bind:value={password}
 						required
 						minlength="8"
+						autocomplete="new-password"
 					/>
 				</div>
 				<div class="mb-3">
@@ -114,6 +115,7 @@
 						id="confirm"
 						bind:value={confirmPassword}
 						required
+						autocomplete="new-password"
 					/>
 				</div>
 				<div class="mb-3 form-check">

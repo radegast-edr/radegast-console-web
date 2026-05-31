@@ -115,6 +115,18 @@
 
 <Navbar />
 <main class="container mt-4">
+	{#if $user && $user.mfa_setup_missing}
+		<div class="alert alert-danger shadow-sm border-0 d-flex align-items-center gap-3 mb-4" style="border-radius: 12px; padding: 1.25rem;">
+			<div class="fs-3">⚠️</div>
+			<div>
+				<h6 class="fw-bold mb-1 text-danger">Multi-Factor Authentication (MFA) Setup Required</h6>
+				<p class="mb-0 small text-dark-emphasis">
+					Your account role (<strong>{$user.role}</strong>) requires MFA level <strong>{$user.mfa_required_level}</strong>, but you have not configured any compatible MFA methods yet.
+					Please navigate to <a href="{base}/settings" class="fw-bold text-danger text-decoration-underline">Settings</a> to register an authenticator app or Yubikey.
+				</p>
+			</div>
+		</div>
+	{/if}
 	{@render children()}
 </main>
 

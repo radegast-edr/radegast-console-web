@@ -9,8 +9,9 @@ if (typeof window !== 'undefined') {
 			const url = new URL(BACKEND_URL_RAW);
 			if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
 				url.hostname = window.location.hostname;
-				BACKEND_URL = url.origin + url.pathname;
 			}
+			url.protocol = window.location.protocol;
+			BACKEND_URL = url.origin + url.pathname;
 		} catch (e) {
 			console.error("Failed to parse PUBLIC_BACKEND_URL:", e);
 		}
@@ -169,9 +170,24 @@ export const api = {
 	// Auth — email verification
 	verifyEmail: (token) => request('GET', `/auth/verify?token=${encodeURIComponent(token)}`),
 
+	// MFA
+	getMfaSettings: () => request('GET', '/auth/mfa/settings'),
+	setupMfaOtp: () => request('POST', '/auth/mfa/otp/setup'),
+	verifyMfaOtp: (code) => request('POST', '/auth/mfa/otp/verify', { code }),
+	disableMfaOtp: () => request('POST', '/auth/mfa/otp/disable'),
+	setupMfaHardwareToken: () => request('POST', '/auth/mfa/hardware-token/setup'),
+	verifyMfaHardwareToken: (registration_token, credential_response, name = null) =>
+		request('POST', '/auth/mfa/hardware-token/verify', { registration_token, credential_response, name }),
+	deleteMfaHardwareToken: (id) => request('DELETE', `/auth/mfa/hardware-token/${id}`),
+	getMfaHardwareTokenAssertionOptions: (mfa_token) =>
+		request('POST', '/auth/mfa/hardware-token/assertion-options', { mfa_token }),
+	verifyMfa: (mfa_token, method, otp_code = null, assertion_token = null, webauthn_response = null) =>
+		request('POST', '/auth/mfa/verify', { mfa_token, method, otp_code, assertion_token, webauthn_response }),
+
 	// Admin
 	adminListUsers: () => request('GET', '/admin/users'),
 	adminDeleteUser: (id) => request('DELETE', `/admin/users/${id}`),
+	adminResetUserPassword: (id) => request('POST', `/admin/users/${id}/reset-password`),
 	adminListDevices: () => request('GET', '/admin/devices'),
 	adminDeleteDevice: (id) => request('DELETE', `/admin/devices/${id}`),
 	adminListPacks: () => request('GET', '/admin/packs'),

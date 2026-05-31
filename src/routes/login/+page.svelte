@@ -9,19 +9,116 @@
 	let password = $state('');
 	let error = $state('');
 
+	let step = $state('credentials'); // 'credentials' | 'mfa'
+	let mfaToken = $state('');
+	let mfaMethods = $state([]);
+	let selectedMethod = $state('');
+	let otpCode = $state('');
+	let mfaLoading = $state(false);
+
 	async function handleLogin() {
 		error = '';
 		try {
 			const pubKey = await getPublicKeyForLogin(email);
-			await api.login(email, password, pubKey);
-			const me = await api.me();
-			$user = me;
-			if (me && me.id) {
-				localStorage.setItem(`uid_${email.toLowerCase().trim()}`, me.id);
+			const res = await api.login(email, password, pubKey);
+
+			if (res && res.status === 'mfa_required') {
+				mfaToken = res.mfa_token;
+				mfaMethods = res.methods;
+				selectedMethod = mfaMethods[0];
+				step = 'mfa';
+				if (selectedMethod === 'hardware_token') {
+					handleHardwareTokenAuth();
+				}
+				return;
 			}
-			goto(`${base}/`);
+
+			await completeLogin();
 		} catch (e) {
 			error = e.message;
+		}
+	}
+
+	async function completeLogin() {
+		const me = await api.me();
+		$user = me;
+		if (me && me.id) {
+			localStorage.setItem(`uid_${email.toLowerCase().trim()}`, me.id);
+		}
+		goto(`${base}/`);
+	}
+
+	async function handleOtpAuth() {
+		error = '';
+		mfaLoading = true;
+		try {
+			await api.verifyMfa(mfaToken, 'otp', otpCode);
+			await completeLogin();
+		} catch (e) {
+			error = e.message;
+		} finally {
+			mfaLoading = false;
+		}
+	}
+
+	function bufferFromBase64url(str) {
+		let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+		while (base64.length % 4) {
+			base64 += '=';
+		}
+		const binary = window.atob(base64);
+		const bytes = new Uint8Array(binary.length);
+		for (let i = 0; i < binary.length; i++) {
+			bytes[i] = binary.charCodeAt(i);
+		}
+		return bytes.buffer;
+	}
+
+	function base64urlFromBuffer(buffer) {
+		const bytes = new Uint8Array(buffer);
+		let binary = '';
+		for (let i = 0; i < bytes.byteLength; i++) {
+			binary += String.fromCharCode(bytes[i]);
+		}
+		const base64 = window.btoa(binary);
+		return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+	}
+
+	async function handleHardwareTokenAuth() {
+		error = '';
+		mfaLoading = true;
+		try {
+			const authOptionsRes = await api.getMfaHardwareTokenAssertionOptions(mfaToken);
+			const options = authOptionsRes.options;
+
+			options.challenge = bufferFromBase64url(options.challenge);
+			if (options.allowCredentials) {
+				options.allowCredentials = options.allowCredentials.map(c => ({
+					...c,
+					id: bufferFromBase64url(c.id)
+				}));
+			}
+
+			const assertion = await navigator.credentials.get({ publicKey: options });
+
+			const webauthnResponse = {
+				id: assertion.id,
+				rawId: base64urlFromBuffer(assertion.rawId),
+				type: assertion.type,
+				response: {
+					clientDataJSON: base64urlFromBuffer(assertion.response.clientDataJSON),
+					authenticatorData: base64urlFromBuffer(assertion.response.authenticatorData),
+					signature: base64urlFromBuffer(assertion.response.signature),
+					userHandle: assertion.response.userHandle ? base64urlFromBuffer(assertion.response.userHandle) : null,
+				}
+			};
+
+			await api.verifyMfa(mfaToken, 'hardware_token', null, authOptionsRes.assertion_token, webauthnResponse);
+			await completeLogin();
+		} catch (e) {
+			error = e.message;
+		} finally {
+			mfaLoading = false;
 		}
 	}
 </script>
@@ -36,19 +133,58 @@
 		{#if error}
 			<div class="alert alert-danger">{error}</div>
 		{/if}
-		<form onsubmit={(e) => { e.preventDefault(); handleLogin(); }}>
-			<div class="mb-3">
-				<label for="email" class="form-label">Email</label>
-				<input type="email" class="form-control" id="email" bind:value={email} required />
+
+		{#if step === 'credentials'}
+			<form onsubmit={(e) => { e.preventDefault(); handleLogin(); }}>
+				<div class="mb-3">
+					<label for="email" class="form-label">Email</label>
+					<input type="email" class="form-control" id="email" bind:value={email} required autocomplete="email" />
+				</div>
+				<div class="mb-3">
+					<label for="password" class="form-label">Password</label>
+					<input type="password" class="form-control" id="password" bind:value={password} required autocomplete="current-password" />
+				</div>
+				<button type="submit" class="btn btn-primary w-100">Login</button>
+			</form>
+			<p class="mt-3 text-center">
+				Don't have an account? <a href="{base}/register">Register</a>
+			</p>
+		{:else if step === 'mfa'}
+			<div class="card p-3 shadow-sm border-0 bg-light">
+				<h5 class="fw-bold text-center mb-3">🔒 MFA Verification</h5>
+				<p class="text-muted small text-center mb-4">Your account is secured with Multi-Factor Authentication. Please select a verification method.</p>
+
+				{#if mfaMethods.length > 1}
+					<div class="btn-group w-100 mb-4" role="group">
+						{#each mfaMethods as method}
+							<input type="radio" class="btn-check" name="mfamethod" id="btnradio_{method}" autocomplete="off" checked={selectedMethod === method} onclick={() => selectedMethod = method} />
+							<label class="btn btn-outline-secondary btn-sm" for="btnradio_{method}">{method.toUpperCase()}</label>
+						{/each}
+					</div>
+				{/if}
+
+				{#if selectedMethod === 'otp'}
+					<form onsubmit={(e) => { e.preventDefault(); handleOtpAuth(); }}>
+						<div class="mb-3">
+							<label for="otpCode" class="form-label fw-semibold small">Enter code from authenticator app</label>
+							<input type="text" class="form-control text-center font-monospace" id="otpCode" placeholder="e.g. 123456" bind:value={otpCode} required />
+						</div>
+						<button type="submit" class="btn btn-primary w-100" disabled={mfaLoading}>
+							{mfaLoading ? 'Verifying…' : 'Verify Code'}
+						</button>
+					</form>
+				{:else if selectedMethod === 'hardware_token'}
+					<div class="text-center py-2">
+						<button class="btn btn-primary w-100" onclick={handleHardwareTokenAuth} disabled={mfaLoading}>
+							{mfaLoading ? 'Awaiting Device…' : 'Authenticate with Hardware token'}
+						</button>
+					</div>
+				{/if}
+
+				<button class="btn btn-link btn-sm text-decoration-none mt-3" onclick={() => step = 'credentials'}>
+					&larr; Back to login
+				</button>
 			</div>
-			<div class="mb-3">
-				<label for="password" class="form-label">Password</label>
-				<input type="password" class="form-control" id="password" bind:value={password} required />
-			</div>
-			<button type="submit" class="btn btn-primary w-100">Login</button>
-		</form>
-		<p class="mt-3 text-center">
-			Don't have an account? <a href="{base}/register">Register</a>
-		</p>
+		{/if}
 	</div>
 </div>
