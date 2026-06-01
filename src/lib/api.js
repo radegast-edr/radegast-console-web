@@ -169,6 +169,7 @@ export const api = {
 
 	// Auth — email verification
 	verifyEmail: (token) => request('GET', `/auth/verify?token=${encodeURIComponent(token)}`),
+	unsubscribe: (token) => request('POST', '/auth/unsubscribe', { token }),
 
 	// MFA
 	getMfaSettings: () => request('GET', '/auth/mfa/settings'),
