@@ -115,7 +115,7 @@
 	{/if}
 </div>
 
-{#if !privateKey}
+{#if !loading && !privateKey}
 	<div class="alert alert-info">
 		No private key found in this browser. <a href="{base}/keys/recovery">Recover your keys</a> to decrypt alerts.
 	</div>
