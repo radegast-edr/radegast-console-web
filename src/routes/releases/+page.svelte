@@ -16,6 +16,21 @@
 	let uploadFile = $state(null);
 	let uploading = $state(false);
 
+	const ARCHES_BY_OS = {
+		linux: [
+			{ value: 'amd64', label: 'amd64 (x86_64)' },
+			{ value: 'arm64', label: 'arm64 (AArch64)' }
+		],
+		windows: [
+			{ value: 'amd64', label: 'amd64 (x86_64)' }
+		],
+		mac: [
+			{ value: 'm5', label: 'm5 (Apple Silicon M5)' }
+		]
+	};
+
+	let allowedArches = $derived(ARCHES_BY_OS[uploadOS] || []);
+
 	// Grouped view: { version -> { os -> [arch, ...] } }
 	let grouped = $derived(groupReleases(releases));
 
@@ -141,7 +156,13 @@
 									<tr>
 										{#if i === 0}
 											<td class="ps-3 fw-semibold" rowspan={arches.length}>
-												{#if os === 'linux'}🐧{:else}🪟{/if}
+												{#if os === 'linux'}
+													🐧
+												{:else if os === 'windows'}
+													🪟
+												{:else if os === 'mac'}
+													🍏
+												{/if}
 												{os}
 											</td>
 										{/if}
@@ -192,16 +213,29 @@
 		<div class="row g-3 mb-3">
 			<div class="col">
 				<label for="rel-os" class="form-label">OS <span class="text-danger">*</span></label>
-				<select class="form-select" id="rel-os" bind:value={uploadOS} required>
+				<select
+					class="form-select"
+					id="rel-os"
+					bind:value={uploadOS}
+					onchange={() => {
+						const options = ARCHES_BY_OS[uploadOS] || [];
+						if (options.length > 0) {
+							uploadArch = options[0].value;
+						}
+					}}
+					required
+				>
 					<option value="linux">Linux</option>
 					<option value="windows">Windows</option>
+					<option value="mac">macOS</option>
 				</select>
 			</div>
 			<div class="col">
 				<label for="rel-arch" class="form-label">Architecture <span class="text-danger">*</span></label>
 				<select class="form-select" id="rel-arch" bind:value={uploadArch} required>
-					<option value="amd64">amd64 (x86_64)</option>
-					<option value="arm64">arm64 (AArch64)</option>
+					{#each allowedArches as opt}
+						<option value={opt.value}>{opt.label}</option>
+					{/each}
 				</select>
 			</div>
 		</div>

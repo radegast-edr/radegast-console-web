@@ -18,6 +18,21 @@
 	let uploadFile = $state(null);
 	let uploading = $state(false);
 
+	const ARCHES_BY_OS = {
+		linux: [
+			{ value: 'amd64', label: 'amd64 (x86_64)' },
+			{ value: 'arm64', label: 'arm64 (AArch64)' }
+		],
+		windows: [
+			{ value: 'amd64', label: 'amd64 (x86_64)' }
+		],
+		mac: [
+			{ value: 'm5', label: 'm5 (Apple Silicon M5)' }
+		]
+	};
+
+	let allowedArches = $derived(ARCHES_BY_OS[uploadOS] || []);
+
 	// Filtering releases matching this version
 	let artifacts = $derived(releases.filter(r => r.version === currentVersion));
 
@@ -134,7 +149,13 @@
 								{#each artifacts as release}
 									<tr>
 										<td class="ps-3 fw-semibold">
-											{#if release.os === 'linux'}🐧{:else}🪟{/if}
+											{#if release.os === 'linux'}
+												🐧
+											{:else if release.os === 'windows'}
+												🪟
+											{:else if release.os === 'mac'}
+												🍏
+											{/if}
 											{release.os}
 										</td>
 										<td><code>{release.arch}</code></td>
@@ -220,15 +241,32 @@
 											<input id="win-dl-amd64" type="text" class="form-control form-control-sm font-monospace text-muted" readonly value="{backendUrl}/api/v1/device/rustinel/download?os=windows&arch=amd64&version={currentVersion}" />
 										</div>
 									</div>
-									<div class="mb-3">
-										<label for="win-dl-arm64" class="form-label small fw-bold text-secondary mb-1">Direct Download Link (arm64):</label>
-										<div class="input-group">
-											<input id="win-dl-arm64" type="text" class="form-control form-control-sm font-monospace text-muted" readonly value="{backendUrl}/api/v1/device/rustinel/download?os=windows&arch=arm64&version={currentVersion}" />
-										</div>
-									</div>
 									<div class="mb-0">
 										<label for="win-ps-cmd" class="form-label small fw-bold text-secondary mb-1">PowerShell Download Command:</label>
 										<pre id="win-ps-cmd" class="bg-dark text-light p-2 rounded small font-monospace mb-0" style="white-space: pre-wrap; word-break: break-all; user-select: all;">Invoke-WebRequest -Uri "{backendUrl}/api/v1/device/rustinel/download?os=windows&arch=amd64&version={currentVersion}" -OutFile "rustinel.zip"</pre>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- macOS Endpoint -->
+						<div class="accordion-item border-0 shadow-sm rounded mt-3">
+							<h2 class="accordion-header" id="headingMacOS">
+								<button class="accordion-button collapsed bg-light fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMacOS" aria-expanded="false" aria-controls="collapseMacOS">
+									🍏 macOS Deployment
+								</button>
+							</h2>
+							<div id="collapseMacOS" class="accordion-collapse collapse" aria-labelledby="headingMacOS" data-bs-parent="#endpointsAccordion">
+								<div class="accordion-body bg-white pt-2">
+									<div class="mb-3">
+										<label for="mac-dl-m5" class="form-label small fw-bold text-secondary mb-1">Direct Download Link (m5):</label>
+										<div class="input-group">
+											<input id="mac-dl-m5" type="text" class="form-control form-control-sm font-monospace text-muted" readonly value="{backendUrl}/api/v1/device/rustinel/download?os=mac&arch=m5&version={currentVersion}" />
+										</div>
+									</div>
+									<div class="mb-0">
+										<label for="mac-curl-cmd" class="form-label small fw-bold text-secondary mb-1">curl Download Command:</label>
+										<pre id="mac-curl-cmd" class="bg-dark text-light p-2 rounded small font-monospace mb-0" style="white-space: pre-wrap; word-break: break-all; user-select: all;">curl -L -o rustinel.zip "{backendUrl}/api/v1/device/rustinel/download?os=mac&arch=m5&version={currentVersion}"</pre>
 									</div>
 								</div>
 							</div>
@@ -251,16 +289,29 @@
 		<div class="row g-3 mb-3">
 			<div class="col">
 				<label for="art-os" class="form-label">OS <span class="text-danger">*</span></label>
-				<select class="form-select" id="art-os" bind:value={uploadOS} required>
+				<select
+					class="form-select"
+					id="art-os"
+					bind:value={uploadOS}
+					onchange={() => {
+						const options = ARCHES_BY_OS[uploadOS] || [];
+						if (options.length > 0) {
+							uploadArch = options[0].value;
+						}
+					}}
+					required
+				>
 					<option value="linux">Linux</option>
 					<option value="windows">Windows</option>
+					<option value="mac">macOS</option>
 				</select>
 			</div>
 			<div class="col">
 				<label for="art-arch" class="form-label">Architecture <span class="text-danger">*</span></label>
 				<select class="form-select" id="art-arch" bind:value={uploadArch} required>
-					<option value="amd64">amd64 (x86_64)</option>
-					<option value="arm64">arm64 (AArch64)</option>
+					{#each allowedArches as opt}
+						<option value={opt.value}>{opt.label}</option>
+					{/each}
 				</select>
 			</div>
 		</div>

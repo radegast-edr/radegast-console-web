@@ -32,6 +32,13 @@
 					>
 						Windows
 					</button>
+					<button
+						type="button"
+						class="btn {selectedOS === 'macos' ? 'btn-primary' : 'btn-outline-primary'}"
+						onclick={() => (selectedOS = 'macos')}
+					>
+						macOS
+					</button>
 				</div>
 			</div>
 
@@ -47,7 +54,7 @@
 						This will verify system requirements, install <code>uv</code> and <code>radegast-agent</code>, download <code>rustinel</code>, and configure systemd services.
 					</small>
 				</div>
-			{:else}
+			{:else if selectedOS === 'windows'}
 				<div class="mb-3">
 					<label for="win-install-cmd" class="form-label fw-semibold">2. Run this command on your Windows device in an Administrator PowerShell prompt:</label>
 					<div class="input-group">
@@ -58,6 +65,27 @@
 					<small class="form-text text-muted">
 						This will download portable Python, install <code>uv</code> and <code>radegast-agent</code>, download <code>rustinel</code>, and register background Scheduled Tasks.
 					</small>
+				</div>
+			{:else if selectedOS === 'macos'}
+				<div class="mb-3">
+					<div class="alert alert-info border-0 shadow-sm" style="border-radius: 8px;">
+						<div class="d-flex align-items-center gap-2 mb-2">
+							<span class="fs-4">🍏</span>
+							<strong class="text-info-emphasis">macOS Support is coming soon!</strong>
+						</div>
+						<p class="mb-3 small text-dark-emphasis">
+							In the meantime, you can set up the agent manually by using the device token below.
+						</p>
+						<div class="mb-3">
+							<label for="macos-token-input" class="form-label fw-bold small text-secondary">Device Token:</label>
+							<div class="input-group">
+								<code id="macos-token-input" class="form-control bg-dark text-light p-2 font-monospace w-100" style="user-select: all;">{token}</code>
+							</div>
+						</div>
+						<small class="text-muted">
+							Configure your manual agent installation with the token above to authenticate this device.
+						</small>
+					</div>
 				</div>
 			{/if}
 
