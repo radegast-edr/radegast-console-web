@@ -202,7 +202,14 @@
 			{#each packs as p}
 				<tr>
 					<td>{p.id}</td>
-					<td>{p.name}</td>
+					<td>
+						{p.name}
+						{#if p.team_ids && p.team_ids.length > 0}
+							<span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">Private</span>
+						{:else}
+							<span class="badge bg-success ms-2" style="font-size: 0.7rem;">Global</span>
+						{/if}
+					</td>
 					<td>{p.description}</td>
 					<td>
 						<button class="btn btn-sm btn-outline-danger" onclick={() => deletePack(p.id)}

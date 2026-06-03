@@ -3,6 +3,7 @@
 	import { user, flash } from '$lib/store.js';
 	import { api } from '$lib/api.js';
 	import { goto } from '$app/navigation';
+	import { fly } from 'svelte/transition';
 	import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
 	async function logout() {
@@ -77,10 +78,31 @@
 </nav>
 
 {#if $flash}
-	<div class="container mt-2">
-		<div class="alert alert-{$flash.type} alert-dismissible fade show" role="alert">
-			{$flash.message}
-			<button type="button" class="btn-close" aria-label="Close" onclick={() => ($flash = null)}></button>
+	<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 2050;">
+		<div
+			transition:fly={{ y: 50, duration: 300 }}
+			class="toast align-items-center text-bg-{$flash.type === 'danger' ? 'danger' : ($flash.type === 'success' ? 'success' : $flash.type)} border-0 show shadow-lg"
+			role="alert"
+			aria-live="assertive"
+			aria-atomic="true"
+			style="border-radius: 8px;"
+		>
+			<div class="d-flex">
+				<div class="toast-body fw-semibold py-3 ps-3 pe-2">
+					{#if $flash.type === 'danger'}
+						<span class="me-2">⚠️</span>
+					{:else if $flash.type === 'success'}
+						<span class="me-2">✓</span>
+					{/if}
+					{$flash.message}
+				</div>
+				<button
+					type="button"
+					class="btn-close btn-close-white me-3 m-auto"
+					aria-label="Close"
+					onclick={() => ($flash = null)}
+				></button>
+			</div>
 		</div>
 	</div>
 {/if}

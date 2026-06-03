@@ -26,7 +26,17 @@
 	let groupStates = $state([]);
 	let savingAccess = $state(false);
 
-	let canManage = $derived($user && ($user.role === 'maintainer' || $user.role === 'admin'));
+	let teams = $state([]);
+	let editTeamIds = $state([]);
+
+	let canManage = $derived(
+		$user && (
+			$user.role === 'maintainer' ||
+			$user.role === 'admin' ||
+			(pack && pack.creator_id === $user.id) ||
+			(pack && pack.team_ids && teams.some((t) => pack.team_ids.includes(t.id) && t.permission_pack === 'write'))
+		)
+	);
 
 	$effect(() => {
 		loadAll();
@@ -45,8 +55,10 @@
 
 			pack = packRes;
 			versions = versionsRes;
+			teams = teamsRes;
 			editName = packRes.name;
 			editDesc = packRes.description;
+			editTeamIds = packRes.team_ids || [];
 
 			const userTeamIds = new Set(teamsRes.map((t) => t.id));
 
@@ -92,9 +104,13 @@
 	}
 
 	async function updatePackDetails() {
+		if ($user.role !== 'admin' && $user.role !== 'maintainer' && editTeamIds.length === 0) {
+			showError('You must select at least one team for this private pack.');
+			return;
+		}
 		savingPack = true;
 		try {
-			await api.updatePack(pack.id, editName, editDesc);
+			await api.updatePack(pack.id, editName, editDesc, editTeamIds);
 			showFlash('Pack updated successfully');
 			await loadAll();
 		} catch (e) {
@@ -208,6 +224,48 @@
 								<label for="editDesc" class="form-label fw-bold small text-secondary">Description</label>
 								<textarea class="form-control" id="editDesc" bind:value={editDesc} rows="3"></textarea>
 							</div>
+							<div class="mb-3">
+								<span class="d-block fw-bold small text-secondary mb-1">Team Access (Private Pack)</span>
+								<p class="text-muted small mb-2">
+									{#if $user.role === 'admin' || $user.role === 'maintainer'}
+										Select one or more teams to make this pack private, or leave all unselected to keep it public.
+									{:else}
+										Select one or more teams that you want to associate this private pack with.
+									{/if}
+								</p>
+								<div class="border rounded p-3 bg-light mb-3" style="max-height: 200px; overflow-y: auto;">
+									{#each teams as team}
+										{#if $user.role === 'admin' || $user.role === 'maintainer' || team.permission_pack === 'write'}
+											<div class="form-check mb-1">
+												<input
+													class="form-check-input"
+													type="checkbox"
+													id="team-check-detail-{team.id}"
+													value={team.id}
+													checked={editTeamIds.includes(team.id)}
+													onchange={(e) => {
+														if (e.target.checked) {
+															editTeamIds = [...editTeamIds, team.id];
+														} else {
+															editTeamIds = editTeamIds.filter((id) => id !== team.id);
+														}
+													}}
+												/>
+												<label class="form-check-label d-flex align-items-center justify-content-between w-100" for="team-check-detail-{team.id}">
+													<span>{team.name}</span>
+													{#if team.permission_pack === 'write'}
+														<span class="badge bg-success-subtle text-success ms-1 small">Write</span>
+													{:else if team.permission_pack === 'read'}
+														<span class="badge bg-info-subtle text-info ms-1 small">Read</span>
+													{/if}
+												</label>
+											</div>
+										{/if}
+									{:else}
+										<p class="text-muted mb-0 small">No teams available.</p>
+									{/each}
+								</div>
+							</div>
 							<div class="d-flex justify-content-between">
 								<button type="submit" class="btn btn-primary" disabled={savingPack}>
 									{savingPack ? 'Saving...' : 'Save Pack Info'}
@@ -218,8 +276,27 @@
 							</div>
 						</form>
 					{:else}
-						<h3 class="fw-bold text-primary mb-2">{pack.name}</h3>
-						<p class="text-muted mb-0">{pack.description || 'No description'}</p>
+						<div class="d-flex align-items-center justify-content-between mb-2">
+							<h3 class="fw-bold text-primary mb-0">{pack.name}</h3>
+							{#if pack.team_ids && pack.team_ids.length > 0}
+								<span class="badge bg-secondary">Private</span>
+							{:else}
+								<span class="badge bg-success">Global</span>
+							{/if}
+						</div>
+						<p class="text-muted mb-3">{pack.description || 'No description'}</p>
+						{#if pack.team_ids && pack.team_ids.length > 0}
+							<div class="mt-2">
+								<span class="fw-bold small text-secondary">Associated Teams:</span>
+								<div class="d-flex gap-1 flex-wrap mt-1">
+									{#each teams.filter((t) => pack.team_ids.includes(t.id)) as t}
+										<span class="badge bg-light text-dark border">{t.name}</span>
+									{:else}
+										<span class="text-muted small">Loading team names...</span>
+									{/each}
+								</div>
+							</div>
+						{/if}
 					{/if}
 				</div>
 			</div>

@@ -112,8 +112,8 @@ export const api = {
 
 	// Packs
 	listPacks: () => request('GET', '/packs/'),
-	createPack: (name, description) => request('POST', '/packs/', { name, description }),
-	updatePack: (id, name, description) => request('PATCH', `/packs/${id}`, { name, description }),
+	createPack: (name, description, team_ids = null) => request('POST', '/packs/', { name, description, team_ids }),
+	updatePack: (id, name, description, team_ids = null) => request('PATCH', `/packs/${id}`, { name, description, team_ids }),
 	deletePack: (id) => request('DELETE', `/packs/${id}`),
 	getPack: (id) => request('GET', `/packs/${id}`),
 	listVersions: (packId) => request('GET', `/packs/${packId}/versions`),
