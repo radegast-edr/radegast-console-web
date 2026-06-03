@@ -1,31 +1,31 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import { api } from '$lib/api.js';
-	import { showFlash, showError } from '$lib/store.js';
+	import { api, type Group, type Team, type Device, type EnabledPack, type Pack, type PackVersion } from '$lib/api';
+	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
-	import { isDeviceActive } from '$lib/utils.js';
+	import { isDeviceActive } from '$lib/utils';
 
-	let group = $state(null);
-	let allTeams = $state([]);
-	let allDevices = $state([]);
+	let group = $state<Group | null>(null);
+	let allTeams = $state<Team[]>([]);
+	let allDevices = $state<Device[]>([]);
 	let addTeamId = $state('');
 	let addDeviceId = $state('');
 
 	// User teams and Pack Write Permissions
-	let userTeams = $state([]);
+	let userTeams = $state<Team[]>([]);
 	let hasPackWrite = $derived.by(() => {
 		if (!group || userTeams.length === 0) return false;
-		const userTeamIds = new Set(userTeams.map(t => t.id));
-		return (group.teams ?? []).some(t => userTeamIds.has(t.id) && t.permission_pack === 'write');
+		const userTeamIds = new Set(userTeams.map((t) => t.id));
+		return (group.teams ?? []).some((t) => userTeamIds.has(t.id) && t.permission_pack === 'write');
 	});
 
 	// Pack Management State
-	let enabledPacks = $state([]);
+	let enabledPacks = $state<EnabledPack[]>([]);
 	let showEnablePackModal = $state(false);
-	let availablePacks = $state([]);
+	let availablePacks = $state<Pack[]>([]);
 	let selectedPackId = $state('');
-	let packVersions = $state([]);
+	let packVersions = $state<PackVersion[]>([]);
 	let selectedVersionId = $state('');
 	let autoupdate = $state(true);
 
@@ -34,10 +34,10 @@
 	let editName = $state('');
 
 	$effect(() => {
-		loadGroup($page.params.id);
+		loadGroup($page.params.id ?? '');
 	});
 
-	async function loadGroup(id) {
+	async function loadGroup(id: string | number): Promise<void> {
 		try {
 			const [g, teams, devices] = await Promise.all([
 				api.getGroup(id),
@@ -57,88 +57,94 @@
 
 			await loadEnabledPacks(id);
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	function startRename() {
-		editName = group.name;
-		editingName = true;
+	function startRename(): void {
+		if (group) {
+			editName = group.name;
+			editingName = true;
+		}
 	}
 
-	async function saveName() {
+	async function saveName(): Promise<void> {
+		if (!group) return;
 		try {
 			await api.renameGroup(group.id, editName);
 			editingName = false;
 			await loadGroup(group.id);
 			showFlash('Group renamed');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function unlinkTeam(teamId) {
+	async function unlinkTeam(teamId: string | number): Promise<void> {
+		if (!group) return;
 		try {
 			await api.unlinkGroupFromTeam(group.id, teamId);
 			showFlash('Team unlinked from group');
 			await loadGroup(group.id);
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function linkTeam() {
-		if (!addTeamId) return;
+	async function linkTeam(): Promise<void> {
+		if (!addTeamId || !group) return;
 		try {
 			await api.linkGroupToTeam(Number(addTeamId), group.id);
 			showFlash('Team linked');
 			await loadGroup(group.id);
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function removeDevice(deviceId) {
+	async function removeDevice(deviceId: string | number): Promise<void> {
+		if (!group) return;
 		try {
 			await api.removeDeviceFromGroupViaGroup(group.id, deviceId);
 			showFlash('Device removed from group');
 			await loadGroup(group.id);
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function addDevice() {
-		if (!addDeviceId) return;
+	async function addDevice(): Promise<void> {
+		if (!addDeviceId || !group) return;
 		try {
 			await api.addDeviceToGroupViaGroup(group.id, Number(addDeviceId));
 			showFlash('Device added to group');
 			await loadGroup(group.id);
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function loadEnabledPacks(groupId) {
+	async function loadEnabledPacks(groupId: string | number): Promise<void> {
 		try {
 			enabledPacks = await api.listEnabledPacks(groupId);
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function disablePack(enabledId) {
+	async function disablePack(enabledId: string | number): Promise<void> {
+		if (!group) return;
 		if (!confirm('Disable this pack for the group?')) return;
 		try {
 			await api.disablePack(group.id, enabledId);
 			showFlash('Pack disabled');
 			await loadEnabledPacks(group.id);
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function openEnablePack() {
+	async function openEnablePack(): Promise<void> {
 		try {
 			availablePacks = await api.listPacks();
 			selectedPackId = availablePacks.length > 0 ? String(availablePacks[0].id) : '';
@@ -150,26 +156,27 @@
 			}
 			showEnablePackModal = true;
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function handlePackChange(e) {
-		const packId = Number(e.target.value);
+	async function handlePackChange(e: Event): Promise<void> {
+		const target = e.target as HTMLSelectElement;
+		const packId = Number(target.value);
 		await loadVersionsForSelectedPack(packId);
 	}
 
-	async function loadVersionsForSelectedPack(packId) {
+	async function loadVersionsForSelectedPack(packId: number): Promise<void> {
 		try {
 			packVersions = await api.listVersions(packId);
 			selectedVersionId = packVersions.length > 0 ? String(packVersions[0].id) : '';
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function enablePack() {
-		if (!selectedVersionId) {
+	async function enablePack(): Promise<void> {
+		if (!selectedVersionId || !group) {
 			showError('Please select a version');
 			return;
 		}
@@ -179,7 +186,7 @@
 			showFlash('Pack enabled successfully');
 			await loadEnabledPacks(group.id);
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 </script>

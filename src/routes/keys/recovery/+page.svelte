@@ -1,21 +1,21 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api.js';
-	import { showFlash, showError } from '$lib/store.js';
-	import { initAgeWasm, storePrivateKey, aesDecrypt } from '$lib/crypto.js';
+	import { api } from '$lib/api';
+	import { showFlash, showError } from '$lib/store';
+	import { initAgeWasm, storePrivateKey, aesDecrypt } from '$lib/crypto';
 
 	let recoveryKey = $state('');
 	let success = $state(false);
 	let wasmReady = $state(false);
-	let userId = $state(null);
+	let userId = $state<number | null>(null);
 
 	onMount(async () => {
 		try {
 			await initAgeWasm();
 			wasmReady = true;
 		} catch (e) {
-			showError('Failed to load crypto library: ' + e.message);
+			showError('Failed to load crypto library: ' + (e as Error).message);
 		}
 		try {
 			const me = await api.me();
@@ -25,11 +25,11 @@
 		}
 	});
 
-	async function recover() {
+	async function recover(): Promise<void> {
 		try {
 			const keys = await api.recoverKeys();
-			let decryptedKey = null;
-			let matchedPublicKey = null;
+			let decryptedKey: string | null = null;
+			let matchedPublicKey: string | null = null;
 			for (const key of keys) {
 				if (!key.encrypted_private_key) continue;
 				try {
@@ -42,7 +42,7 @@
 					// continue
 				}
 			}
-			if (!decryptedKey) {
+			if (!decryptedKey || !matchedPublicKey || userId === null) {
 				throw new Error('No matching recovery key found or decryption failed.');
 			}
 			await storePrivateKey(userId, decryptedKey, matchedPublicKey);

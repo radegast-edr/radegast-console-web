@@ -1,13 +1,13 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import { api } from '$lib/api.js';
-	import { showFlash, showError } from '$lib/store.js';
-	import { isDeviceActive, formatFullDateTime } from '$lib/utils.js';
+	import { api, type Device, type Group } from '$lib/api';
+	import { showFlash, showError } from '$lib/store';
+	import { isDeviceActive, formatFullDateTime } from '$lib/utils';
 	import AgentSetupInstructions from '$lib/components/AgentSetupInstructions.svelte';
 
-	let device = $state(null);
-	let allGroups = $state([]);
+	let device = $state<Device | null>(null);
+	let allGroups = $state<Group[]>([]);
 	let addGroupId = $state('');
 	let newDeviceToken = $state('');
 
@@ -16,58 +16,65 @@
 	let editName = $state('');
 
 	$effect(() => {
-		loadDevice($page.params.id);
+		loadDevice($page.params.id ?? '');
 	});
 
-	async function loadDevice(id) {
+	async function loadDevice(id: string | number): Promise<void> {
 		try {
-			[device, allGroups] = await Promise.all([api.getDevice(id), api.listGroups()]);
-			const deviceGroupIds = new Set((device.groups || []).map((g) => g.id));
+			const [deviceRes, groupsRes] = await Promise.all([api.getDevice(id), api.listGroups()]);
+			device = deviceRes;
+			allGroups = groupsRes;
+			const deviceGroupIds = new Set((device?.groups || []).map((g) => g.id));
 			allGroups = allGroups.filter((g) => !deviceGroupIds.has(g.id));
 			addGroupId = allGroups.length > 0 ? String(allGroups[0].id) : '';
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	function startRename() {
-		editName = device.name;
-		editingName = true;
+	function startRename(): void {
+		if (device) {
+			editName = device.name;
+			editingName = true;
+		}
 	}
 
-	async function saveName() {
+	async function saveName(): Promise<void> {
+		if (!device) return;
 		try {
 			await api.renameDevice(device.id, editName);
 			editingName = false;
 			await loadDevice(device.id);
 			showFlash('Device renamed');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function removeFromGroup(groupId) {
+	async function removeFromGroup(groupId: string | number): Promise<void> {
+		if (!device) return;
 		try {
 			await api.removeDeviceFromGroupViaGroup(groupId, device.id);
 			showFlash('Removed from group');
 			await loadDevice(device.id);
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function addToGroup() {
-		if (!addGroupId) return;
+	async function addToGroup(): Promise<void> {
+		if (!addGroupId || !device) return;
 		try {
 			await api.addDeviceToGroupViaGroup(Number(addGroupId), device.id);
 			showFlash('Added to group');
 			await loadDevice(device.id);
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function confirmReinstall() {
+	async function confirmReinstall(): Promise<void> {
+		if (!device) return;
 		const msg = 'Are you sure you want to reinstall this device? The token will be changed, but the signing key cannot be changed and must be backed-up manually if moving to another device.';
 		if (!confirm(msg)) return;
 		try {
@@ -75,7 +82,7 @@
 			newDeviceToken = res.token;
 			showFlash('Device token reset. Please follow the instructions to install the agent.');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 </script>

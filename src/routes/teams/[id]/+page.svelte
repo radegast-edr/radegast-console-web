@@ -1,16 +1,16 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { api } from '$lib/api.js';
-	import { showFlash, showError } from '$lib/store.js';
+	import { api, type Team, type UserInfo, type Group, type Device } from '$lib/api';
+	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 
-	let team = $state(null);
-	let members = $state([]);
-	let groups = $state([]);
-	let teamDevices = $state([]);
-	let allTeams = $state([]);
+	let team = $state<Team | null>(null);
+	let members = $state<UserInfo[]>([]);
+	let groups = $state<Group[]>([]);
+	let teamDevices = $state<Device[]>([]);
+	let allTeams = $state<Team[]>([]);
 	let showInvite = $state(false);
 	let inviteEmail = $state('');
 	let showCreateGroup = $state(false);
@@ -20,66 +20,73 @@
 	let editingName = $state(false);
 	let editName = $state('');
 
-	let teamId = $derived(page.params.id);
-	let eligibleTeams = $derived(team ? allTeams.filter((t) => t.id !== team.id) : []);
+	let teamId = $derived(page.params.id ?? '');
+	let eligibleTeams = $derived(team ? allTeams.filter((t) => t.id !== team?.id) : []);
 
 	onMount(async () => {
 		await loadTeam();
 	});
 
-	async function loadTeam() {
+	async function loadTeam(): Promise<void> {
 		try {
-			[team, members, groups, teamDevices, allTeams] = await Promise.all([
+			const [teamRes, membersRes, groupsRes, teamDevicesRes, allTeamsRes] = await Promise.all([
 				api.getTeam(teamId),
 				api.listMembers(teamId),
 				api.listTeamGroups(teamId),
 				api.listTeamDevices(teamId),
 				api.listTeams()
 			]);
+			team = teamRes;
+			members = membersRes;
+			groups = groupsRes;
+			teamDevices = teamDevicesRes;
+			allTeams = allTeamsRes;
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	function startRename() {
-		editName = team.name;
-		editingName = true;
+	function startRename(): void {
+		if (team) {
+			editName = team.name;
+			editingName = true;
+		}
 	}
 
-	async function saveName() {
+	async function saveName(): Promise<void> {
 		try {
 			await api.updateTeam(teamId, { name: editName });
 			editingName = false;
 			await loadTeam();
 			showFlash('Team renamed');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function invite() {
+	async function invite(): Promise<void> {
 		try {
 			await api.inviteToTeam(teamId, inviteEmail);
 			showInvite = false;
 			inviteEmail = '';
 			showFlash('Invitation sent');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function removeMember(userId) {
+	async function removeMember(userId: string | number): Promise<void> {
 		if (!confirm('Remove this member?')) return;
 		try {
 			await api.removeMember(teamId, userId);
 			await loadTeam();
 			showFlash('Member removed');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function createGroup() {
+	async function createGroup(): Promise<void> {
 		try {
 			await api.createTeamGroup(teamId, newGroupName);
 			showCreateGroup = false;
@@ -87,17 +94,17 @@
 			await loadTeam();
 			showFlash('Group created');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function updatePermission(field, value) {
+	async function updatePermission(field: string, value: string | number | null): Promise<void> {
 		try {
 			await api.updateTeam(teamId, { [field]: value || null });
 			await loadTeam();
 			showFlash('Permissions updated successfully');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 </script>
@@ -201,7 +208,10 @@
 						id="team-perm-pack"
 						class="form-select"
 						value={team.permission_pack || ''}
-						onchange={(e) => updatePermission('permission_pack', e.target.value)}
+						onchange={(e) => {
+							const target = e.target as HTMLSelectElement;
+							updatePermission('permission_pack', target.value);
+						}}
 					>
 						<option value="">None</option>
 						<option value="read">Read</option>
@@ -214,7 +224,10 @@
 						id="team-perm-invite"
 						class="form-select"
 						value={team.permission_invite || ''}
-						onchange={(e) => updatePermission('permission_invite', e.target.value)}
+						onchange={(e) => {
+							const target = e.target as HTMLSelectElement;
+							updatePermission('permission_invite', target.value);
+						}}
 					>
 						<option value="">None</option>
 						<option value="write">Write</option>
@@ -226,7 +239,10 @@
 						id="team-perm-admin"
 						class="form-select"
 						value={team.permission_admin || ''}
-						onchange={(e) => updatePermission('permission_admin', e.target.value)}
+						onchange={(e) => {
+							const target = e.target as HTMLSelectElement;
+							updatePermission('permission_admin', target.value);
+						}}
 					>
 						<option value="">None</option>
 						<option value="write">Write</option>
@@ -238,7 +254,10 @@
 						id="team-perm-logs"
 						class="form-select"
 						value={team.permission_logs || ''}
-						onchange={(e) => updatePermission('permission_logs', e.target.value)}
+						onchange={(e) => {
+							const target = e.target as HTMLSelectElement;
+							updatePermission('permission_logs', target.value);
+						}}
 					>
 						<option value="">None</option>
 						<option value="read">Read</option>
@@ -250,7 +269,10 @@
 						id="team-managing-team"
 						class="form-select"
 						value={team.managing_team_id || ''}
-						onchange={(e) => updatePermission('managing_team_id', e.target.value ? Number(e.target.value) : null)}
+						onchange={(e) => {
+							const target = e.target as HTMLSelectElement;
+							updatePermission('managing_team_id', target.value ? Number(target.value) : null);
+						}}
 					>
 						<option value="">None (Self-managed)</option>
 						{#each eligibleTeams as t}

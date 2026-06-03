@@ -1,34 +1,34 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api.js';
-	import { user, showFlash, showError } from '$lib/store.js';
+	import { api, type Pack, type Team, type PackVersion } from '$lib/api';
+	import { user, showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 
-	let packs = $state([]);
-	let teams = $state([]);
+	let packs = $state<Pack[]>([]);
+	let teams = $state<Team[]>([]);
 	let showCreate = $state(false);
 	let newPackName = $state('');
 	let newPackDesc = $state('');
-	let newPackTeamIds = $state([]);
+	let newPackTeamIds = $state<number[]>([]);
 	let showUpload = $state(false);
-	let uploadPackId = $state(null);
+	let uploadPackId = $state<number | null>(null);
 	let uploadVersion = $state('');
 	let uploadReleaseNotes = $state('');
-	let uploadFile = $state(null);
+	let uploadFile = $state<File | null>(null);
 
 	// Edit Pack State
 	let showEdit = $state(false);
-	let editPackId = $state(null);
+	let editPackId = $state<number | null>(null);
 	let editPackName = $state('');
 	let editPackDesc = $state('');
-	let editPackTeamIds = $state([]);
+	let editPackTeamIds = $state<number[]>([]);
 
 	// View Versions State
 	let showVersions = $state(false);
-	let versionsPackId = $state(null);
+	let versionsPackId = $state<number | null>(null);
 	let versionsPackName = $state('');
-	let packVersions = $state([]);
+	let packVersions = $state<PackVersion[]>([]);
 	let loadingVersions = $state(false);
 
 	let canCreate = $derived(
@@ -43,15 +43,15 @@
 		await Promise.all([loadPacks(), loadTeams()]);
 	});
 
-	async function loadPacks() {
+	async function loadPacks(): Promise<void> {
 		try {
 			packs = await api.listPacks();
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function loadTeams() {
+	async function loadTeams(): Promise<void> {
 		try {
 			teams = await api.listTeams();
 		} catch (e) {
@@ -59,18 +59,18 @@
 		}
 	}
 
-	function canManagePack(pack) {
+	function canManagePack(pack: Pack): boolean {
 		if (!$user) return false;
 		if ($user.role === 'admin' || $user.role === 'maintainer') return true;
 		if (pack.creator_id === $user.id) return true;
 		if (pack.team_ids && pack.team_ids.length > 0) {
-			return teams.some((t) => pack.team_ids.includes(t.id) && t.permission_pack === 'write');
+			return teams.some((t) => pack.team_ids?.includes(t.id) && t.permission_pack === 'write');
 		}
 		return false;
 	}
 
-	async function createPack() {
-		if ($user.role !== 'admin' && $user.role !== 'maintainer' && newPackTeamIds.length === 0) {
+	async function createPack(): Promise<void> {
+		if ($user && $user.role !== 'admin' && $user.role !== 'maintainer' && newPackTeamIds.length === 0) {
 			showError('You do not have permission to create Global packs. You must select at least one team to create a private pack.');
 			return;
 		}
@@ -83,11 +83,11 @@
 			await loadPacks();
 			showFlash('Pack created');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	function openEdit(pack) {
+	function openEdit(pack: Pack): void {
 		editPackId = pack.id;
 		editPackName = pack.name;
 		editPackDesc = pack.description;
@@ -95,8 +95,9 @@
 		showEdit = true;
 	}
 
-	async function savePack() {
-		if ($user.role !== 'admin' && $user.role !== 'maintainer' && editPackTeamIds.length === 0) {
+	async function savePack(): Promise<void> {
+		if (editPackId === null) return;
+		if ($user && $user.role !== 'admin' && $user.role !== 'maintainer' && editPackTeamIds.length === 0) {
 			showError('You must select at least one team for this private pack.');
 			return;
 		}
@@ -106,11 +107,11 @@
 			await loadPacks();
 			showFlash('Pack updated');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function openVersions(pack) {
+	async function openVersions(pack: Pack): Promise<void> {
 		versionsPackId = pack.id;
 		versionsPackName = pack.name;
 		packVersions = [];
@@ -119,22 +120,22 @@
 		try {
 			packVersions = await api.listVersions(pack.id);
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		} finally {
 			loadingVersions = false;
 		}
 	}
 
-	function openUpload(packId) {
-		uploadPackId = packId;
+	function openUpload(packId: string | number): void {
+		uploadPackId = Number(packId);
 		uploadVersion = '';
 		uploadReleaseNotes = '';
 		uploadFile = null;
 		showUpload = true;
 	}
 
-	async function uploadPackVersion() {
-		if (!uploadFile) {
+	async function uploadPackVersion(): Promise<void> {
+		if (!uploadFile || uploadPackId === null) {
 			showError('Please select a file');
 			return;
 		}
@@ -144,7 +145,7 @@
 			showFlash('Version uploaded');
 			await loadPacks();
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 </script>
@@ -217,7 +218,7 @@
 		<div class="mb-3">
 			<span class="d-block fw-semibold mb-1">Team Access (Private Pack)</span>
 			<p class="text-muted small mb-2">
-				{#if $user.role === 'admin' || $user.role === 'maintainer'}
+				{#if $user && ($user.role === 'admin' || $user.role === 'maintainer')}
 					Select one or more teams to make this pack private, or leave all unselected to keep it public.
 				{:else}
 					Select one or more teams that you want to associate this private pack with.
@@ -225,7 +226,7 @@
 			</p>
 			<div class="border rounded p-3 bg-light" style="max-height: 200px; overflow-y: auto;">
 				{#each teams as team}
-					{#if $user.role === 'admin' || $user.role === 'maintainer' || team.permission_pack === 'write'}
+					{#if $user && ($user.role === 'admin' || $user.role === 'maintainer' || team.permission_pack === 'write')}
 						<div class="form-check mb-1">
 							<input
 								class="form-check-input"
@@ -234,7 +235,8 @@
 								value={team.id}
 								checked={newPackTeamIds.includes(team.id)}
 								onchange={(e) => {
-									if (e.target.checked) {
+									const target = e.target as HTMLInputElement;
+									if (target.checked) {
 										newPackTeamIds = [...newPackTeamIds, team.id];
 									} else {
 										newPackTeamIds = newPackTeamIds.filter((id) => id !== team.id);
@@ -273,7 +275,7 @@
 		<div class="mb-3">
 			<span class="d-block fw-semibold mb-1">Team Access (Private Pack)</span>
 			<p class="text-muted small mb-2">
-				{#if $user.role === 'admin' || $user.role === 'maintainer'}
+				{#if $user && ($user.role === 'admin' || $user.role === 'maintainer')}
 					Select one or more teams to make this pack private, or leave all unselected to keep it public.
 				{:else}
 					Select one or more teams that you want to associate this private pack with.
@@ -281,7 +283,7 @@
 			</p>
 			<div class="border rounded p-3 bg-light" style="max-height: 200px; overflow-y: auto;">
 				{#each teams as team}
-					{#if $user.role === 'admin' || $user.role === 'maintainer' || team.permission_pack === 'write'}
+					{#if $user && ($user.role === 'admin' || $user.role === 'maintainer' || team.permission_pack === 'write')}
 						<div class="form-check mb-1">
 							<input
 								class="form-check-input"
@@ -290,7 +292,8 @@
 								value={team.id}
 								checked={editPackTeamIds.includes(team.id)}
 								onchange={(e) => {
-									if (e.target.checked) {
+									const target = e.target as HTMLInputElement;
+									if (target.checked) {
 										editPackTeamIds = [...editPackTeamIds, team.id];
 									} else {
 										editPackTeamIds = editPackTeamIds.filter((id) => id !== team.id);
@@ -368,7 +371,12 @@
 				class="form-control"
 				id="file"
 				accept=".zip"
-				onchange={(e) => (uploadFile = e.target.files[0])}
+				onchange={(e) => {
+					const target = e.target as HTMLInputElement;
+					if (target && target.files) {
+						uploadFile = target.files[0];
+					}
+				}}
 				required
 			/>
 		</div>

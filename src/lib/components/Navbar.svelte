@@ -1,12 +1,12 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
-	import { user, flash } from '$lib/store.js';
-	import { api } from '$lib/api.js';
+	import { user, flash } from '$lib/store';
+	import { api } from '$lib/api';
 	import { goto } from '$app/navigation';
 	import { fly } from 'svelte/transition';
 	import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
-	async function logout() {
+	async function logout(): Promise<void> {
 		await api.logout();
 		$user = null;
 		goto(`${base}/login`);

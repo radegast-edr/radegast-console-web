@@ -1,33 +1,32 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api.js';
-	import { showFlash, showError } from '$lib/store.js';
+	import { api, type Device, type Team, type Group } from '$lib/api';
+	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
-	import { isDeviceActive, formatFullDateTime } from '$lib/utils.js';
+	import { isDeviceActive, formatFullDateTime } from '$lib/utils';
 	import AgentSetupInstructions from '$lib/components/AgentSetupInstructions.svelte';
 
-	let devices = $state([]);
+	let devices = $state<Device[]>([]);
 	let showCreate = $state(false);
 	let newDeviceName = $state('');
 	let newDeviceToken = $state('');
 	let newDeviceGroupId = $state('');
-	/** @type {Array<{id: number, teamName: string, name: string}>} */
-	let availableGroups = $state([]);
+	let availableGroups = $state<Array<{id: number, teamName: string, name: string}>>([]);
 
 	onMount(async () => {
 		await loadDevices();
 	});
 
-	async function loadDevices() {
+	async function loadDevices(): Promise<void> {
 		try {
 			devices = await api.listDevices();
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function openCreateModal() {
+	async function openCreateModal(): Promise<void> {
 		newDeviceToken = '';
 		newDeviceName = '';
 		newDeviceGroupId = '';
@@ -44,13 +43,13 @@
 			availableGroups = grouped.flat();
 			if (availableGroups.length > 0) newDeviceGroupId = String(availableGroups[0].id);
 		} catch (e) {
-			showError('Failed to load groups: ' + e.message);
+			showError('Failed to load groups: ' + (e as Error).message);
 		}
 
 		showCreate = true;
 	}
 
-	async function createDevice() {
+	async function createDevice(): Promise<void> {
 		if (!newDeviceGroupId) { showError('Please select a device group.'); return; }
 		try {
 			const result = await api.createDevice(newDeviceName, Number(newDeviceGroupId));
@@ -60,18 +59,18 @@
 			await loadDevices();
 			showFlash('Device created! Save the token shown below.');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function deleteDevice(id) {
+	async function deleteDevice(id: string | number): Promise<void> {
 		if (!confirm('Delete this device?')) return;
 		try {
 			await api.deleteDevice(id);
 			await loadDevices();
 			showFlash('Device deleted');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 </script>

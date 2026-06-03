@@ -1,8 +1,10 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api.js';
-	import { showFlash } from '$lib/store.js';
+	import { api } from '$lib/api';
+	import { showFlash } from '$lib/store';
+
+
 
 	let email = $state('');
 	let password = $state('');
@@ -11,20 +13,20 @@
 	let success = $state(false);
 	let acceptedPolicies = $state(false);
 
-	let turnstileSiteKey = $state(null);
-	let turnstileToken = $state(null);
+	let turnstileSiteKey = $state<string | null>(null);
+	let turnstileToken = $state<string | null>(null);
 
 	onMount(async () => {
 		try {
 			const config = await api.getAuthConfig();
-			turnstileSiteKey = config.turnstile_site_key;
+			turnstileSiteKey = config.turnstile_site_key || null;
 			if (turnstileSiteKey) {
 				const checkTurnstile = setInterval(() => {
-					if (window.turnstile) {
+					if ((window as any).turnstile) {
 						clearInterval(checkTurnstile);
-						window.turnstile.render('#cf-turnstile-container', {
+						(window as any).turnstile.render('#cf-turnstile-container', {
 							sitekey: turnstileSiteKey,
-							callback: (token) => {
+							callback: (token: string) => {
 								turnstileToken = token;
 							},
 							'error-callback': () => {
@@ -42,7 +44,7 @@
 		}
 	});
 
-	async function handleRegister() {
+	async function handleRegister(): Promise<void> {
 		error = '';
 		if (password !== confirmPassword) {
 			error = 'Passwords do not match';
@@ -60,11 +62,11 @@
 			await api.register(email, password, turnstileToken);
 			success = true;
 			showFlash('Registration successful! Check your email to verify your account.');
-		} catch (e) {
+		} catch (e: any) {
 			error = e.message;
 			// Reset Turnstile on failure if rendered
-			if (window.turnstile && turnstileSiteKey) {
-				window.turnstile.reset('#cf-turnstile-container');
+			if ((window as any).turnstile && turnstileSiteKey) {
+				(window as any).turnstile.reset('#cf-turnstile-container');
 				turnstileToken = null;
 			}
 		}

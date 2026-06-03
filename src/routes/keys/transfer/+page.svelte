@@ -1,28 +1,27 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { api } from '$lib/api.js';
-	import { showFlash, showError } from '$lib/store.js';
-	import { initAgeWasm, generateKeypair, encrypt, decrypt, getStoredPrivateKey, storePrivateKey, aesEncrypt } from '$lib/crypto.js';
+	import { api } from '$lib/api';
+	import { showFlash, showError } from '$lib/store';
+	import { initAgeWasm, generateKeypair, encrypt, decrypt, getStoredPrivateKey, storePrivateKey, aesEncrypt } from '$lib/crypto';
 
 	let wasmReady = $state(false);
 	let hasKey = $state(false);
-	/** @type {boolean|null} */
-	let hasKeysOnServer = $state(null); // null = unknown
-	let userId = $state(null);
+	let hasKeysOnServer = $state<boolean | null>(null); // null = unknown
+	let userId = $state<number | null>(null);
 
 	// Receiver state
 	let transferId = $state('');
 	let polling = $state(false);
-	let pollInterval = null;
+	let pollInterval: ReturnType<typeof setInterval> | undefined = undefined;
 
 	// Sender state
 	let senderTransferId = $state('');
 	let senderSent = $state(false);
 
 	// Generate-new-keys state
-	let genStep = $state(''); // '' | 'generating' | 'show_recovery'
+	let genStep = $state<'generating' | 'show_recovery' | ''>(''); // '' | 'generating' | 'show_recovery'
 	let genRecoveryPrivateKey = $state('');
 	let genAsSecondary = $state(false);
 	let genConfirmed = $state(false);
@@ -30,27 +29,30 @@
 
 	const EPH_PRIV_KEY = 'radegast_transfer_eph_priv';
 
-	onMount(async () => {
-		try {
-			await initAgeWasm();
-			wasmReady = true;
-		} catch (e) {
-			showError('Failed to load crypto library: ' + e.message);
-		}
-		try {
-			const me = await api.me();
-			userId = me.id;
-			hasKeysOnServer = me.has_keys;
-		} catch {
-			hasKeysOnServer = false;
-		}
-		hasKey = !!(await getStoredPrivateKey(userId));
-		return () => { if (pollInterval) clearInterval(pollInterval); };
+	onMount(() => {
+		const loadData = async () => {
+			try {
+				await initAgeWasm();
+				wasmReady = true;
+			} catch (e) {
+				showError('Failed to load crypto library: ' + (e as Error).message);
+			}
+			try {
+				const me = await api.me();
+				userId = me.id;
+				hasKeysOnServer = me.has_keys;
+			} catch {
+				hasKeysOnServer = false;
+			}
+			hasKey = userId !== null ? !!(await getStoredPrivateKey(userId)) : false;
+		};
+		loadData();
+		return () => { if (pollInterval !== undefined) clearInterval(pollInterval); };
 	});
 
 	// ── Receiver side ───────────────────────────────────────────────
 
-	async function startReceiving() {
+	async function startReceiving(): Promise<void> {
 		const { publicKey: ephPub, privateKey: ephPriv } = generateKeypair();
 		sessionStorage.setItem(EPH_PRIV_KEY, ephPriv);
 
@@ -60,19 +62,24 @@
 		pollInterval = setInterval(pollTransfer, 3000);
 	}
 
-	async function pollTransfer() {
+	async function pollTransfer(): Promise<void> {
 		try {
 			const status = await api.transferGet(transferId);
 			if (status.status === 'completed' && status.encrypted_private_key) {
-				clearInterval(pollInterval);
+				if (pollInterval !== undefined) {
+					clearInterval(pollInterval);
+					pollInterval = undefined;
+				}
 				polling = false;
 
 				const ephPriv = sessionStorage.getItem(EPH_PRIV_KEY);
 				sessionStorage.removeItem(EPH_PRIV_KEY);
 
+				if (!ephPriv) throw new Error('Ephemeral private key missing from session storage');
+
 				const mainPriv = decrypt(status.encrypted_private_key, ephPriv);
 				
-				let matchedPubKey = null;
+				let matchedPubKey: string | null = null;
 				try {
 					const allKeys = await api.listKeys();
 					const testMsg = 'match-check';
@@ -92,20 +99,30 @@
 					console.error("Failed to match public key during transfer:", e);
 				}
 
+				if (userId === null) {
+					throw new Error('User ID not set');
+				}
 				await storePrivateKey(userId, mainPriv, matchedPubKey);
 				showFlash('Key transferred successfully!');
 				goto(`${base}/`);
 			}
 		} catch (e) {
-			clearInterval(pollInterval);
+			if (pollInterval !== undefined) {
+				clearInterval(pollInterval);
+				pollInterval = undefined;
+			}
 			polling = false;
-			showError('Transfer failed or expired: ' + e.message);
+			showError('Transfer failed or expired: ' + (e as Error).message);
 		}
 	}
 
 	// ── Sender side ─────────────────────────────────────────────────
 
-	async function sendKey() {
+	async function sendKey(): Promise<void> {
+		if (userId === null) {
+			showError('User ID not set');
+			return;
+		}
 		try {
 			const transfer = await api.transferGet(senderTransferId.trim());
 			const receiverPub = transfer.receiver_age_public_key;
@@ -118,11 +135,11 @@
 			senderSent = true;
 			showFlash('Key sent! The other browser should receive it shortly.');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function generateNewKeys() {
+	async function generateNewKeys(): Promise<void> {
 		genStep = 'generating';
 		genError = '';
 
@@ -158,11 +175,14 @@
 				});
 			}
 
+			if (userId === null) {
+				throw new Error('User ID not set');
+			}
 			await storePrivateKey(userId, mainPriv);
 			genRecoveryPrivateKey = aesKeyHex;
 			genStep = 'show_recovery';
 		} catch (e) {
-			genError = e.message;
+			genError = (e as Error).message;
 			genStep = '';
 		}
 	}

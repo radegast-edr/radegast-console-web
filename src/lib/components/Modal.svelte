@@ -1,5 +1,12 @@
-<script>
-	let { show = false, title = '', onClose = () => {}, children } = $props();
+<script lang="ts">
+	import type { Snippet } from 'svelte';
+
+	let { show = false, title = '', onClose = () => {}, children } = $props<{
+		show?: boolean;
+		title?: string;
+		onClose?: () => void;
+		children: Snippet;
+	}>();
 </script>
 
 {#if show}

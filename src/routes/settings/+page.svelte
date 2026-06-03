@@ -1,9 +1,9 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api.js';
-	import { showFlash, showError, user } from '$lib/store.js';
-	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt, getStoredPublicKey } from '$lib/crypto.js';
+	import { api } from '$lib/api';
+	import { showFlash, showError, user } from '$lib/store';
+	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt, getStoredPublicKey } from '$lib/crypto';
 
 	// Password change
 	let oldPassword = $state('');
@@ -12,20 +12,19 @@
 	let pwSaving = $state(false);
 
 	// Notification prefs
-	/** @type {{notify_login: boolean, notify_new_keys: boolean, notify_recovery_used: boolean, notify_keys_transferred: boolean, notify_device_log: boolean, notify_downtime_maintenance: boolean}|null} */
-	let notifications = $state(null);
+	let notifications = $state<any>(null);
 	let notifSaving = $state(false);
 
 	// Encryption Keys Management
-	let keys = $state([]);
+	let keys = $state<any[]>([]);
 	let keysLoading = $state(true);
 	let wasmReady = $state(false);
-	let userId = $state(null);
-	let currentLocalPubKey = $state(null);
+	let userId = $state<any>(null);
+	let currentLocalPubKey = $state<any>(null);
 
 	// Add key state
 	let isRecovery = $state(false);
-	let addKeyStep = $state('idle'); // 'idle' | 'generating' | 'show_recovery'
+	let addKeyStep = $state<'idle' | 'generating' | 'show_recovery'>('idle'); // 'idle' | 'generating' | 'show_recovery'
 	let generatedRecoveryKey = $state('');
 	let newKeyName = $state('');
 
@@ -33,9 +32,9 @@
 	let showConfirmModal = $state(false);
 	let modalTitle = $state('');
 	let modalMessage = $state('');
-	let confirmCallback = $state(null);
+	let confirmCallback = $state<(() => void) | null>(null);
 
-	function openConfirmModal(title, message, callback) {
+	function openConfirmModal(title: string, message: string, callback: () => void): void {
 		modalTitle = title;
 		modalMessage = message;
 		confirmCallback = () => {
@@ -48,13 +47,13 @@
 	onMount(async () => {
 		try {
 			notifications = await api.getNotifications();
-		} catch (e) {
+		} catch (e: any) {
 			showError('Failed to load notification settings: ' + e.message);
 		}
 		try {
 			await initAgeWasm();
 			wasmReady = true;
-		} catch (e) {
+		} catch (e: any) {
 			showError('Failed to initialize crypto library: ' + e.message);
 		}
 		try {
@@ -67,21 +66,21 @@
 		await loadMfaSettings();
 	});
 
-	async function loadKeys() {
+	async function loadKeys(): Promise<void> {
 		keysLoading = true;
 		try {
 			keys = await api.listKeys();
 			if (userId) {
 				currentLocalPubKey = await getStoredPublicKey(userId);
 			}
-		} catch (e) {
+		} catch (e: any) {
 			showError('Failed to load keys: ' + e.message);
 		} finally {
 			keysLoading = false;
 		}
 	}
 
-	function promptDeleteKey(key) {
+	function promptDeleteKey(key: any): void {
 		openConfirmModal(
 			'Confirm Key Deletion',
 			`Are you sure you want to delete the key "${key.name || 'Unnamed Key'}" (${key.public_key.substring(0, 10)}...)? Any logs encrypted using this key will become permanently unreadable unless you have a backup of the key. This action cannot be undone.`,
@@ -90,14 +89,14 @@
 					await api.deleteKey(key.id);
 					showFlash('Encryption key deleted.');
 					await loadKeys();
-				} catch (e) {
+				} catch (e: any) {
 					showError('Failed to delete key: ' + e.message);
 				}
 			}
 		);
 	}
 
-	function requestGenerateKey() {
+	function requestGenerateKey(): void {
 		if (!newKeyName.trim()) {
 			showError('Please enter a name for the new key pair.');
 			return;
@@ -116,7 +115,7 @@
 		}
 	}
 
-	async function executeGenerateKey() {
+	async function executeGenerateKey(): Promise<void> {
 		addKeyStep = 'generating';
 		try {
 			const { publicKey, privateKey } = generateKeypair();
@@ -157,7 +156,7 @@
 				// Save email to userId mapping in case it's not set
 				const me = await api.me();
 				if (me && me.email) {
-					localStorage.setItem(`uid_${me.email.toLowerCase().trim()}`, userId);
+					localStorage.setItem(`uid_${me.email.toLowerCase().trim()}`, String(userId));
 				}
 
 				showFlash('Key pair generated successfully, registered, and set active.');
@@ -166,13 +165,13 @@
 			}
 
 			await loadKeys();
-		} catch (e) {
+		} catch (e: any) {
 			showError('Failed to generate key pair: ' + e.message);
 			addKeyStep = 'idle';
 		}
 	}
 
-	async function changePassword() {
+	async function changePassword(): Promise<void> {
 		if (newPassword !== confirmPassword) {
 			showError('New passwords do not match.');
 			return;
@@ -188,59 +187,58 @@
 			oldPassword = '';
 			newPassword = '';
 			confirmPassword = '';
-		} catch (e) {
+		} catch (e: any) {
 			showError(e.message);
 		} finally {
 			pwSaving = false;
 		}
 	}
 
-	async function saveNotifications() {
+	async function saveNotifications(): Promise<void> {
 		if (!notifications) return;
 		notifSaving = true;
 		try {
 			notifications = await api.updateNotifications(notifications);
 			showFlash('Notification preferences saved.');
-		} catch (e) {
+		} catch (e: any) {
 			showError(e.message);
 		} finally {
 			notifSaving = false;
 		}
 	}
 
-	/** @type {{otp_enabled: boolean, hardware_tokens: Array<{id: number, name: string}>, required_level: string, current_level: string}|null} */
-	let mfaSettings = $state(null);
+	let mfaSettings = $state<any>(null);
 	let mfaLoading = $state(true);
 	let otpSetupActive = $state(false);
-	let otpSetupData = $state(null);
+	let otpSetupData = $state<any>(null);
 	let hardwareTokenName = $state('');
 	let hardwareTokenRegistering = $state(false);
 	let otpCode = $state('');
 	let hardwareTokenSetupActive = $state(false);
 
-	async function loadMfaSettings() {
+	async function loadMfaSettings(): Promise<void> {
 		mfaLoading = true;
 		try {
 			mfaSettings = await api.getMfaSettings();
 			const me = await api.me();
 			$user = me;
-		} catch (e) {
+		} catch (e: any) {
 			showError('Failed to load MFA settings: ' + e.message);
 		} finally {
 			mfaLoading = false;
 		}
 	}
 
-	async function startOtpSetup() {
+	async function startOtpSetup(): Promise<void> {
 		try {
 			otpSetupData = await api.setupMfaOtp();
 			otpSetupActive = true;
-		} catch (e) {
+		} catch (e: any) {
 			showError('Failed to start OTP setup: ' + e.message);
 		}
 	}
 
-	async function confirmOtpSetup() {
+	async function confirmOtpSetup(): Promise<void> {
 		if (!otpCode.trim()) {
 			showError('Please enter the verification code.');
 			return;
@@ -252,12 +250,12 @@
 			otpSetupData = null;
 			otpCode = '';
 			await loadMfaSettings();
-		} catch (e) {
+		} catch (e: any) {
 			showError('Failed to verify OTP: ' + e.message);
 		}
 	}
 
-	async function disableOtp() {
+	async function disableOtp(): Promise<void> {
 		openConfirmModal(
 			'Disable Authenticator App MFA',
 			'Are you sure you want to disable OTP MFA on your account? This might lower your security level below role requirements.',
@@ -266,14 +264,14 @@
 					await api.disableMfaOtp();
 					showFlash('OTP MFA disabled successfully.');
 					await loadMfaSettings();
-				} catch (e) {
+				} catch (e: any) {
 					showError('Failed to disable OTP: ' + e.message);
 				}
 			}
 		);
 	}
 
-	function bufferFromBase64url(str) {
+	function bufferFromBase64url(str: string): ArrayBuffer {
 		let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
 		while (base64.length % 4) {
 			base64 += '=';
@@ -286,7 +284,7 @@
 		return bytes.buffer;
 	}
 
-	function base64urlFromBuffer(buffer) {
+	function base64urlFromBuffer(buffer: ArrayBuffer): string {
 		const bytes = new Uint8Array(buffer);
 		let binary = '';
 		for (let i = 0; i < bytes.byteLength; i++) {
@@ -296,7 +294,7 @@
 		return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 	}
 
-	async function registerHardwareToken() {
+	async function registerHardwareToken(): Promise<void> {
 		if (!hardwareTokenName.trim()) {
 			showError('Please enter a name for the new Hardware token.');
 			return;
@@ -306,40 +304,41 @@
 			const setupRes = await api.setupMfaHardwareToken();
 			const options = setupRes.options;
 
-			options.challenge = bufferFromBase64url(options.challenge);
-			options.user.id = bufferFromBase64url(options.user.id);
+			options.challenge = bufferFromBase64url(options.challenge as string);
+			options.user.id = bufferFromBase64url(options.user.id as string);
 			if (options.excludeCredentials) {
-				options.excludeCredentials = options.excludeCredentials.map(c => ({
+				options.excludeCredentials = options.excludeCredentials.map((c) => ({
 					...c,
-					id: bufferFromBase64url(c.id)
+					id: bufferFromBase64url(c.id as string)
 				}));
 			}
 
-			const credential = await navigator.credentials.create({ publicKey: options });
+			const credential = await navigator.credentials.create({ publicKey: options as unknown as PublicKeyCredentialCreationOptions }) as PublicKeyCredential;
+			const credentialResponse = credential.response as AuthenticatorAttestationResponse;
 
-			const credentialResponse = {
+			const webauthnResponse = {
 				id: credential.id,
 				rawId: base64urlFromBuffer(credential.rawId),
 				type: credential.type,
 				response: {
-					clientDataJSON: base64urlFromBuffer(credential.response.clientDataJSON),
-					attestationObject: base64urlFromBuffer(credential.response.attestationObject),
+					clientDataJSON: base64urlFromBuffer(credentialResponse.clientDataJSON),
+					attestationObject: base64urlFromBuffer(credentialResponse.attestationObject),
 				}
 			};
 
-			await api.verifyMfaHardwareToken(setupRes.registration_token, credentialResponse, hardwareTokenName.trim());
+			await api.verifyMfaHardwareToken(setupRes.registration_token, webauthnResponse, hardwareTokenName.trim());
 			showFlash('Hardware token registered successfully!');
 			hardwareTokenName = '';
 			hardwareTokenSetupActive = false;
 			await loadMfaSettings();
-		} catch (e) {
+		} catch (e: any) {
 			showError('Failed to register Hardware token: ' + e.message);
 		} finally {
 			hardwareTokenRegistering = false;
 		}
 	}
 
-	async function deleteHardwareToken(id) {
+	async function deleteHardwareToken(id: string | number): Promise<void> {
 		openConfirmModal(
 			'Delete Security Key',
 			'Are you sure you want to delete this security key? You will no longer be able to use it to log in.',
@@ -348,7 +347,7 @@
 					await api.deleteMfaHardwareToken(id);
 					showFlash('Hardware token deleted successfully.');
 					await loadMfaSettings();
-				} catch (e) {
+				} catch (e: any) {
 					showError('Failed to delete Hardware token: ' + e.message);
 				}
 			}

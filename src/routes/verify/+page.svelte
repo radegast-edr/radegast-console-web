@@ -1,26 +1,25 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
-	import { api } from '$lib/api.js';
+	import { api } from '$lib/api';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
 
-	let state = $state('loading'); // 'loading' | 'success' | 'error'
+	let status = $state<'loading' | 'success' | 'error'>('loading');
 	let errorMessage = $state('');
 
 	onMount(async () => {
 		const token = $page.url.searchParams.get('token');
 		if (!token) {
-			state = 'error';
+			status = 'error';
 			errorMessage = 'No verification token found in the link. Please check your email and try again.';
 			return;
 		}
 		try {
 			await api.verifyEmail(token);
-			state = 'success';
+			status = 'success';
 		} catch (e) {
-			state = 'error';
-			errorMessage = e.message || 'The verification link is invalid or has expired. Please register again.';
+			status = 'error';
+			errorMessage = (e as Error).message || 'The verification link is invalid or has expired. Please register again.';
 		}
 	});
 </script>
@@ -31,13 +30,13 @@
 
 <div class="row justify-content-center mt-5">
 	<div class="col-md-6 col-lg-4 text-center">
-		{#if state === 'loading'}
+		{#if status === 'loading'}
 			<div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
 				<span class="visually-hidden">Verifying…</span>
 			</div>
 			<p class="text-muted">Verifying your email address…</p>
 
-		{:else if state === 'success'}
+		{:else if status === 'success'}
 			<div class="mb-4" style="font-size: 4rem;">✅</div>
 			<h2 class="fw-bold mb-2">Email Verified</h2>
 			<p class="text-muted mb-4">Your account is now active. You can log in and start using Radegast EDR.</p>

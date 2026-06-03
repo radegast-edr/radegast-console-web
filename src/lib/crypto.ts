@@ -12,14 +12,22 @@
 
 import { base } from '$app/paths';
 
+declare global {
+	interface Window {
+		Go: new () => { importObject: WebAssembly.Imports; run: (instance: WebAssembly.Instance) => void };
+		generateX25519Identity: () => { publicKey: string; privateKey: string };
+		encrypt: (recipients: string, plaintext: string) => { output: string; error?: string };
+		decrypt: (privateKey: string, ciphertext: string) => { output: string; error?: string };
+	}
+}
+
 let wasmReady = false;
-/** @type {Promise<void>|null} */
-let initPromise = null;
+let initPromise: Promise<void> | null = null;
 
 /**
  * Initialize the agewasm module (idempotent, returns the same promise on concurrent calls).
  */
-export async function initAgeWasm() {
+export async function initAgeWasm(): Promise<void> {
 	if (wasmReady) return;
 	if (initPromise) return initPromise;
 
@@ -34,18 +42,18 @@ export async function initAgeWasm() {
 		);
 		go.run(result.instance);
 		// Give the Go program a tick to register globals
-		await new Promise((r) => setTimeout(r, 0));
+		await new Promise<void>((r) => setTimeout(r, 0));
 		wasmReady = true;
 	})();
 
 	return initPromise;
 }
 
-function loadScript(src) {
-	return new Promise((resolve, reject) => {
+function loadScript(src: string): Promise<void> {
+	return new Promise<void>((resolve, reject) => {
 		const script = document.createElement('script');
 		script.src = src;
-		script.onload = resolve;
+		script.onload = () => resolve();
 		script.onerror = reject;
 		document.head.appendChild(script);
 	});
@@ -53,20 +61,19 @@ function loadScript(src) {
 
 /**
  * Generate an AGE X25519 keypair.
- * @returns {{ publicKey: string, privateKey: string }}
  */
-export function generateKeypair() {
+export function generateKeypair(): { publicKey: string; privateKey: string } {
 	if (!wasmReady) throw new Error('agewasm not initialized');
 	return window.generateX25519Identity();
 }
 
 /**
  * Encrypt plaintext for one or more AGE public key recipients.
- * @param {string} plaintext
- * @param {string[]} publicKeys - AGE public keys ("age1...")
- * @returns {string} armored AGE ciphertext
+ * @param plaintext
+ * @param publicKeys - AGE public keys ("age1...")
+ * @returns armored AGE ciphertext
  */
-export function encrypt(plaintext, publicKeys) {
+export function encrypt(plaintext: string, publicKeys: string[]): string {
 	if (!wasmReady) throw new Error('agewasm not initialized');
 	const recipients = publicKeys.join('\n');
 	const result = window.encrypt(recipients, plaintext);
@@ -76,11 +83,11 @@ export function encrypt(plaintext, publicKeys) {
 
 /**
  * Decrypt AGE-encrypted ciphertext.
- * @param {string} ciphertext - armored AGE ciphertext
- * @param {string} privateKey - AGE private key ("AGE-SECRET-KEY-1...")
- * @returns {string} decrypted plaintext
+ * @param ciphertext - armored AGE ciphertext
+ * @param privateKey - AGE private key ("AGE-SECRET-KEY-1...")
+ * @returns decrypted plaintext
  */
-export function decrypt(ciphertext, privateKey) {
+export function decrypt(ciphertext: string, privateKey: string): string {
 	if (!wasmReady) throw new Error('agewasm not initialized');
 	const result = window.decrypt(privateKey, ciphertext);
 	if (result.error) throw new Error(result.error);
@@ -102,33 +109,30 @@ const IDB_NAME = 'radegast';
 const IDB_STORE = 'keys';
 const IDB_VERSION = 1;
 
-/** @returns {Promise<IDBDatabase>} */
-function openKeyDB() {
+function openKeyDB(): Promise<IDBDatabase> {
 	return new Promise((resolve, reject) => {
 		const req = indexedDB.open(IDB_NAME, IDB_VERSION);
 		req.onupgradeneeded = (e) => {
-			const db = /** @type {IDBDatabase} */ (e.target.result);
+			const db = (e.target as IDBOpenDBRequest).result;
 			if (!db.objectStoreNames.contains(IDB_STORE)) {
 				db.createObjectStore(IDB_STORE);
 			}
 		};
-		req.onsuccess = (e) => resolve(/** @type {IDBDatabase} */ (e.target.result));
+		req.onsuccess = (e) => resolve((e.target as IDBOpenDBRequest).result);
 		req.onerror = () => reject(req.error);
 	});
 }
 
-/** @param {IDBDatabase} db @param {IDBValidKey} key @returns {Promise<any>} */
-function idbGet(db, key) {
+function idbGet<T = unknown>(db: IDBDatabase, key: IDBValidKey): Promise<T | null> {
 	return new Promise((resolve, reject) => {
 		const tx = db.transaction(IDB_STORE, 'readonly');
 		const req = tx.objectStore(IDB_STORE).get(key);
-		req.onsuccess = () => resolve(req.result ?? null);
+		req.onsuccess = () => resolve((req.result as T) ?? null);
 		req.onerror = () => reject(req.error);
 	});
 }
 
-/** @param {IDBDatabase} db @param {IDBValidKey} key @param {any} value @returns {Promise<void>} */
-function idbPut(db, key, value) {
+function idbPut(db: IDBDatabase, key: IDBValidKey, value: unknown): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const tx = db.transaction(IDB_STORE, 'readwrite');
 		const req = tx.objectStore(IDB_STORE).put(value, key);
@@ -137,8 +141,7 @@ function idbPut(db, key, value) {
 	});
 }
 
-/** @param {IDBDatabase} db @param {IDBValidKey} key @returns {Promise<void>} */
-function idbDelete(db, key) {
+function idbDelete(db: IDBDatabase, key: IDBValidKey): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const tx = db.transaction(IDB_STORE, 'readwrite');
 		const req = tx.objectStore(IDB_STORE).delete(key);
@@ -151,15 +154,11 @@ function idbDelete(db, key) {
  * Return the AES-GCM wrapping key for userId, creating and persisting it if it
  * does not exist yet. The key is non-extractable — the browser engine holds the
  * raw key material; JS only ever holds an opaque CryptoKey handle.
- *
- * @param {IDBDatabase} db
- * @param {string|number} userId
- * @returns {Promise<CryptoKey>}
  */
-async function getOrCreateWrappingKey(db, userId) {
+async function getOrCreateWrappingKey(db: IDBDatabase, userId: string | number): Promise<CryptoKey> {
 	const idbKey = `wk_${userId}`;
-	const existing = await idbGet(db, idbKey);
-	if (existing) return /** @type {CryptoKey} */ (existing);
+	const existing = await idbGet<CryptoKey>(db, idbKey);
+	if (existing) return existing;
 
 	const wk = await crypto.subtle.generateKey(
 		{ name: 'AES-GCM', length: 256 },
@@ -174,14 +173,15 @@ async function getOrCreateWrappingKey(db, userId) {
  * Retrieve the stored AGE private key for the given user.
  * If the stored key is missing, unencrypted, or cannot be decrypted,
  * wipe any stored key material and return null.
- *
- * @param {string|number} userId
- * @returns {Promise<string|null>}
  */
-export async function getStoredPrivateKey(userId) {
+export async function getStoredPrivateKey(userId: string | number): Promise<string | null> {
 	const db = await openKeyDB();
 
-	const stored = await idbGet(db, `pk_${userId}`);
+	interface EncryptedKeyRecord {
+		iv: BufferSource;
+		ciphertext: BufferSource;
+	}
+	const stored = await idbGet<EncryptedKeyRecord>(db, `pk_${userId}`);
 	if (stored) {
 		try {
 			const wk = await getOrCreateWrappingKey(db, userId);
@@ -202,25 +202,21 @@ export async function getStoredPrivateKey(userId) {
 
 /**
  * Retrieve the stored AGE public key for the given user.
- *
- * @param {string|number} userId
- * @returns {Promise<string|null>}
  */
-export async function getStoredPublicKey(userId) {
+export async function getStoredPublicKey(userId: string | number): Promise<string | null> {
 	const db = await openKeyDB();
-	return await idbGet(db, `pub_${userId}`);
+	return await idbGet<string>(db, `pub_${userId}`);
 }
 
 /**
  * Encrypt and persist the AGE private key for the given user.
  * Optionally saves the corresponding public key unencrypted in IndexedDB.
- *
- * @param {string|number} userId
- * @param {string} privateKey
- * @param {string|null} publicKey
- * @returns {Promise<void>}
  */
-export async function storePrivateKey(userId, privateKey, publicKey = null) {
+export async function storePrivateKey(
+	userId: string | number,
+	privateKey: string,
+	publicKey: string | null = null
+): Promise<void> {
 	const db = await openKeyDB();
 	const wk = await getOrCreateWrappingKey(db, userId);
 	const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -238,11 +234,8 @@ export async function storePrivateKey(userId, privateKey, publicKey = null) {
 /**
  * Look up the stored public key for a given user email, or fallback to the first
  * public key found in IndexedDB if there's only one user.
- *
- * @param {string} email
- * @returns {Promise<string|null>}
  */
-export async function getPublicKeyForLogin(email) {
+export async function getPublicKeyForLogin(email: string): Promise<string | null> {
 	if (email) {
 		const normalized = email.toLowerCase().trim();
 		const savedUserId = localStorage.getItem(`uid_${normalized}`);
@@ -253,13 +246,13 @@ export async function getPublicKeyForLogin(email) {
 	}
 	try {
 		const db = await openKeyDB();
-		return new Promise((resolve) => {
+		return new Promise<string | null>((resolve) => {
 			const tx = db.transaction(IDB_STORE, 'readonly');
 			const store = tx.objectStore(IDB_STORE);
 			const req = store.openCursor();
-			let foundPubKey = null;
+			let foundPubKey: string | null = null;
 			req.onsuccess = (e) => {
-				const cursor = e.target.result;
+				const cursor = (e.target as IDBRequest<IDBCursorWithValue | null>).result;
 				if (cursor) {
 					if (typeof cursor.key === 'string' && cursor.key.startsWith('pub_')) {
 						foundPubKey = cursor.value;
@@ -280,11 +273,8 @@ export async function getPublicKeyForLogin(email) {
 
 /**
  * Remove both the encrypted private key blob, public key, and the wrapping key for a user.
- *
- * @param {string|number} userId
- * @returns {Promise<void>}
  */
-export async function clearStoredPrivateKey(userId) {
+export async function clearStoredPrivateKey(userId: string | number): Promise<void> {
 	const db = await openKeyDB();
 	await Promise.all([
 		idbDelete(db, `pk_${userId}`),
@@ -294,7 +284,7 @@ export async function clearStoredPrivateKey(userId) {
 	]);
 }
 
-function hexToBytes(hex) {
+function hexToBytes(hex: string): Uint8Array {
 	const bytes = new Uint8Array(hex.length / 2);
 	for (let i = 0; i < bytes.length; i++) {
 		bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
@@ -302,29 +292,26 @@ function hexToBytes(hex) {
 	return bytes;
 }
 
-function bytesToHex(bytes) {
+function bytesToHex(bytes: Uint8Array): string {
 	return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**
  * Encrypt plaintext using AES-GCM-256 with a hex-encoded key.
  * Returns a JSON string containing hex-encoded IV and ciphertext.
- * @param {string} plaintext
- * @param {string} keyHex - 64-character hex string (256-bit key)
- * @returns {Promise<string>}
  */
-export async function aesEncrypt(plaintext, keyHex) {
+export async function aesEncrypt(plaintext: string, keyHex: string): Promise<string> {
 	const keyBytes = hexToBytes(keyHex);
 	const key = await window.crypto.subtle.importKey(
 		'raw',
-		keyBytes,
+		keyBytes as BufferSource,
 		{ name: 'AES-GCM' },
 		false,
 		['encrypt']
 	);
 	const iv = window.crypto.getRandomValues(new Uint8Array(12));
 	const ciphertextBuffer = await window.crypto.subtle.encrypt(
-		{ name: 'AES-GCM', iv },
+		{ name: 'AES-GCM', iv: iv as BufferSource },
 		key,
 		new TextEncoder().encode(plaintext)
 	);
@@ -336,24 +323,21 @@ export async function aesEncrypt(plaintext, keyHex) {
 
 /**
  * Decrypt ciphertext using AES-GCM-256 with a hex-encoded key.
- * @param {string} encryptedJsonStr - JSON string with iv and ciphertext hex fields
- * @param {string} keyHex - 64-character hex string (256-bit key)
- * @returns {Promise<string>}
  */
-export async function aesDecrypt(encryptedJsonStr, keyHex) {
+export async function aesDecrypt(encryptedJsonStr: string, keyHex: string): Promise<string> {
 	const { iv: ivHex, ciphertext: cipherHex } = JSON.parse(encryptedJsonStr);
 	const keyBytes = hexToBytes(keyHex);
 	const key = await window.crypto.subtle.importKey(
 		'raw',
-		keyBytes,
+		keyBytes as BufferSource,
 		{ name: 'AES-GCM' },
 		false,
 		['decrypt']
 	);
 	const decryptedBuffer = await window.crypto.subtle.decrypt(
-		{ name: 'AES-GCM', iv: hexToBytes(ivHex) },
+		{ name: 'AES-GCM', iv: hexToBytes(ivHex) as BufferSource },
 		key,
-		hexToBytes(cipherHex)
+		hexToBytes(cipherHex) as BufferSource
 	);
 	return new TextDecoder().decode(decryptedBuffer);
 }

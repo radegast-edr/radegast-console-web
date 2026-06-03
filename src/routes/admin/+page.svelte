@@ -1,15 +1,15 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api.js';
-	import { user, showFlash, showError } from '$lib/store.js';
+	import { api, type UserInfo, type Device, type Pack } from '$lib/api';
+	import { user, showFlash, showError } from '$lib/store';
 	import { goto } from '$app/navigation';
 
-	let users = $state([]);
-	let devices = $state([]);
-	let packs = $state([]);
-	let activeTab = $state('users');
-	let resetPasswordResult = $state(null);
+	let users = $state<UserInfo[]>([]);
+	let devices = $state<Device[]>([]);
+	let packs = $state<Pack[]>([]);
+	let activeTab = $state<'users' | 'devices' | 'packs'>('users');
+	let resetPasswordResult = $state<{ email: string } | null>(null);
 
 	onMount(async () => {
 		if ($user?.role !== 'admin') {
@@ -19,28 +19,28 @@
 		await loadAll();
 	});
 
-	async function loadAll() {
+	async function loadAll(): Promise<void> {
 		try {
 			users = await api.adminListUsers();
 			devices = await api.adminListDevices();
 			packs = await api.adminListPacks();
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function deleteUser(id) {
+	async function deleteUser(id: string | number): Promise<void> {
 		if (!confirm('Delete this user?')) return;
 		try {
 			await api.adminDeleteUser(id);
 			await loadAll();
 			showFlash('User deleted');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function resetUserPassword(u) {
+	async function resetUserPassword(u: UserInfo): Promise<void> {
 		if (!confirm(`Are you sure you want to reset the password and clear all MFA devices for user ${u.email}?`)) return;
 		try {
 			await api.adminResetUserPassword(u.id);
@@ -48,29 +48,29 @@
 			showFlash('User password reset successfully and MFA cleared');
 			await loadAll();
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function deleteDevice(id) {
+	async function deleteDevice(id: string | number): Promise<void> {
 		if (!confirm('Delete this device?')) return;
 		try {
 			await api.adminDeleteDevice(id);
 			await loadAll();
 			showFlash('Device deleted');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function deletePack(id) {
+	async function deletePack(id: string | number): Promise<void> {
 		if (!confirm('Delete this pack and all its versions?')) return;
 		try {
 			await api.adminDeletePack(id);
 			await loadAll();
 			showFlash('Pack deleted');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 </script>

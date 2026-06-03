@@ -1,41 +1,44 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api.js';
-	import { user } from '$lib/store.js';
-	import { getStoredPrivateKey } from '$lib/crypto.js';
+	import { api, type Team, type Group, type Device } from '$lib/api';
+	import { user } from '$lib/store';
+	import { getStoredPrivateKey } from '$lib/crypto';
 	import { goto } from '$app/navigation';
 
-	let teams = $state([]);
-	let groups = $state([]);
-	let devices = $state([]);
+	let teams = $state<Team[]>([]);
+	let groups = $state<Group[]>([]);
+	let devices = $state<Device[]>([]);
 	let hasPrivateKey = $state(true); // default true to avoid flash
 	let unreadCount = $state(0);
 
-	onMount(async () => {
-		try {
-			const me = await api.me();
-			$user = me;
-			const [teamsRes, groupsRes, devicesRes, unreadRes] = await Promise.all([
-				api.listTeams(),
-				api.listGroups(),
-				api.listDevices(),
-				api.getUnreadLogsCount()
-			]);
-			teams = teamsRes;
-			groups = groupsRes;
-			devices = devicesRes;
-			unreadCount = unreadRes.unread_count;
-			hasPrivateKey = !!(await getStoredPrivateKey(me.id));
-		} catch (e) {
-			goto(`${base}/login`);
-		}
+	onMount(() => {
+		const loadData = async () => {
+			try {
+				const me = await api.me();
+				$user = me;
+				const [teamsRes, groupsRes, devicesRes, unreadRes] = await Promise.all([
+					api.listTeams(),
+					api.listGroups(),
+					api.listDevices(),
+					api.getUnreadLogsCount()
+				]);
+				teams = teamsRes;
+				groups = groupsRes;
+				devices = devicesRes;
+				unreadCount = unreadRes.unread_count;
+				hasPrivateKey = !!(await getStoredPrivateKey(me.id));
+			} catch (e) {
+				goto(`${base}/login`);
+			}
+		};
+		loadData();
 
 		const interval = setInterval(refreshUnreadCount, 60000);
 		return () => clearInterval(interval);
 	});
 
-	async function refreshUnreadCount() {
+	async function refreshUnreadCount(): Promise<void> {
 		try {
 			const unreadRes = await api.getUnreadLogsCount();
 			unreadCount = unreadRes.unread_count;

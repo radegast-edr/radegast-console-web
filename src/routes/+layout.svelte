@@ -1,16 +1,16 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import 'bootstrap/dist/css/bootstrap.min.css';
 	import Navbar from '$lib/components/Navbar.svelte';
-	import { onMount } from 'svelte';
+	import { onMount, type Snippet } from 'svelte';
 	import { goto, beforeNavigate } from '$app/navigation';
-	import { api } from '$lib/api.js';
-	import { user } from '$lib/store.js';
-	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt } from '$lib/crypto.js';
+	import { user } from '$lib/store';
+	import { api, type UserInfo } from '$lib/api';
+	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt } from '$lib/crypto';
 
 	import { page } from '$app/stores';
 
-	let { children } = $props();
+	let { children } = $props<{ children: Snippet }>();
 
 	// Routes that are fully public (no auth needed)
 	const PUBLIC_PREFIXES = ['/login', '/register', '/verify', '/terms', '/privacy'];
@@ -47,7 +47,7 @@
 		}
 	});
 
-	async function autoSetupKeys(me) {
+	async function autoSetupKeys(me: UserInfo): Promise<void> {
 		generatingKeys = true;
 		setupError = '';
 		try {
@@ -79,7 +79,7 @@
 
 			// Save userId for this email
 			if (me.email) {
-				localStorage.setItem(`uid_${me.email.toLowerCase().trim()}`, me.id);
+				localStorage.setItem(`uid_${me.email.toLowerCase().trim()}`, String(me.id));
 			}
 
 			// Show AES recovery key to user
@@ -88,7 +88,7 @@
 
 			// Refresh user store
 			$user = await api.me();
-		} catch (e) {
+		} catch (e: any) {
 			setupError = 'Automatic key setup failed: ' + e.message;
 		} finally {
 			generatingKeys = false;
@@ -103,7 +103,7 @@
 		}
 	});
 
-	function handleBeforeUnload(event) {
+	function handleBeforeUnload(event: BeforeUnloadEvent): string | undefined {
 		if (showRecoveryModal) {
 			event.preventDefault();
 			return 'Are you sure you want to leave? Your recovery key will be lost if you have not saved it.';

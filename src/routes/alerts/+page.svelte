@@ -1,21 +1,21 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api.js';
-	import { showError } from '$lib/store.js';
-	import { initAgeWasm, getStoredPrivateKey, decrypt } from '$lib/crypto.js';
-	import { isDeviceActive, formatFullDateTime } from '$lib/utils.js';
+	import { api, type Log, type Device } from '$lib/api';
+	import { showError } from '$lib/store';
+	import { initAgeWasm, getStoredPrivateKey, decrypt } from '$lib/crypto';
+	import { isDeviceActive, formatFullDateTime } from '$lib/utils';
 
-	let logs = $state([]);
-	let decryptedLogs = $state({});
-	let privateKey = $state(null);
+	let logs = $state<Log[]>([]);
+	let decryptedLogs = $state<Record<string | number, string>>({});
+	let privateKey = $state<string | null>(null);
 	let loading = $state(true);
 	let page = $state(1);
 	let limit = 100;
-	let devices = $state([]);
-	let deviceMap = $derived(new Map(devices.map(d => [d.id, d])));
+	let devices = $state<Device[]>([]);
+	let deviceMap = $derived(new Map<number, Device>(devices.map(d => [d.id, d])));
 
-	async function loadAlerts() {
+	async function loadAlerts(): Promise<void> {
 		try {
 			const me = await api.me();
 			privateKey = await getStoredPrivateKey(me.id);
@@ -37,30 +37,33 @@
 							decryptedLogs[log.id] = dec;
 						}
 					} catch (e) {
-						decryptedLogs[log.id] = `[Decryption failed: ${e.message}]`;
+						decryptedLogs[log.id] = `[Decryption failed: ${(e as Error).message}]`;
 					}
 				}
 				decryptedLogs = { ...decryptedLogs };
 			}
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	onMount(async () => {
-		try {
-			await initAgeWasm();
+	onMount(() => {
+		const loadData = async () => {
 			try {
-				devices = await api.listDevices();
+				await initAgeWasm();
+				try {
+					devices = await api.listDevices();
+				} catch (e) {
+					console.error('Failed to load devices list:', e);
+				}
+				await loadAlerts();
 			} catch (e) {
-				console.error('Failed to load devices list:', e);
+				showError('Failed to load crypto library: ' + (e as Error).message);
+			} finally {
+				loading = false;
 			}
-			await loadAlerts();
-		} catch (e) {
-			showError('Failed to load crypto library: ' + e.message);
-		} finally {
-			loading = false;
-		}
+		};
+		loadData();
 
 		// Auto-refresh alerts page data every 60 seconds
 		const interval = setInterval(async () => {
@@ -70,18 +73,18 @@
 		return () => clearInterval(interval);
 	});
 
-	async function handleAlertClick(log) {
+	async function handleAlertClick(log: Log): Promise<void> {
 		if (log.seen) return;
 		try {
 			await api.markLogSeen(log.id);
 			log.seen = true;
 			logs = [...logs];
 		} catch (e) {
-			showError('Failed to mark alert as seen: ' + e.message);
+			showError('Failed to mark alert as seen: ' + (e as Error).message);
 		}
 	}
 
-	async function markAllAsSeen() {
+	async function markAllAsSeen(): Promise<void> {
 		try {
 			await api.markAllLogsSeen();
 			for (const log of logs) {
@@ -89,11 +92,11 @@
 			}
 			logs = [...logs];
 		} catch (e) {
-			showError('Failed to mark all alerts as seen: ' + e.message);
+			showError('Failed to mark all alerts as seen: ' + (e as Error).message);
 		}
 	}
 
-	async function changePage(newPage) {
+	async function changePage(newPage: number): Promise<void> {
 		if (newPage < 1) return;
 		page = newPage;
 		loading = true;

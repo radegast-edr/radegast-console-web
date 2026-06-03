@@ -1,16 +1,16 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { api } from '$lib/api.js';
-	import { showError } from '$lib/store.js';
-	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt } from '$lib/crypto.js';
+	import { api } from '$lib/api';
+	import { showError } from '$lib/store';
+	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt } from '$lib/crypto';
 
-	let step = $state('init'); // 'init' | 'generating' | 'show_recovery' | 'done'
+	let step = $state<'init' | 'generating' | 'show_recovery' | 'done' | 'ready'>('init'); // 'init' | 'generating' | 'show_recovery' | 'done' | 'ready'
 	let recoveryKey = $state('');
 	let confirmed = $state(false);
 	let error = $state('');
-	let userId = $state(null);
+	let userId = $state<number | null>(null);
 	let keyName = $state('Primary Key');
 
 	onMount(async () => {
@@ -20,11 +20,11 @@
 			userId = me.id;
 			await generateAndSetupKeys();
 		} catch (e) {
-			error = 'Failed to load crypto library: ' + e.message;
+			error = 'Failed to load crypto library: ' + (e as Error).message;
 		}
 	});
 
-	async function generateAndSetupKeys() {
+	async function generateAndSetupKeys(): Promise<void> {
 		if (!keyName.trim()) {
 			error = 'Please enter a name for your key pair';
 			return;
@@ -55,24 +55,27 @@
 			});
 
 			// 6. Store main private and public key in IndexedDB keyed by user ID
+			if (userId === null) {
+				throw new Error('User ID not set');
+			}
 			await storePrivateKey(userId, mainPriv, mainPub);
 
 			// Save userId for this email
 			const me = await api.me();
 			if (me && me.email) {
-				localStorage.setItem(`uid_${me.email.toLowerCase().trim()}`, userId);
+				localStorage.setItem(`uid_${me.email.toLowerCase().trim()}`, String(userId));
 			}
 
 			// 7. Show AES recovery key to user (this is the only time it's shown)
 			recoveryKey = aesKeyHex;
 			step = 'show_recovery';
 		} catch (e) {
-			error = e.message;
+			error = (e as Error).message;
 			step = 'ready';
 		}
 	}
 
-	function finishSetup() {
+	function finishSetup(): void {
 		goto(`${base}/`);
 	}
 </script>

@@ -1,31 +1,31 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
-	import { api } from '$lib/api.js';
-	import { user, showError } from '$lib/store.js';
+	import { api } from '$lib/api';
+	import { user, showError } from '$lib/store';
 	import { goto } from '$app/navigation';
-	import { getPublicKeyForLogin } from '$lib/crypto.js';
+	import { getPublicKeyForLogin } from '$lib/crypto';
 
 	let email = $state('');
 	let password = $state('');
 	let error = $state('');
 
-	let step = $state('credentials'); // 'credentials' | 'mfa'
+	let step = $state<'credentials' | 'mfa'>('credentials'); // 'credentials' | 'mfa'
 	let mfaToken = $state('');
-	let mfaMethods = $state([]);
+	let mfaMethods = $state<string[]>([]);
 	let selectedMethod = $state('');
 	let otpCode = $state('');
 	let mfaLoading = $state(false);
 
-	async function handleLogin() {
+	async function handleLogin(): Promise<void> {
 		error = '';
 		try {
 			const pubKey = await getPublicKeyForLogin(email);
 			const res = await api.login(email, password, pubKey);
 
 			if (res && res.status === 'mfa_required') {
-				mfaToken = res.mfa_token;
-				mfaMethods = res.methods;
-				selectedMethod = mfaMethods[0];
+				mfaToken = res.mfa_token || '';
+				mfaMethods = res.methods || [];
+				selectedMethod = mfaMethods[0] || '';
 				step = 'mfa';
 				if (selectedMethod === 'hardware_token') {
 					handleHardwareTokenAuth();
@@ -34,34 +34,34 @@
 			}
 
 			await completeLogin();
-		} catch (e) {
+		} catch (e: any) {
 			error = e.message;
 		}
 	}
 
-	async function completeLogin() {
+	async function completeLogin(): Promise<void> {
 		const me = await api.me();
 		$user = me;
 		if (me && me.id) {
-			localStorage.setItem(`uid_${email.toLowerCase().trim()}`, me.id);
+			localStorage.setItem(`uid_${email.toLowerCase().trim()}`, String(me.id));
 		}
 		goto(`${base}/`);
 	}
 
-	async function handleOtpAuth() {
+	async function handleOtpAuth(): Promise<void> {
 		error = '';
 		mfaLoading = true;
 		try {
 			await api.verifyMfa(mfaToken, 'otp', otpCode);
 			await completeLogin();
-		} catch (e) {
+		} catch (e: any) {
 			error = e.message;
 		} finally {
 			mfaLoading = false;
 		}
 	}
 
-	function bufferFromBase64url(str) {
+	function bufferFromBase64url(str: string): ArrayBuffer {
 		let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
 		while (base64.length % 4) {
 			base64 += '=';
@@ -74,7 +74,7 @@
 		return bytes.buffer;
 	}
 
-	function base64urlFromBuffer(buffer) {
+	function base64urlFromBuffer(buffer: ArrayBuffer): string {
 		const bytes = new Uint8Array(buffer);
 		let binary = '';
 		for (let i = 0; i < bytes.byteLength; i++) {
@@ -84,38 +84,39 @@
 		return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 	}
 
-	async function handleHardwareTokenAuth() {
+	async function handleHardwareTokenAuth(): Promise<void> {
 		error = '';
 		mfaLoading = true;
 		try {
 			const authOptionsRes = await api.getMfaHardwareTokenAssertionOptions(mfaToken);
 			const options = authOptionsRes.options;
 
-			options.challenge = bufferFromBase64url(options.challenge);
+			options.challenge = bufferFromBase64url(options.challenge as string);
 			if (options.allowCredentials) {
-				options.allowCredentials = options.allowCredentials.map(c => ({
+				options.allowCredentials = options.allowCredentials.map((c) => ({
 					...c,
-					id: bufferFromBase64url(c.id)
+					id: bufferFromBase64url(c.id as string)
 				}));
 			}
 
-			const assertion = await navigator.credentials.get({ publicKey: options });
+			const assertion = await navigator.credentials.get({ publicKey: options as unknown as PublicKeyCredentialRequestOptions }) as PublicKeyCredential;
+			const assertionResponse = assertion.response as AuthenticatorAssertionResponse;
 
 			const webauthnResponse = {
 				id: assertion.id,
 				rawId: base64urlFromBuffer(assertion.rawId),
 				type: assertion.type,
 				response: {
-					clientDataJSON: base64urlFromBuffer(assertion.response.clientDataJSON),
-					authenticatorData: base64urlFromBuffer(assertion.response.authenticatorData),
-					signature: base64urlFromBuffer(assertion.response.signature),
-					userHandle: assertion.response.userHandle ? base64urlFromBuffer(assertion.response.userHandle) : null,
+					clientDataJSON: base64urlFromBuffer(assertionResponse.clientDataJSON),
+					authenticatorData: base64urlFromBuffer(assertionResponse.authenticatorData),
+					signature: base64urlFromBuffer(assertionResponse.signature),
+					userHandle: assertionResponse.userHandle ? base64urlFromBuffer(assertionResponse.userHandle) : null,
 				}
 			};
 
 			await api.verifyMfa(mfaToken, 'hardware_token', null, authOptionsRes.assertion_token, webauthnResponse);
 			await completeLogin();
-		} catch (e) {
+		} catch (e: any) {
 			error = e.message;
 		} finally {
 			mfaLoading = false;

@@ -1,29 +1,29 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api.js';
-	import { showFlash, showError } from '$lib/store.js';
+	import { api, type Group, type Team } from '$lib/api';
+	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 
-	let groups = $state([]);
+	let groups = $state<Group[]>([]);
 	let showCreate = $state(false);
 	let newGroupName = $state('');
 	let newGroupTeamId = $state('');
-	let availableTeams = $state([]);
+	let availableTeams = $state<Team[]>([]);
 
 	onMount(async () => {
 		await loadGroups();
 	});
 
-	async function loadGroups() {
+	async function loadGroups(): Promise<void> {
 		try {
 			groups = await api.listGroups();
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function openCreateModal() {
+	async function openCreateModal(): Promise<void> {
 		newGroupName = '';
 		newGroupTeamId = '';
 		availableTeams = [];
@@ -33,12 +33,12 @@
 				newGroupTeamId = String(availableTeams[0].id);
 			}
 		} catch (e) {
-			showError('Failed to load teams: ' + e.message);
+			showError('Failed to load teams: ' + (e as Error).message);
 		}
 		showCreate = true;
 	}
 
-	async function createGroup() {
+	async function createGroup(): Promise<void> {
 		if (!newGroupTeamId) {
 			showError('Please select a team.');
 			return;
@@ -50,7 +50,7 @@
 			await loadGroups();
 			showFlash('Device group created successfully');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 </script>

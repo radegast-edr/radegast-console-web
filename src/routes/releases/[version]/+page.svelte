@@ -1,24 +1,24 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api.js';
-	import { user, showFlash, showError } from '$lib/store.js';
+	import { api } from '$lib/api';
+	import { user, showFlash, showError } from '$lib/store';
 	import { goto } from '$app/navigation';
 	import Modal from '$lib/components/Modal.svelte';
 
-	let currentVersion = $derived(page.params.version);
-	let releases = $state([]);
+	let currentVersion = $derived(page.params.version ?? '');
+	let releases = $state<any[]>([]);
 	let loading = $state(true);
 
 	// Upload new artifact for this version state
 	let showUpload = $state(false);
-	let uploadOS = $state('linux');
+	let uploadOS = $state<'linux' | 'windows' | 'mac'>('linux');
 	let uploadArch = $state('amd64');
-	let uploadFile = $state(null);
+	let uploadFile = $state<File | null>(null);
 	let uploading = $state(false);
 
-	const ARCHES_BY_OS = {
+	const ARCHES_BY_OS: Record<string, Array<{ value: string; label: string }>> = {
 		linux: [
 			{ value: 'amd64', label: 'amd64 (x86_64)' },
 			{ value: 'arm64', label: 'arm64 (AArch64)' }
@@ -38,24 +38,24 @@
 
 	onMount(loadReleases);
 
-	async function loadReleases() {
+	async function loadReleases(): Promise<void> {
 		loading = true;
 		try {
 			releases = await api.listReleases();
-		} catch (e) {
+		} catch (e: any) {
 			showError(e.message);
 		} finally {
 			loading = false;
 		}
 	}
 
-	function formatBytes(bytes) {
+	function formatBytes(bytes: number): string {
 		if (bytes < 1024) return `${bytes} B`;
 		if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
 		return `${(bytes / 1048576).toFixed(1)} MB`;
 	}
 
-	async function uploadArtifact() {
+	async function uploadArtifact(): Promise<void> {
 		if (!uploadFile) {
 			showError('Please select a file');
 			return;
@@ -67,14 +67,14 @@
 			uploadFile = null;
 			await loadReleases();
 			showFlash(`Artifact for ${uploadOS}/${uploadArch} uploaded successfully`);
-		} catch (e) {
+		} catch (e: any) {
 			showError(e.message);
 		} finally {
 			uploading = false;
 		}
 	}
 
-	async function deleteArtifact(os, arch) {
+	async function deleteArtifact(os: string, arch: string): Promise<void> {
 		if (!confirm(`Delete artifact ${currentVersion}/${os}/${arch}? This cannot be undone.`)) return;
 		try {
 			await api.deleteRelease(currentVersion, os, arch);
@@ -84,7 +84,7 @@
 			if (releases.filter(r => r.version === currentVersion).length === 0) {
 				goto(`${base}/releases`);
 			}
-		} catch (e) {
+		} catch (e: any) {
 			showError(e.message);
 		}
 	}
@@ -322,7 +322,12 @@
 				class="form-control"
 				id="art-file"
 				accept=".zip"
-				onchange={(e) => (uploadFile = e.target.files[0])}
+				onchange={(e) => {
+					const target = e.target as HTMLInputElement;
+					if (target && target.files) {
+						uploadFile = target.files[0];
+					}
+				}}
 				required
 			/>
 		</div>

@@ -1,9 +1,13 @@
-<script>
-	import { api } from '$lib/api.js';
+<script lang="ts">
+	import { api } from '$lib/api';
 
-	let { token = '', isReinstall = false, onDismiss = () => {} } = $props();
+	let { token = '', isReinstall = false, onDismiss = () => {} } = $props<{
+		token?: string;
+		isReinstall?: boolean;
+		onDismiss?: () => void;
+	}>();
 
-	let selectedOS = $state('linux');
+	let selectedOS = $state<'linux' | 'windows' | 'macos'>('linux');
 	const backendUrl = api.getBackendUrl().replace(/\/$/, '');
 </script>
 

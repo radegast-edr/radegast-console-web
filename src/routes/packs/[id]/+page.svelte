@@ -1,13 +1,26 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
-	import { api } from '$lib/api.js';
-	import { user, showFlash, showError } from '$lib/store.js';
+	import { api, type Pack, type Team, type PackVersion } from '$lib/api';
+	import { user, showFlash, showError } from '$lib/store';
 	import { goto } from '$app/navigation';
 	import Modal from '$lib/components/Modal.svelte';
 
-	let pack = $state(null);
-	let versions = $state([]);
+	interface GroupState {
+		groupId: number;
+		groupName: string;
+		hasWrite: boolean;
+		checked: boolean;
+		initialChecked: boolean;
+		enabledId: number | null;
+		packVersionId: string;
+		initialPackVersionId: string;
+		autoupdate: boolean;
+		initialAutoupdate: boolean;
+	}
+
+	let pack = $state<Pack | null>(null);
+	let versions = $state<PackVersion[]>([]);
 	let loading = $state(true);
 
 	// Pack Edit State
@@ -19,30 +32,33 @@
 	let showUpload = $state(false);
 	let uploadVersion = $state('');
 	let uploadReleaseNotes = $state('');
-	let uploadFile = $state(null);
+	let uploadFile = $state<File | null>(null);
 	let uploading = $state(false);
 
 	// Group Access State
-	let groupStates = $state([]);
+	let groupStates = $state<GroupState[]>([]);
 	let savingAccess = $state(false);
 
-	let teams = $state([]);
-	let editTeamIds = $state([]);
+	let teams = $state<Team[]>([]);
+	let editTeamIds = $state<number[]>([]);
 
-	let canManage = $derived(
-		$user && (
-			$user.role === 'maintainer' ||
-			$user.role === 'admin' ||
-			(pack && pack.creator_id === $user.id) ||
-			(pack && pack.team_ids && teams.some((t) => pack.team_ids.includes(t.id) && t.permission_pack === 'write'))
-		)
-	);
+	let canManage = $derived.by(() => {
+		const p = pack;
+		if (!p || !$user) return false;
+		if ($user.role === 'maintainer' || $user.role === 'admin') return true;
+		if (p.creator_id === $user.id) return true;
+		if (p.team_ids && p.team_ids.length > 0) {
+			const ids = p.team_ids;
+			return teams.some((t) => ids.includes(t.id) && t.permission_pack === 'write');
+		}
+		return false;
+	});
 
 	$effect(() => {
 		loadAll();
 	});
 
-	async function loadAll() {
+	async function loadAll(): Promise<void> {
 		loading = true;
 		const id = Number(page.params.id);
 		try {
@@ -60,11 +76,11 @@
 			editDesc = packRes.description;
 			editTeamIds = packRes.team_ids || [];
 
-			const userTeamIds = new Set(teamsRes.map((t) => t.id));
+			const userTeamIds = new Set(teamsRes.map((t: any) => t.id));
 
 			// Load details and enabled state for all visible groups
 			const groupDataList = await Promise.all(
-				groupsRes.map(async (g) => {
+				groupsRes.map(async (g: any) => {
 					const [detail, enabled] = await Promise.all([
 						api.getGroup(g.id),
 						api.listEnabledPacks(g.id)
@@ -80,7 +96,7 @@
 
 			groupStates = groupDataList.map((item) => {
 				const enabledPack = item.enabledPacks.find((pe) => pe.pack_name === packRes.name);
-				const hasWrite = item.detail.teams.some(
+				const hasWrite = !!item.detail.teams?.some(
 					(team) => userTeamIds.has(team.id) && team.permission_pack === 'write'
 				);
 				return {
@@ -97,14 +113,15 @@
 				};
 			});
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		} finally {
 			loading = false;
 		}
 	}
 
-	async function updatePackDetails() {
-		if ($user.role !== 'admin' && $user.role !== 'maintainer' && editTeamIds.length === 0) {
+	async function updatePackDetails(): Promise<void> {
+		if (!pack) return;
+		if ($user && $user.role !== 'admin' && $user.role !== 'maintainer' && editTeamIds.length === 0) {
 			showError('You must select at least one team for this private pack.');
 			return;
 		}
@@ -114,24 +131,26 @@
 			showFlash('Pack updated successfully');
 			await loadAll();
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		} finally {
 			savingPack = false;
 		}
 	}
 
-	async function deletePack() {
+	async function deletePack(): Promise<void> {
+		if (!pack) return;
 		if (!confirm('Are you sure you want to delete this pack and all its versions? This cannot be undone.')) return;
 		try {
 			await api.deletePack(pack.id);
 			showFlash('Pack deleted');
 			goto(`${base}/packs`);
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function uploadPackVersion() {
+	async function uploadPackVersion(): Promise<void> {
+		if (!pack) return;
 		if (!uploadFile) {
 			showError('Please select a zip file');
 			return;
@@ -143,13 +162,14 @@
 			showFlash('New version uploaded');
 			await loadAll();
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		} finally {
 			uploading = false;
 		}
 	}
 
-	async function downloadVersionFile(v) {
+	async function downloadVersionFile(v: PackVersion): Promise<void> {
+		if (!pack) return;
 		try {
 			const res = await api.downloadVersion(v.id);
 			const blob = await res.blob();
@@ -162,11 +182,11 @@
 			window.URL.revokeObjectURL(url);
 			document.body.removeChild(a);
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function saveGroupAccess() {
+	async function saveGroupAccess(): Promise<void> {
 		savingAccess = true;
 		try {
 			for (const gs of groupStates) {
@@ -177,7 +197,7 @@
 
 				if (!hasChanged) continue;
 
-				if (gs.initialChecked) {
+				if (gs.initialChecked && gs.enabledId !== null) {
 					// Need to disable the old mapping first
 					await api.disablePack(gs.groupId, gs.enabledId);
 				}
@@ -190,7 +210,7 @@
 			showFlash('Group access saved successfully');
 			await loadAll();
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		} finally {
 			savingAccess = false;
 		}
@@ -227,7 +247,7 @@
 							<div class="mb-3">
 								<span class="d-block fw-bold small text-secondary mb-1">Team Access (Private Pack)</span>
 								<p class="text-muted small mb-2">
-									{#if $user.role === 'admin' || $user.role === 'maintainer'}
+									{#if $user && ($user.role === 'admin' || $user.role === 'maintainer')}
 										Select one or more teams to make this pack private, or leave all unselected to keep it public.
 									{:else}
 										Select one or more teams that you want to associate this private pack with.
@@ -235,7 +255,7 @@
 								</p>
 								<div class="border rounded p-3 bg-light mb-3" style="max-height: 200px; overflow-y: auto;">
 									{#each teams as team}
-										{#if $user.role === 'admin' || $user.role === 'maintainer' || team.permission_pack === 'write'}
+										{#if $user && ($user.role === 'admin' || $user.role === 'maintainer' || team.permission_pack === 'write')}
 											<div class="form-check mb-1">
 												<input
 													class="form-check-input"
@@ -244,7 +264,8 @@
 													value={team.id}
 													checked={editTeamIds.includes(team.id)}
 													onchange={(e) => {
-														if (e.target.checked) {
+														const target = e.target as HTMLInputElement;
+														if (target.checked) {
 															editTeamIds = [...editTeamIds, team.id];
 														} else {
 															editTeamIds = editTeamIds.filter((id) => id !== team.id);
@@ -289,7 +310,7 @@
 							<div class="mt-2">
 								<span class="fw-bold small text-secondary">Associated Teams:</span>
 								<div class="d-flex gap-1 flex-wrap mt-1">
-									{#each teams.filter((t) => pack.team_ids.includes(t.id)) as t}
+									{#each teams.filter((t) => pack?.team_ids?.includes(t.id)) as t}
 										<span class="badge bg-light text-dark border">{t.name}</span>
 									{:else}
 										<span class="text-muted small">Loading team names...</span>
@@ -451,7 +472,12 @@
 				class="form-control"
 				id="fileInput"
 				accept=".zip"
-				onchange={(e) => (uploadFile = e.target.files[0])}
+				onchange={(e) => {
+					const target = e.target as HTMLInputElement;
+					if (target && target.files) {
+						uploadFile = target.files[0];
+					}
+				}}
 				required
 			/>
 		</div>

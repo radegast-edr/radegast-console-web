@@ -1,11 +1,11 @@
-<script>
+<script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api.js';
-	import { showFlash, showError } from '$lib/store.js';
+	import { api, type Team } from '$lib/api';
+	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 
-	let teams = $state([]);
+	let teams = $state<Team[]>([]);
 	let showCreate = $state(false);
 	let newTeamName = $state('');
 
@@ -13,15 +13,15 @@
 		await loadTeams();
 	});
 
-	async function loadTeams() {
+	async function loadTeams(): Promise<void> {
 		try {
 			teams = await api.listTeams();
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 
-	async function createTeam() {
+	async function createTeam(): Promise<void> {
 		try {
 			await api.createTeam({
 				name: newTeamName,
@@ -35,7 +35,7 @@
 			await loadTeams();
 			showFlash('Team created successfully');
 		} catch (e) {
-			showError(e.message);
+			showError((e as Error).message);
 		}
 	}
 </script>
