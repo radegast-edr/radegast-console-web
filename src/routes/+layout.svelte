@@ -117,7 +117,7 @@
 <svelte:window onbeforeunload={handleBeforeUnload} />
 
 <Navbar />
-<main class="container mt-4">
+<main class="container-fluid px-4 mt-4">
 	{#if $user && $user.mfa_setup_missing}
 		<div class="alert alert-danger shadow-sm border-0 d-flex align-items-center gap-3 mb-4" style="border-radius: 12px; padding: 1.25rem;">
 			<div class="fs-3">⚠️</div>

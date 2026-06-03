@@ -323,8 +323,26 @@ export const api = {
 		})),
 
 	// Logs
-	listLogs: (page = 1, limit = 100, device_id: number | null = null): Promise<Log[]> =>
-		call(callOp('list_logs_api_v1_logs__get', { params: { query: { page, limit, ...(device_id ? { device_id } : {}) } } })),
+	listLogs: (
+		page = 1,
+		limit = 100,
+		device_id: number | null = null,
+		from_time: string | null = null,
+		to_time: string | null = null
+	): Promise<Log[]> =>
+		call(
+			callOp('list_logs_api_v1_logs__get', {
+				params: {
+					query: {
+						page,
+						limit,
+						...(device_id ? { device_id } : {}),
+						...(from_time ? { from_time } : {}),
+						...(to_time ? { to_time } : {})
+					}
+				}
+			})
+		),
 
 	getUnreadLogsCount: (): Promise<{ unread_count: number }> =>
 		call(callOp('get_unread_logs_count_api_v1_logs_unread_count_get', {})),

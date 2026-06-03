@@ -4082,6 +4082,8 @@ export interface operations {
         parameters: {
             query?: {
                 device_id?: number | null;
+                from_time?: string | null;
+                to_time?: string | null;
                 page?: number;
                 limit?: number;
             };

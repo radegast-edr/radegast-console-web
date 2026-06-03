@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { isDeviceActive, formatFullDateTime } from './utils';
+import { isDeviceActive, formatFullDateTime, matchesJsonata, mapSeverityToNumber } from './utils';
 
 describe('utils', () => {
 	describe('isDeviceActive', () => {
@@ -54,6 +54,104 @@ describe('utils', () => {
 			const formatted = formatFullDateTime(dtStr);
 			expect(formatted).not.toBe('Never');
 			expect(formatted).toContain('2026');
+		});
+	});
+
+	describe('matchesJsonata', () => {
+		const testObj = {
+			meta: {
+				device: 'MyLaptop',
+				status: 'online'
+			},
+			alert: {
+				event: 'malware_detected',
+				severity: 'critical'
+			}
+		};
+
+		it('returns true for empty query', async () => {
+			expect(await matchesJsonata(testObj, '')).toBe(true);
+			expect(await matchesJsonata(testObj, '   ')).toBe(true);
+		});
+
+		it('evaluates basic fields', async () => {
+			expect(await matchesJsonata(testObj, 'meta.device = "MyLaptop"')).toBe(true);
+			expect(await matchesJsonata(testObj, 'meta.device = "Other"')).toBe(false);
+			expect(await matchesJsonata(testObj, 'alert.severity = "critical"')).toBe(true);
+		});
+
+		it('supports and, or, not operators and parentheses', async () => {
+			expect(await matchesJsonata(testObj, 'meta.device = "MyLaptop" and alert.severity = "critical"')).toBe(true);
+			expect(await matchesJsonata(testObj, 'meta.device = "MyLaptop" and alert.severity = "low"')).toBe(false);
+			expect(await matchesJsonata(testObj, 'meta.device = "Other" or alert.severity = "critical"')).toBe(true);
+			expect(await matchesJsonata(testObj, 'not(meta.status = "offline")')).toBe(true);
+			expect(await matchesJsonata(testObj, '(meta.device = "MyLaptop" or meta.device = "Other") and alert.severity = "critical"')).toBe(true);
+		});
+
+		it('returns false for invalid jsonata query', async () => {
+			expect(await matchesJsonata(testObj, 'invalid syntax ===')).toBe(false);
+		});
+
+		it('evaluates status and last_seen matching behavior', async () => {
+			const onlineObj = {
+				meta: {
+					device: 'MyLaptop',
+					status: 'online'
+				},
+				alert: {}
+			};
+			const offlineObj = {
+				meta: {
+					device: 'MyLaptop',
+					status: 'offline',
+					last_seen: 'June 3, 2026, 3:00 PM'
+				},
+				alert: {}
+			};
+
+			expect(await matchesJsonata(onlineObj, 'meta.status = "online"')).toBe(true);
+			expect(await matchesJsonata(onlineObj, 'meta.status = "offline"')).toBe(false);
+			expect(await matchesJsonata(onlineObj, 'meta.last_seen')).toBe(false);
+
+			expect(await matchesJsonata(offlineObj, 'meta.status = "offline"')).toBe(true);
+			expect(await matchesJsonata(offlineObj, 'meta.last_seen')).toBe(true);
+			expect(await matchesJsonata(offlineObj, 'meta.last_seen = "June 3, 2026, 3:00 PM"')).toBe(true);
+		});
+	});
+
+	describe('mapSeverityToNumber', () => {
+		it('maps standard levels correctly', () => {
+			expect(mapSeverityToNumber('trace')).toBe(1);
+			expect(mapSeverityToNumber('debug')).toBe(5);
+			expect(mapSeverityToNumber('info')).toBe(9);
+			expect(mapSeverityToNumber('warn')).toBe(13);
+			expect(mapSeverityToNumber('error')).toBe(17);
+			expect(mapSeverityToNumber('fatal')).toBe(21);
+		});
+
+		it('maps custom/syslog levels correctly', () => {
+			expect(mapSeverityToNumber('low')).toBe(9);
+			expect(mapSeverityToNumber('medium')).toBe(13);
+			expect(mapSeverityToNumber('med')).toBe(13);
+			expect(mapSeverityToNumber('high')).toBe(17);
+			expect(mapSeverityToNumber('critical')).toBe(21);
+			expect(mapSeverityToNumber('crit')).toBe(21);
+			expect(mapSeverityToNumber('alert')).toBe(23);
+			expect(mapSeverityToNumber('emergency')).toBe(24);
+			expect(mapSeverityToNumber('emerg')).toBe(24);
+			expect(mapSeverityToNumber('notice')).toBe(12);
+			expect(mapSeverityToNumber('warning')).toBe(13);
+			expect(mapSeverityToNumber('informational')).toBe(9);
+		});
+
+		it('handles casing, spacing, and numbers', () => {
+			expect(mapSeverityToNumber('  ERROR  ')).toBe(17);
+			expect(mapSeverityToNumber('CRITICAL')).toBe(21);
+			expect(mapSeverityToNumber('15')).toBe(15);
+			expect(mapSeverityToNumber(18)).toBe(18);
+			expect(mapSeverityToNumber(null)).toBe(0);
+			expect(mapSeverityToNumber(undefined)).toBe(0);
+			expect(mapSeverityToNumber('unknown')).toBe(0);
 		});
 	});
 });

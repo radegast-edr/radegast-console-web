@@ -14,7 +14,7 @@
 </script>
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-	<div class="container">
+	<div class="container-fluid px-4">
 		<a class="navbar-brand" href="{base}/">Radegast EDR Console</a>
 		<button
 			class="navbar-toggler"
