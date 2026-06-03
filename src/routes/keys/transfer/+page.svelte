@@ -64,7 +64,7 @@
 
 	async function pollTransfer(): Promise<void> {
 		try {
-			const status = await api.transferGet(transferId);
+			const status = await api.transferGet(String(transferId));
 			if (status.status === 'completed' && status.encrypted_private_key) {
 				if (pollInterval !== undefined) {
 					clearInterval(pollInterval);
@@ -77,7 +77,7 @@
 
 				if (!ephPriv) throw new Error('Ephemeral private key missing from session storage');
 
-				const mainPriv = decrypt(status.encrypted_private_key, ephPriv);
+				const mainPriv = decrypt(status.encrypted_private_key!, ephPriv);
 				
 				let matchedPubKey: string | null = null;
 				try {
@@ -124,14 +124,14 @@
 			return;
 		}
 		try {
-			const transfer = await api.transferGet(senderTransferId.trim());
+			const transfer = await api.transferGet(String(senderTransferId.trim()));
 			const receiverPub = transfer.receiver_age_public_key;
 
 			const mainPriv = await getStoredPrivateKey(userId);
 			if (!mainPriv) { showError('No private key in this browser.'); return; }
 
 			const encryptedPayload = encrypt(mainPriv, [receiverPub]);
-			await api.transferComplete(senderTransferId.trim(), encryptedPayload);
+			await api.transferComplete(String(senderTransferId.trim()), encryptedPayload);
 			senderSent = true;
 			showFlash('Key sent! The other browser should receive it shortly.');
 		} catch (e) {
@@ -155,10 +155,7 @@
 				// Encrypt main private key with AES key
 				const encryptedMainPriv = await aesEncrypt(mainPriv, aesKeyHex);
 				// Add alongside existing keys as a secondary key
-				await api.setupSecondaryKey({
-					public_key: mainPub,
-					encrypted_private_key: encryptedMainPriv
-				});
+				await api.setupSecondaryKey({ public_key: mainPub, encrypted_private_key: encryptedMainPriv });
 			} else {
 				// Setup keys: generate recovery AGE keypair, encrypt recovery private key with AES key
 				const { publicKey: recoveryPub, privateKey: recoveryPriv } = generateKeypair();
@@ -168,11 +165,7 @@
 				if (hasKeysOnServer) {
 					await api.deleteKeys();
 				}
-				await api.setupKeys({
-					public_key: mainPub,
-					recovery_public_key: recoveryPub,
-					recovery_encrypted_private_key: encryptedRecoveryPriv
-				});
+				await api.setupKeys({ public_key: mainPub, recovery_public_key: recoveryPub, recovery_encrypted_private_key: encryptedRecoveryPriv });
 			}
 
 			if (userId === null) {

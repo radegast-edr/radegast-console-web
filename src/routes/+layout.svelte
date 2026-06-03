@@ -67,11 +67,13 @@
 			const encryptedRecoveryPriv = await aesEncrypt(recoveryPriv, aesKeyHex);
 
 			// 5. Submit to backend
-			await api.setupKeys({
-				public_key: mainPub,
-				recovery_public_key: recoveryPub,
-				recovery_encrypted_private_key: encryptedRecoveryPriv,
-				name: 'Primary Key'
+			await client.POST('/api/v1/auth/keys/setup', {
+				body: {
+					public_key: mainPub,
+					recovery_public_key: recoveryPub,
+					recovery_encrypted_private_key: encryptedRecoveryPriv,
+					name: 'Primary Key'
+				}
 			});
 
 			// 6. Store main private and public key in IndexedDB keyed by user ID
@@ -87,7 +89,8 @@
 			showRecoveryModal = true;
 
 			// Refresh user store
-			$user = await api.me();
+			const { data: me2 } = await client.GET('/api/v1/auth/me', {});
+			$user = me2!;
 		} catch (e: any) {
 			setupError = 'Automatic key setup failed: ' + e.message;
 		} finally {
@@ -143,7 +146,7 @@
 		<div class="alert alert-danger max-width-md mx-3 text-center" style="max-width: 500px;">
 			<h5 class="fw-bold mb-2">Setup Failed</h5>
 			<p>{setupError}</p>
-			<button class="btn btn-primary btn-sm px-4" onclick={() => { setupError = ''; api.me().then(autoSetupKeys); }}>
+			<button class="btn btn-primary btn-sm px-4" onclick={() => { setupError = ''; client.GET('/api/v1/auth/me', {}).then(({ data: me }) => autoSetupKeys(me!)); }}>
 				Retry Key Generation
 			</button>
 		</div>

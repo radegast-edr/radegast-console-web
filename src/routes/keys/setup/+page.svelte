@@ -61,9 +61,9 @@
 			await storePrivateKey(userId, mainPriv, mainPub);
 
 			// Save userId for this email
-			const me = await api.me();
-			if (me && me.email) {
-				localStorage.setItem(`uid_${me.email.toLowerCase().trim()}`, String(userId));
+			const me2 = await api.me();
+			if (me2 && me2.email) {
+				localStorage.setItem(`uid_${me2.email.toLowerCase().trim()}`, String(userId));
 			}
 
 			// 7. Show AES recovery key to user (this is the only time it's shown)

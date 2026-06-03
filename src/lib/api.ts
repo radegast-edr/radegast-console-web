@@ -1,6 +1,13 @@
 import { base } from '$app/paths';
 import { PUBLIC_BACKEND_URL as BACKEND_URL_RAW } from '$env/static/public';
 import { goto } from '$app/navigation';
+import createClient, { type Middleware } from 'openapi-fetch';
+import type { components, paths, operations } from './openapi.d.ts';
+import openapi from './openapi.json';
+
+// ---------------------------------------------------------------------------
+// Resolve backend base URL (handles localhost → actual hostname in dev)
+// ---------------------------------------------------------------------------
 
 let BACKEND_URL = BACKEND_URL_RAW;
 if (typeof window !== 'undefined') {
@@ -13,345 +20,407 @@ if (typeof window !== 'undefined') {
 			url.protocol = window.location.protocol;
 			BACKEND_URL = url.origin + url.pathname;
 		} catch (e) {
-			console.error("Failed to parse PUBLIC_BACKEND_URL:", e);
+			console.error('Failed to parse PUBLIC_BACKEND_URL:', e);
 		}
 	} else if (BACKEND_URL_RAW.startsWith('/')) {
 		BACKEND_URL = window.location.origin + BACKEND_URL_RAW;
 	}
 }
 
-async function request<T = unknown>(method: string, path: string, body: unknown = null, isFormData = false): Promise<T> {
-	const options: RequestInit & { headers: Record<string, string> } = {
-		method,
-		credentials: 'include',
-		headers: {}
-	};
+// ---------------------------------------------------------------------------
+// openapi-fetch client
+// ---------------------------------------------------------------------------
 
-	if (body && !isFormData) {
-		options.headers['Content-Type'] = 'application/json';
-		options.body = JSON.stringify(body);
-	} else if (body && isFormData) {
-		options.body = body as XMLHttpRequestBodyInit;
-	}
+export const client = createClient<paths>({ baseUrl: BACKEND_URL, credentials: 'include' });
 
-	const resp = await fetch(`${BACKEND_URL}${path}`, options);
-
-	if (resp.status === 401 && path !== '/auth/login') {
-		// Session expired or not logged in — send to login page
-		goto(`${base}/login`);
-		throw new Error('Not authenticated');
-	}
-
-	if (!resp.ok) {
-		const error = await resp.json().catch(() => ({ detail: resp.statusText }));
-		// Pydantic validation errors return detail as an array of objects
-		interface PydanticErrorDetail {
-			msg?: string;
+// Middleware: redirect to /login on 401, throw readable errors on all failures
+// noinspection JSUnusedGlobalSymbols
+const errorMiddleware: Middleware = {
+	async onResponse({ response, request }) {
+		if (response.status === 401 && !request.url.endsWith('/auth/login')) {
+			await goto(`${base}/login`);
+			throw new Error('Not authenticated');
 		}
-		const detail = Array.isArray(error.detail)
-			? (error.detail as PydanticErrorDetail[]).map((e) => e.msg || JSON.stringify(e)).join('; ')
-			: error.detail;
-		throw new Error(detail || 'Request failed');
+		if (!response.ok) {
+			const error = await response.json().catch(() => ({ detail: response.statusText }));
+			interface PydanticErrorDetail { msg?: string; }
+			const detail = Array.isArray(error.detail)
+				? (error.detail as PydanticErrorDetail[]).map((e) => e.msg || JSON.stringify(e)).join('; ')
+				: error.detail;
+			throw new Error(detail || 'Request failed');
+		}
+		return response;
 	}
+};
+client.use(errorMiddleware);
 
-	if (resp.headers.get('content-type')?.includes('application/json')) {
-		return resp.json() as Promise<T>;
+// ---------------------------------------------------------------------------
+// Helper: unwrap the openapi-fetch response (data is always present after the
+// middleware above throws on errors).
+// ---------------------------------------------------------------------------
+
+async function call<T>(p: Promise<{ data?: T; error?: unknown }>): Promise<T> {
+	const { data } = await p;
+	return data as T;
+}
+
+// ---------------------------------------------------------------------------
+// Resolve paths and methods dynamically using operationId from openapi.json
+// ---------------------------------------------------------------------------
+
+const operationMap: Record<string, { path: string; method: string }> = {};
+
+for (const [path, pathObj] of Object.entries(openapi.paths || {})) {
+	for (const [method, operationObj] of Object.entries(pathObj || {})) {
+		if (operationObj && typeof operationObj === 'object' && 'operationId' in operationObj) {
+			const opId = operationObj.operationId as string;
+			operationMap[opId] = { path, method: method.toUpperCase() };
+		}
 	}
-	return resp as unknown as T;
 }
 
-export interface UserInfo {
-	id: number;
-	email: string;
-	role: string;
-	verified: boolean;
-	has_keys: boolean;
-	mfa_required_level: string;
-	mfa_setup_missing: boolean;
-	mfa_configured_level: string;
+export function getRoute<OpId extends keyof operations>(operationId: OpId): { path: string; method: string } {
+	const route = operationMap[operationId as string];
+	if (!route) {
+		throw new Error(`Route not found for operation ID: ${operationId as string}`);
+	}
+	return route;
 }
 
-export interface Team {
-	id: number;
-	name: string;
-	permission_pack?: string | null;
-	permission_invite?: string | null;
-	permission_admin?: string | null;
-	permission_logs?: string | null;
-	managing_team_id?: number | null;
+export function getInterpolatedRoute<OpId extends keyof operations>(
+	operationId: OpId,
+	pathParams?: Record<string, string | number>
+): { path: string; method: string } {
+	const { path, method } = getRoute(operationId);
+	let interpolatedPath = path;
+	if (pathParams) {
+		for (const [key, value] of Object.entries(pathParams)) {
+			interpolatedPath = interpolatedPath.replace(`{${key}}`, encodeURIComponent(String(value)));
+		}
+	}
+	return { path: interpolatedPath, method };
 }
 
-export interface Group {
-	id: number;
-	name: string;
-	teams?: Team[];
-	devices?: Device[];
+async function callOp<OpId extends keyof operations>(
+	operationId: OpId,
+	options?: any
+): Promise<any> {
+	const { path, method } = getRoute(operationId);
+	return (client as any)[method](path, options);
 }
 
-export interface Device {
-	id: number;
-	name: string;
-	last_seen?: string;
-	groups?: Group[];
-	token?: string;
-	signature_public_key?: string | null;
-}
+// ---------------------------------------------------------------------------
+// Exported type aliases (derived from the generated schema)
+// ---------------------------------------------------------------------------
 
-export interface DeviceCreateResponse {
-	id: number;
-	name: string;
-	token: string;
-}
+export type UserInfo = components['schemas']['UserResponse'];
+export type Team = components['schemas']['TeamResponse'];
+export type Group = components['schemas']['DeviceGroupResponse'];
+export type Device = components['schemas']['DeviceResponse'];
+export type DeviceDetail = components['schemas']['DeviceDetailResponse'];
+export type DeviceCreateResponse = components['schemas']['DeviceCreateResponse'];
+export type Pack = components['schemas']['PackResponse'];
+export type PackVersion = components['schemas']['PackVersionResponse'];
+export type Log = components['schemas']['LogResponse'];
+export type UserKey = components['schemas']['PublicKeyResponse'];
+export type KeyRecoverResponse = components['schemas']['KeyRecoverResponse'];
+export type KeyTransferInitiateResponse = components['schemas']['KeyTransferInitiateResponse'];
+export type KeyTransferStatusResponse = components['schemas']['KeyTransferStatusResponse'];
+export type EnabledPack = components['schemas']['PackEnabledResponse'];
+export type MfaSettings = components['schemas']['MfaSettingsResponse'];
+export type NotificationSettings = components['schemas']['NotificationSettings'];
 
-export interface Pack {
-	id: number;
-	name: string;
-	description: string;
-	creator_id: number;
-	team_ids?: number[];
-	teams?: Team[];
-}
-
-export interface PackVersion {
-	id: number;
-	pack_id: number;
-	version: string;
-	release_notes: string;
-	released: string;
-}
-
-export interface Log {
-	id: number;
-	device_id: number;
-	content: string;
-	seen: boolean;
-	time: string;
-	signature?: string | null;
-}
-
-export interface UserKey {
-	id: number;
-	public_key: string;
-	created_at?: string;
-}
-
-export interface KeyRecoverResponse {
-	public_key: string;
-	encrypted_private_key: string;
-}
-
-export interface KeyTransferInitiateResponse {
-	transfer_id: string;
-}
-
-export interface KeyTransferStatusResponse {
-	transfer_id: string;
-	status: string;
-	receiver_age_public_key: string;
-	encrypted_private_key?: string;
-}
-
-export interface EnabledPack {
-	id: number;
-	group_id: number;
-	pack_version_id: number;
-	pack_name: string;
-	autoupdate: boolean;
-	version?: string | null;
-}
-
-export interface WebAuthnCreationOptionsJSON {
-	challenge: string | ArrayBuffer;
-	user: {
-		id: string | ArrayBuffer;
-		name: string;
-		displayName: string;
-	};
-	rp: {
-		id?: string;
-		name: string;
-	};
-	pubKeyCredParams: Array<{
-		type: string;
-		alg: number;
-	}>;
-	timeout?: number;
-	excludeCredentials?: Array<{
-		id: string | ArrayBuffer;
-		type: string;
-		transports?: string[];
-	}>;
-	authenticatorSelection?: {
-		authenticatorAttachment?: string;
-		requireResidentKey?: boolean;
-		userVerification?: string;
-	};
-	attestation?: string;
-}
-
-export interface WebAuthnRequestOptionsJSON {
-	challenge: string | ArrayBuffer;
-	timeout?: number;
-	rpId?: string;
-	allowCredentials?: Array<{
-		id: string | ArrayBuffer;
-		type: string;
-		transports?: string[];
-	}>;
-	userVerification?: string;
-}
+// ---------------------------------------------------------------------------
+// API surface
+// ---------------------------------------------------------------------------
 
 export const api = {
 	// Auth
-	register: (email: string, password: string, turnstile_token: string | null = null): Promise<unknown> =>
-		request<unknown>('POST', '/auth/register', { email, password, turnstile_token }),
-	login: (email: string, password: string, public_key: string | null = null): Promise<{ token?: string; status?: string; mfa_token?: string; methods?: string[]; mfa_required?: boolean; mfa_required_level?: string; mfa_setup_missing?: boolean }> =>
-		request<{ token?: string; status?: string; mfa_token?: string; methods?: string[]; mfa_required?: boolean; mfa_required_level?: string; mfa_setup_missing?: boolean }>('POST', '/auth/login', { email, password, public_key }),
-	logout: (): Promise<void> => request<void>('POST', '/auth/logout'),
-	me: (): Promise<UserInfo> => request<UserInfo>('GET', '/auth/me'),
-	verify: (token: string): Promise<unknown> => request<unknown>('GET', `/auth/verify?token=${token}`),
-	setupKeys: (data: unknown): Promise<unknown> => request<unknown>('POST', '/auth/keys/setup', data),
-	setupSecondaryKey: (data: unknown): Promise<unknown> => request<unknown>('POST', '/auth/keys/secondary', data),
-	deleteKeys: (): Promise<unknown> => request<unknown>('DELETE', '/auth/keys'),
-	recoverKeys: (): Promise<KeyRecoverResponse[]> => request<KeyRecoverResponse[]>('GET', '/auth/keys/recover'),
-	listKeys: (): Promise<UserKey[]> => request<UserKey[]>('GET', '/auth/keys'),
-	addKey: (data: unknown): Promise<unknown> => request<unknown>('POST', '/auth/keys', data),
-	deleteKey: (id: string | number): Promise<unknown> => request<unknown>('DELETE', `/auth/keys/${id}`),
-	deviceLogin: (token: string): Promise<unknown> => request<unknown>('POST', '/auth/device/login', { token }),
-	changePassword: (old_password: string, new_password: string): Promise<unknown> =>
-		request<unknown>('POST', '/auth/change-password', { old_password, new_password }),
-	getNotifications: (): Promise<unknown> => request<unknown>('GET', '/auth/notifications'),
-	updateNotifications: (data: unknown): Promise<unknown> => request<unknown>('PUT', '/auth/notifications', data),
+	register: (email: string, password: string, turnstile_token: string | null = null) =>
+		call(callOp('register_api_v1_auth_register_post', { body: { email, password, turnstile_token } })),
+
+	login: (email: string, password: string, public_key: string | null = null) =>
+		call(callOp('login_api_v1_auth_login_post', { body: { email, password, public_key } })),
+
+	logout: () =>
+		call(callOp('logout_api_v1_auth_logout_post', {})),
+
+	me: (): Promise<UserInfo> =>
+		call(callOp('me_api_v1_auth_me_get', {})),
+
+	verify: (token: string) =>
+		call(callOp('verify_email_api_v1_auth_verify_get', { params: { query: { token } } })),
+
+	setupKeys: (body: components['schemas']['KeySetupRequest']) =>
+		call(callOp('setup_keys_api_v1_auth_keys_setup_post', { body })),
+
+	setupSecondaryKey: (body: components['schemas']['KeySecondarySetupRequest']) =>
+		call(callOp('setup_secondary_key_api_v1_auth_keys_secondary_post', { body })),
+
+	deleteKeys: () =>
+		call(callOp('delete_all_keys_api_v1_auth_keys_delete', {})),
+
+	recoverKeys: (): Promise<KeyRecoverResponse[]> =>
+		call(callOp('recover_keys_api_v1_auth_keys_recover_get', {})),
+
+	listKeys: (): Promise<UserKey[]> =>
+		call(callOp('list_user_keys_api_v1_auth_keys_get', {})),
+
+	addKey: (body: components['schemas']['PublicKeyAddRequest']) =>
+		call(callOp('add_user_key_api_v1_auth_keys_post', { body })),
+
+	deleteKey: (key_id: number) =>
+		call(callOp('delete_user_key_api_v1_auth_keys__key_id__delete', { params: { path: { key_id } } })),
+
+	deviceLogin: (token: string) =>
+		call(callOp('device_login_api_v1_auth_device_login_post', { body: { token } })),
+
+	changePassword: (old_password: string, new_password: string) =>
+		call(callOp('change_password_api_v1_auth_change_password_post', { body: { old_password, new_password } })),
+
+	getNotifications: (): Promise<NotificationSettings> =>
+		call(callOp('get_notifications_api_v1_auth_notifications_get', {})),
+
+	updateNotifications: (body: NotificationSettings) =>
+		call(callOp('update_notifications_api_v1_auth_notifications_put', { body })),
 
 	// Teams
-	listTeams: (): Promise<Team[]> => request<Team[]>('GET', '/teams/'),
-	createTeam: (data: unknown): Promise<Team> => request<Team>('POST', '/teams/', data),
-	getTeam: (id: string | number): Promise<Team> => request<Team>('GET', `/teams/${id}`),
-	updateTeam: (id: string | number, data: unknown): Promise<Team> => request<Team>('PUT', `/teams/${id}`, data),
-	inviteToTeam: (teamId: string | number, email: string): Promise<unknown> =>
-		request<unknown>('POST', `/teams/${teamId}/invite`, { email }),
-	listMembers: (teamId: string | number): Promise<UserInfo[]> => request<UserInfo[]>('GET', `/teams/${teamId}/members`),
-	removeMember: (teamId: string | number, userId: string | number): Promise<unknown> =>
-		request<unknown>('DELETE', `/teams/${teamId}/members/${userId}`),
-	listTeamGroups: (teamId: string | number): Promise<Group[]> => request<Group[]>('GET', `/teams/${teamId}/groups`),
-	createTeamGroup: (teamId: string | number, name: string): Promise<Group> =>
-		request<Group>('POST', `/teams/${teamId}/groups`, { name }),
-	linkGroupToTeam: (teamId: string | number, groupId: string | number): Promise<unknown> =>
-		request<unknown>('POST', `/teams/${teamId}/groups/${groupId}/link`),
-	listTeamDevices: (teamId: string | number): Promise<Device[]> => request<Device[]>('GET', `/teams/${teamId}/devices`),
+	listTeams: (): Promise<Team[]> =>
+		call(callOp('list_teams_api_v1_teams__get', {})),
+
+	createTeam: (body: components['schemas']['TeamCreate']): Promise<Team> =>
+		call(callOp('create_team_api_v1_teams__post', { body })),
+
+	getTeam: (team_id: number): Promise<Team> =>
+		call(callOp('get_team_api_v1_teams__team_id__get', { params: { path: { team_id } } })),
+
+	updateTeam: (team_id: number, body: components['schemas']['TeamUpdate']): Promise<Team> =>
+		call(callOp('update_team_api_v1_teams__team_id__put', { params: { path: { team_id } }, body })),
+
+	inviteToTeam: (team_id: number, email: string) =>
+		call(callOp('invite_to_team_api_v1_teams__team_id__invite_post', { params: { path: { team_id } }, body: { email } })),
+
+	listMembers: (team_id: number): Promise<UserInfo[]> =>
+		call(callOp('list_members_api_v1_teams__team_id__members_get', { params: { path: { team_id } } })),
+
+	removeMember: (team_id: number, user_id: number) =>
+		call(callOp('remove_member_api_v1_teams__team_id__members__user_id__delete', { params: { path: { team_id, user_id } } })),
+
+	listTeamGroups: (team_id: number): Promise<Group[]> =>
+		call(callOp('list_team_groups_api_v1_teams__team_id__groups_get', { params: { path: { team_id } } })),
+
+	createTeamGroup: (team_id: number, name: string): Promise<Group> =>
+		call(callOp('create_team_group_api_v1_teams__team_id__groups_post', { params: { path: { team_id } }, body: { name } })),
+
+	linkGroupToTeam: (team_id: number, group_id: number) =>
+		call(callOp('link_group_to_team_api_v1_teams__team_id__groups__group_id__link_post', { params: { path: { team_id, group_id } } })),
+
+	listTeamDevices: (team_id: number): Promise<Device[]> =>
+		call(callOp('list_team_devices_api_v1_teams__team_id__devices_get', { params: { path: { team_id } } })),
 
 	// Devices
-	createDevice: (name: string, group_id: string | number): Promise<DeviceCreateResponse> =>
-		request<DeviceCreateResponse>('POST', '/devices/', { name, group_id }),
-	listDevices: (): Promise<Device[]> => request<Device[]>('GET', '/devices/'),
-	getDevice: (id: string | number): Promise<Device> => request<Device>('GET', `/devices/${id}`),
-	renameDevice: (id: string | number, name: string): Promise<Device> =>
-		request<Device>('PATCH', `/devices/${id}`, { name }),
-	addDeviceToGroup: (deviceId: string | number, groupId: string | number): Promise<unknown> =>
-		request<unknown>('POST', `/devices/${deviceId}/groups/${groupId}`),
-	removeDeviceFromGroup: (deviceId: string | number, groupId: string | number): Promise<unknown> =>
-		request<unknown>('DELETE', `/devices/${deviceId}/groups/${groupId}`),
-	deleteDevice: (deviceId: string | number): Promise<unknown> => request<unknown>('DELETE', `/devices/${deviceId}`),
-	reinstallDevice: (deviceId: string | number): Promise<DeviceCreateResponse> => request<DeviceCreateResponse>('POST', `/devices/${deviceId}/reinstall`),
+	createDevice: (name: string, group_id: number): Promise<DeviceCreateResponse> =>
+		call(callOp('create_device_api_v1_devices__post', { body: { name, group_id } })),
+
+	listDevices: (): Promise<Device[]> =>
+		call(callOp('list_devices_api_v1_devices__get', {})),
+
+	getDevice: (device_id: number): Promise<DeviceDetail> =>
+		call(callOp('get_device_api_v1_devices__device_id__get', { params: { path: { device_id } } })),
+
+	renameDevice: (device_id: number, name: string): Promise<Device> =>
+		call(callOp('rename_device_api_v1_devices__device_id__patch', { params: { path: { device_id } }, body: { name } })),
+
+	addDeviceToGroup: (device_id: number, group_id: number) =>
+		call(callOp('add_device_to_group_api_v1_devices__device_id__groups__group_id__post', { params: { path: { device_id, group_id } } })),
+
+	removeDeviceFromGroup: (device_id: number, group_id: number) =>
+		call(callOp('remove_device_from_group_api_v1_devices__device_id__groups__group_id__delete', { params: { path: { device_id, group_id } } })),
+
+	deleteDevice: (device_id: number) =>
+		call(callOp('delete_device_api_v1_devices__device_id__delete', { params: { path: { device_id } } })),
+
+	reinstallDevice: (device_id: number): Promise<DeviceCreateResponse> =>
+		call(callOp('reinstall_device_api_v1_devices__device_id__reinstall_post', { params: { path: { device_id } } })),
 
 	// Device Groups
-	listGroups: (): Promise<Group[]> => request<Group[]>('GET', '/groups/'),
-	getGroup: (id: string | number): Promise<Group> => request<Group>('GET', `/groups/${id}`),
-	renameGroup: (id: string | number, name: string): Promise<Group> =>
-		request<Group>('PATCH', `/groups/${id}`, { name }),
-	unlinkGroupFromTeam: (groupId: string | number, teamId: string | number): Promise<unknown> =>
-		request<unknown>('DELETE', `/groups/${groupId}/teams/${teamId}`),
-	addDeviceToGroupViaGroup: (groupId: string | number, deviceId: string | number): Promise<unknown> =>
-		request<unknown>('POST', `/groups/${groupId}/devices/${deviceId}`),
-	removeDeviceFromGroupViaGroup: (groupId: string | number, deviceId: string | number): Promise<unknown> =>
-		request<unknown>('DELETE', `/groups/${groupId}/devices/${deviceId}`),
+	listGroups: (): Promise<Group[]> =>
+		call(callOp('list_groups_api_v1_groups__get', {})),
+
+	getGroup: (group_id: number): Promise<Group> =>
+		call(callOp('get_group_api_v1_groups__group_id__get', { params: { path: { group_id } } })),
+
+	renameGroup: (group_id: number, name: string): Promise<Group> =>
+		call(callOp('rename_group_api_v1_groups__group_id__patch', { params: { path: { group_id } }, body: { name } })),
+
+	unlinkGroupFromTeam: (group_id: number, team_id: number) =>
+		call(callOp('unlink_group_from_team_api_v1_groups__group_id__teams__team_id__delete', { params: { path: { group_id, team_id } } })),
+
+	addDeviceToGroupViaGroup: (group_id: number, device_id: number) =>
+		call(callOp('add_device_to_group_api_v1_groups__group_id__devices__device_id__post', { params: { path: { group_id, device_id } } })),
+
+	removeDeviceFromGroupViaGroup: (group_id: number, device_id: number) =>
+		call(callOp('remove_device_from_group_api_v1_groups__group_id__devices__device_id__delete', { params: { path: { group_id, device_id } } })),
 
 	// Packs
-	listPacks: (): Promise<Pack[]> => request<Pack[]>('GET', '/packs/'),
-	createPack: (name: string, description: string, team_ids: (string | number)[] | null = null): Promise<Pack> =>
-		request<Pack>('POST', '/packs/', { name, description, team_ids }),
-	updatePack: (id: string | number, name: string, description: string, team_ids: (string | number)[] | null = null): Promise<Pack> =>
-		request<Pack>('PATCH', `/packs/${id}`, { name, description, team_ids }),
-	deletePack: (id: string | number): Promise<unknown> => request<unknown>('DELETE', `/packs/${id}`),
-	getPack: (id: string | number): Promise<Pack> => request<Pack>('GET', `/packs/${id}`),
-	listVersions: (packId: string | number): Promise<PackVersion[]> => request<PackVersion[]>('GET', `/packs/${packId}/versions`),
-	downloadVersion: (versionId: string | number): Promise<Response> => request<Response>('GET', `/packs/download/${versionId}`),
-	uploadVersion: (packId: string | number, version: string, file: File, releaseNotes = ''): Promise<PackVersion> => {
-		const formData = new FormData();
-		formData.append('file', file);
-		if (releaseNotes) {
-			formData.append('release_notes', releaseNotes);
-		}
-		return request<PackVersion>('POST', `/packs/${packId}/versions?version=${version}`, formData, true);
+	listPacks: (): Promise<Pack[]> =>
+		call(callOp('list_packs_api_v1_packs__get', {})),
+
+	createPack: (name: string, description: string, team_ids: number[] | null = null): Promise<Pack> =>
+		call(callOp('create_pack_api_v1_packs__post', { body: { name, description, team_ids } })),
+
+	updatePack: (pack_id: number, name: string, description: string, team_ids: number[] | null = null): Promise<Pack> =>
+		call(callOp('update_pack_api_v1_packs__pack_id__patch', { params: { path: { pack_id } }, body: { name, description, team_ids } })),
+
+	deletePack: (pack_id: number) =>
+		call(callOp('delete_pack_api_v1_packs__pack_id__delete', { params: { path: { pack_id } } })),
+
+	getPack: (pack_id: number): Promise<Pack> =>
+		call(callOp('get_pack_api_v1_packs__pack_id__get', { params: { path: { pack_id } } })),
+
+	listVersions: (pack_id: number): Promise<PackVersion[]> =>
+		call(callOp('list_versions_api_v1_packs__pack_id__versions_get', { params: { path: { pack_id } } })),
+
+	downloadVersion: (version_id: number): Promise<Response> =>
+		call(callOp('download_pack_for_user_api_v1_packs_download__version_id__get', { params: { path: { version_id } }, parseAs: 'stream' })),
+
+	uploadVersion: (pack_id: number, version: string, file: File, release_notes = ''): Promise<PackVersion> => {
+		const body = new FormData();
+		body.append('file', file);
+		if (release_notes) body.append('release_notes', release_notes);
+		return call(
+			callOp('upload_version_api_v1_packs__pack_id__versions_post', {
+				params: { path: { pack_id }, query: { version } },
+				body: body as unknown as components['schemas']['Body_upload_version_api_v1_packs__pack_id__versions_post'],
+				bodySerializer: (b: unknown) => b as FormData
+			})
+		);
 	},
-	enablePack: (groupId: string | number, packVersionId: string | number, autoupdate = true): Promise<unknown> =>
-		request<unknown>('POST', `/packs/groups/${groupId}/enable`, {
-			pack_version_id: packVersionId,
-			autoupdate
-		}),
-	listEnabledPacks: (groupId: string | number): Promise<EnabledPack[]> => request<EnabledPack[]>('GET', `/packs/groups/${groupId}/enabled`),
-	disablePack: (groupId: string | number, enabledId: string | number): Promise<unknown> =>
-		request<unknown>('DELETE', `/packs/groups/${groupId}/enabled/${enabledId}`),
+
+	enablePack: (group_id: number, pack_version_id: number, autoupdate = true) =>
+		call(callOp('enable_pack_for_group_api_v1_packs_groups__group_id__enable_post', {
+			params: { path: { group_id } },
+			body: { pack_version_id, autoupdate }
+		})),
+
+	listEnabledPacks: (group_id: number): Promise<EnabledPack[]> =>
+		call(callOp('list_enabled_packs_api_v1_packs_groups__group_id__enabled_get', { params: { path: { group_id } } })),
+
+	disablePack: (group_id: number, enabled_id: number) =>
+		call(callOp('disable_pack_api_v1_packs_groups__group_id__enabled__enabled_id__delete', { params: { path: { group_id, enabled_id } } })),
 
 	// Key transfer
 	transferInitiate: (receiver_age_public_key: string): Promise<KeyTransferInitiateResponse> =>
-		request<KeyTransferInitiateResponse>('POST', '/auth/keys/transfer/initiate', { receiver_age_public_key }),
-	transferGet: (id: string | number): Promise<KeyTransferStatusResponse> =>
-		request<KeyTransferStatusResponse>('GET', `/auth/keys/transfer/${id}`),
-	transferComplete: (id: string | number, encrypted_private_key: string): Promise<unknown> =>
-		request<unknown>('POST', `/auth/keys/transfer/${id}/complete`, { encrypted_private_key }),
+		call(callOp('initiate_key_transfer_api_v1_auth_keys_transfer_initiate_post', { body: { receiver_age_public_key } })),
+
+	transferGet: (transfer_id: string): Promise<KeyTransferStatusResponse> =>
+		call(callOp('get_key_transfer_api_v1_auth_keys_transfer__transfer_id__get', { params: { path: { transfer_id } } })),
+
+	transferComplete: (transfer_id: string, encrypted_private_key: string) =>
+		call(callOp('complete_key_transfer_api_v1_auth_keys_transfer__transfer_id__complete_post', {
+			params: { path: { transfer_id } },
+			body: { encrypted_private_key }
+		})),
 
 	// Logs
-	listLogs: (page = 1, limit = 100, deviceId: string | number | null = null): Promise<Log[]> => {
-		let url = `/logs/?page=${page}&limit=${limit}`;
-		if (deviceId) url += `&device_id=${deviceId}`;
-		return request<Log[]>('GET', url);
-	},
-	getUnreadLogsCount: (): Promise<{ unread_count: number }> => request<{ unread_count: number }>('GET', '/logs/unread-count'),
-	markLogSeen: (id: string | number): Promise<unknown> => request<unknown>('POST', `/logs/${id}/seen`),
-	markAllLogsSeen: (): Promise<unknown> => request<unknown>('POST', '/logs/seen/all'),
+	listLogs: (page = 1, limit = 100, device_id: number | null = null): Promise<Log[]> =>
+		call(callOp('list_logs_api_v1_logs__get', { params: { query: { page, limit, ...(device_id ? { device_id } : {}) } } })),
+
+	getUnreadLogsCount: (): Promise<{ unread_count: number }> =>
+		call(callOp('get_unread_logs_count_api_v1_logs_unread_count_get', {})),
+
+	markLogSeen: (log_id: number) =>
+		call(callOp('mark_log_seen_api_v1_logs__log_id__seen_post', { params: { path: { log_id } } })),
+
+	markAllLogsSeen: () =>
+		call(callOp('mark_all_logs_seen_api_v1_logs_seen_all_post', {})),
 
 	// Releases
-	listReleases: (): Promise<unknown[]> => request<unknown[]>('GET', '/releases/'),
-	uploadRelease: (version: string, os: string, arch: string, file: File): Promise<unknown> => {
-		const fd = new FormData();
-		fd.append('version', version);
-		fd.append('os', os);
-		fd.append('arch', arch);
-		fd.append('file', file);
-		return request<unknown>('POST', '/releases/', fd, true);
-	},
-	deleteRelease: (version: string, os: string, arch: string): Promise<unknown> =>
-		request<unknown>('DELETE', `/releases/${encodeURIComponent(version)}/${encodeURIComponent(os)}/${encodeURIComponent(arch)}`),
-	downloadReleaseUrl: (version: string, os: string, arch: string): string =>
-		`${BACKEND_URL}/releases/${encodeURIComponent(version)}/${encodeURIComponent(os)}/${encodeURIComponent(arch)}/download`,
+	listReleases: () =>
+		call(callOp('list_releases_api_v1_releases__get', {})),
 
-	// Auth — email verification
-	verifyEmail: (token: string): Promise<unknown> => request<unknown>('GET', `/auth/verify?token=${encodeURIComponent(token)}`),
-	unsubscribe: (token: string): Promise<{ message?: string }> => request<{ message?: string }>('POST', '/auth/unsubscribe', { token }),
+	uploadRelease: (version: string, os: string, arch: string, file: File) => {
+		const body = new FormData();
+		body.append('version', version);
+		body.append('os', os);
+		body.append('arch', arch);
+		body.append('file', file);
+		return call(
+			callOp('upload_release_api_v1_releases__post', {
+				body: body as unknown as components['schemas']['Body_upload_release_api_v1_releases__post'],
+				bodySerializer: (b: unknown) => b as FormData
+			})
+		);
+	},
+
+	deleteRelease: (version: string, os_name: string, arch: string) =>
+		call(callOp('delete_release_api_v1_releases__version___os_name___arch__delete', { params: { path: { version, os_name, arch } } })),
+
+	// Returns a direct URL for browser navigation / download link (no HTTP call)
+	downloadReleaseUrl: (version: string, os_name: string, arch: string): string => {
+		const { path } = getInterpolatedRoute('download_release_api_v1_releases__version___os_name___arch__download_get', { version, os_name, arch });
+		return `${BACKEND_URL}${path}`;
+	},
+
+	// Auth — email verification / unsubscribe
+	verifyEmail: (token: string) =>
+		call(callOp('verify_email_api_v1_auth_verify_get', { params: { query: { token } } })),
+
+	unsubscribe: (token: string) =>
+		call(callOp('unsubscribe_api_v1_auth_unsubscribe_post', { body: { token } })),
 
 	// MFA
-	getMfaSettings: (): Promise<unknown> => request<unknown>('GET', '/auth/mfa/settings'),
-	setupMfaOtp: (): Promise<{ secret: string; qr_code?: string }> => request<{ secret: string; qr_code?: string }>('POST', '/auth/mfa/otp/setup'),
-	verifyMfaOtp: (code: string): Promise<unknown> => request<unknown>('POST', '/auth/mfa/otp/verify', { code }),
-	disableMfaOtp: (): Promise<unknown> => request<unknown>('POST', '/auth/mfa/otp/disable'),
-	setupMfaHardwareToken: (): Promise<{ options: WebAuthnCreationOptionsJSON; registration_token: string }> => request<{ options: WebAuthnCreationOptionsJSON; registration_token: string }>('POST', '/auth/mfa/hardware-token/setup'),
-	verifyMfaHardwareToken: (registration_token: string, credential_response: unknown, name: string | null = null): Promise<unknown> =>
-		request<unknown>('POST', '/auth/mfa/hardware-token/verify', { registration_token, credential_response, name }),
-	deleteMfaHardwareToken: (id: string | number): Promise<unknown> => request<unknown>('DELETE', `/auth/mfa/hardware-token/${id}`),
-	getMfaHardwareTokenAssertionOptions: (mfa_token: string): Promise<{ options: WebAuthnRequestOptionsJSON; assertion_token: string }> =>
-		request<{ options: WebAuthnRequestOptionsJSON; assertion_token: string }>('POST', '/auth/mfa/hardware-token/assertion-options', { mfa_token }),
-	verifyMfa: (mfa_token: string, method: string, otp_code: string | null = null, assertion_token: string | null = null, webauthn_response: unknown = null): Promise<{ token?: string }> =>
-		request<{ token?: string }>('POST', '/auth/mfa/verify', { mfa_token, method, otp_code, assertion_token, webauthn_response }),
+	getMfaSettings: (): Promise<MfaSettings> =>
+		call(callOp('get_mfa_settings_api_v1_auth_mfa_settings_get', {})),
+
+	setupMfaOtp: () =>
+		call(callOp('mfa_otp_setup_api_v1_auth_mfa_otp_setup_post', {})),
+
+	verifyMfaOtp: (code: string) =>
+		call(callOp('mfa_otp_verify_api_v1_auth_mfa_otp_verify_post', { body: { code } })),
+
+	disableMfaOtp: () =>
+		call(callOp('mfa_otp_disable_api_v1_auth_mfa_otp_disable_post', {})),
+
+	setupMfaHardwareToken: (): Promise<components['schemas']['MfaHardwareTokenSetupResponse']> =>
+		call(callOp('mfa_hardware_token_setup_api_v1_auth_mfa_hardware_token_setup_post', {})),
+
+	verifyMfaHardwareToken: (registration_token: string, credential_response: Record<string, unknown>, name: string | null = null) =>
+		call(callOp('mfa_hardware_token_verify_api_v1_auth_mfa_hardware_token_verify_post', { body: { registration_token, credential_response, name } })),
+
+	deleteMfaHardwareToken: (hardware_token_id: number) =>
+		call(callOp('delete_hardware_token_api_v1_auth_mfa_hardware_token__token_id__delete', { params: { path: { token_id: hardware_token_id } } })),
+
+	getMfaHardwareTokenAssertionOptions: (mfa_token: string): Promise<components['schemas']['MfaHardwareTokenAssertionOptionsResponse']> =>
+		call(callOp('mfa_hardware_token_assertion_options_api_v1_auth_mfa_hardware_token_assertion_options_post', { body: { mfa_token } })),
+
+	verifyMfa: (mfa_token: string, method: string, otp_code: string | null = null, assertion_token: string | null = null, webauthn_response: Record<string, unknown> | null = null) =>
+		call(callOp('mfa_verify_api_v1_auth_mfa_verify_post', { body: { mfa_token, method, otp_code, assertion_token, webauthn_response } })),
 
 	// Admin
-	adminListUsers: (): Promise<UserInfo[]> => request<UserInfo[]>('GET', '/admin/users'),
-	adminDeleteUser: (id: string | number): Promise<unknown> => request<unknown>('DELETE', `/admin/users/${id}`),
-	adminResetUserPassword: (id: string | number): Promise<{ password?: string }> => request<{ password?: string }>('POST', `/admin/users/${id}/reset-password`),
-	adminListDevices: (): Promise<Device[]> => request<Device[]>('GET', '/admin/devices'),
-	adminDeleteDevice: (id: string | number): Promise<unknown> => request<unknown>('DELETE', `/admin/devices/${id}`),
-	adminListPacks: (): Promise<Pack[]> => request<Pack[]>('GET', '/admin/packs'),
-	adminDeletePack: (id: string | number): Promise<unknown> => request<unknown>('DELETE', `/admin/packs/${id}`),
-	getAuthConfig: (): Promise<{ turnstile_site_key?: string | null }> => request<{ turnstile_site_key?: string | null }>('GET', '/auth/config'),
+	adminListUsers: (): Promise<UserInfo[]> =>
+		call(callOp('list_all_users_api_v1_admin_users_get', {})),
+
+	adminDeleteUser: (user_id: number) =>
+		call(callOp('delete_user_api_v1_admin_users__user_id__delete', { params: { path: { user_id } } })),
+
+	adminResetUserPassword: (user_id: number) =>
+		call(callOp('reset_user_password_api_v1_admin_users__user_id__reset_password_post', { params: { path: { user_id } } })),
+
+	adminListDevices: (): Promise<Device[]> =>
+		call(callOp('list_all_devices_api_v1_admin_devices_get', {})),
+
+	adminDeleteDevice: (device_id: number) =>
+		call(callOp('admin_delete_device_api_v1_admin_devices__device_id__delete', { params: { path: { device_id } } })),
+
+	adminListPacks: (): Promise<Pack[]> =>
+		call(callOp('list_all_packs_api_v1_admin_packs_get', {})),
+
+	adminDeletePack: (pack_id: number) =>
+		call(callOp('admin_delete_pack_api_v1_admin_packs__pack_id__delete', { params: { path: { pack_id } } })),
+
+	getAuthConfig: () =>
+		call(callOp('get_auth_config_api_v1_auth_config_get', {})),
+
 	getBackendUrl: (): string => BACKEND_URL
 };

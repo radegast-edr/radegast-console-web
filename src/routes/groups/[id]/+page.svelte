@@ -40,7 +40,7 @@
 	async function loadGroup(id: string | number): Promise<void> {
 		try {
 			const [g, teams, devices] = await Promise.all([
-				api.getGroup(id),
+				api.getGroup(Number(id)),
 				api.listTeams(),
 				api.listDevices()
 			]);
@@ -71,7 +71,7 @@
 	async function saveName(): Promise<void> {
 		if (!group) return;
 		try {
-			await api.renameGroup(group.id, editName);
+			await api.renameGroup(Number(group.id), editName);
 			editingName = false;
 			await loadGroup(group.id);
 			showFlash('Group renamed');
@@ -83,7 +83,7 @@
 	async function unlinkTeam(teamId: string | number): Promise<void> {
 		if (!group) return;
 		try {
-			await api.unlinkGroupFromTeam(group.id, teamId);
+			await api.unlinkGroupFromTeam(Number(group.id), Number(teamId));
 			showFlash('Team unlinked from group');
 			await loadGroup(group.id);
 		} catch (e) {
@@ -94,7 +94,7 @@
 	async function linkTeam(): Promise<void> {
 		if (!addTeamId || !group) return;
 		try {
-			await api.linkGroupToTeam(Number(addTeamId), group.id);
+			await api.linkGroupToTeam(Number(addTeamId), Number(group.id));
 			showFlash('Team linked');
 			await loadGroup(group.id);
 		} catch (e) {
@@ -105,7 +105,7 @@
 	async function removeDevice(deviceId: string | number): Promise<void> {
 		if (!group) return;
 		try {
-			await api.removeDeviceFromGroupViaGroup(group.id, deviceId);
+			await api.removeDeviceFromGroupViaGroup(Number(group.id), Number(deviceId));
 			showFlash('Device removed from group');
 			await loadGroup(group.id);
 		} catch (e) {
@@ -116,7 +116,7 @@
 	async function addDevice(): Promise<void> {
 		if (!addDeviceId || !group) return;
 		try {
-			await api.addDeviceToGroupViaGroup(group.id, Number(addDeviceId));
+			await api.addDeviceToGroupViaGroup(Number(group.id), Number(addDeviceId));
 			showFlash('Device added to group');
 			await loadGroup(group.id);
 		} catch (e) {
@@ -126,7 +126,8 @@
 
 	async function loadEnabledPacks(groupId: string | number): Promise<void> {
 		try {
-			enabledPacks = await api.listEnabledPacks(groupId);
+			const data = await api.listEnabledPacks(Number(groupId));
+			enabledPacks = data;
 		} catch (e) {
 			showError((e as Error).message);
 		}
@@ -136,7 +137,7 @@
 		if (!group) return;
 		if (!confirm('Disable this pack for the group?')) return;
 		try {
-			await api.disablePack(group.id, enabledId);
+			await api.disablePack(Number(group.id), Number(enabledId));
 			showFlash('Pack disabled');
 			await loadEnabledPacks(group.id);
 		} catch (e) {
@@ -146,7 +147,8 @@
 
 	async function openEnablePack(): Promise<void> {
 		try {
-			availablePacks = await api.listPacks();
+			const data = await api.listPacks();
+			availablePacks = data;
 			selectedPackId = availablePacks.length > 0 ? String(availablePacks[0].id) : '';
 			packVersions = [];
 			selectedVersionId = '';
@@ -168,7 +170,8 @@
 
 	async function loadVersionsForSelectedPack(packId: number): Promise<void> {
 		try {
-			packVersions = await api.listVersions(packId);
+			const data = await api.listVersions(Number(packId));
+			packVersions = data;
 			selectedVersionId = packVersions.length > 0 ? String(packVersions[0].id) : '';
 		} catch (e) {
 			showError((e as Error).message);
@@ -181,7 +184,7 @@
 			return;
 		}
 		try {
-			await api.enablePack(group.id, Number(selectedVersionId), autoupdate);
+			await api.enablePack(Number(group.id), Number(selectedVersionId), autoupdate);
 			showEnablePackModal = false;
 			showFlash('Pack enabled successfully');
 			await loadEnabledPacks(group.id);

@@ -21,9 +21,14 @@
 
 	async function loadAll(): Promise<void> {
 		try {
-			users = await api.adminListUsers();
-			devices = await api.adminListDevices();
-			packs = await api.adminListPacks();
+			const [usersData, devicesData, packsData] = await Promise.all([
+				api.adminListUsers(),
+				api.adminListDevices(),
+				api.adminListPacks()
+			]);
+			users = usersData;
+			devices = devicesData;
+			packs = packsData;
 		} catch (e) {
 			showError((e as Error).message);
 		}
@@ -32,7 +37,7 @@
 	async function deleteUser(id: string | number): Promise<void> {
 		if (!confirm('Delete this user?')) return;
 		try {
-			await api.adminDeleteUser(id);
+			await api.adminDeleteUser(Number(id));
 			await loadAll();
 			showFlash('User deleted');
 		} catch (e) {
@@ -43,7 +48,7 @@
 	async function resetUserPassword(u: UserInfo): Promise<void> {
 		if (!confirm(`Are you sure you want to reset the password and clear all MFA devices for user ${u.email}?`)) return;
 		try {
-			await api.adminResetUserPassword(u.id);
+			await api.adminResetUserPassword(Number(u.id));
 			resetPasswordResult = { email: u.email };
 			showFlash('User password reset successfully and MFA cleared');
 			await loadAll();
@@ -55,7 +60,7 @@
 	async function deleteDevice(id: string | number): Promise<void> {
 		if (!confirm('Delete this device?')) return;
 		try {
-			await api.adminDeleteDevice(id);
+			await api.adminDeleteDevice(Number(id));
 			await loadAll();
 			showFlash('Device deleted');
 		} catch (e) {
@@ -66,7 +71,7 @@
 	async function deletePack(id: string | number): Promise<void> {
 		if (!confirm('Delete this pack and all its versions?')) return;
 		try {
-			await api.adminDeletePack(id);
+			await api.adminDeletePack(Number(id));
 			await loadAll();
 			showFlash('Pack deleted');
 		} catch (e) {

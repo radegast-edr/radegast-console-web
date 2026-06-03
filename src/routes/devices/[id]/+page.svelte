@@ -21,9 +21,12 @@
 
 	async function loadDevice(id: string | number): Promise<void> {
 		try {
-			const [deviceRes, groupsRes] = await Promise.all([api.getDevice(id), api.listGroups()]);
-			device = deviceRes;
-			allGroups = groupsRes;
+			const [deviceData, groupsData] = await Promise.all([
+				api.getDevice(Number(id)),
+				api.listGroups()
+			]);
+			device = deviceData;
+			allGroups = groupsData;
 			const deviceGroupIds = new Set((device?.groups || []).map((g) => g.id));
 			allGroups = allGroups.filter((g) => !deviceGroupIds.has(g.id));
 			addGroupId = allGroups.length > 0 ? String(allGroups[0].id) : '';
@@ -42,7 +45,7 @@
 	async function saveName(): Promise<void> {
 		if (!device) return;
 		try {
-			await api.renameDevice(device.id, editName);
+			await api.renameDevice(Number(device.id), editName);
 			editingName = false;
 			await loadDevice(device.id);
 			showFlash('Device renamed');
@@ -54,7 +57,7 @@
 	async function removeFromGroup(groupId: string | number): Promise<void> {
 		if (!device) return;
 		try {
-			await api.removeDeviceFromGroupViaGroup(groupId, device.id);
+			await api.removeDeviceFromGroupViaGroup(Number(groupId), Number(device.id));
 			showFlash('Removed from group');
 			await loadDevice(device.id);
 		} catch (e) {
@@ -65,7 +68,7 @@
 	async function addToGroup(): Promise<void> {
 		if (!addGroupId || !device) return;
 		try {
-			await api.addDeviceToGroupViaGroup(Number(addGroupId), device.id);
+			await api.addDeviceToGroupViaGroup(Number(addGroupId), Number(device.id));
 			showFlash('Added to group');
 			await loadDevice(device.id);
 		} catch (e) {
@@ -78,7 +81,7 @@
 		const msg = 'Are you sure you want to reinstall this device? The token will be changed, but the signing key cannot be changed and must be backed-up manually if moving to another device.';
 		if (!confirm(msg)) return;
 		try {
-			const res = await api.reinstallDevice(device.id);
+			const res = await api.reinstallDevice(Number(device.id));
 			newDeviceToken = res.token;
 			showFlash('Device token reset. Please follow the instructions to install the agent.');
 		} catch (e) {

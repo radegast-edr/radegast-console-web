@@ -20,7 +20,8 @@
 
 	async function loadDevices(): Promise<void> {
 		try {
-			devices = await api.listDevices();
+			const data = await api.listDevices();
+			devices = data;
 		} catch (e) {
 			showError((e as Error).message);
 		}
@@ -36,7 +37,7 @@
 			const teams = await api.listTeams();
 			const grouped = await Promise.all(
 				teams.map(async (team) => {
-					const groups = await api.listTeamGroups(team.id);
+					const groups = await api.listTeamGroups(Number(team.id));
 					return groups.map((g) => ({ id: g.id, teamName: team.name, name: g.name }));
 				})
 			);
@@ -66,7 +67,7 @@
 	async function deleteDevice(id: string | number): Promise<void> {
 		if (!confirm('Delete this device?')) return;
 		try {
-			await api.deleteDevice(id);
+			await api.deleteDevice(Number(id));
 			await loadDevices();
 			showFlash('Device deleted');
 		} catch (e) {

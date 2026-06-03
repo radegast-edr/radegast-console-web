@@ -17,7 +17,8 @@
 
 	async function loadGroups(): Promise<void> {
 		try {
-			groups = await api.listGroups();
+			const data = await api.listGroups();
+			groups = data;
 		} catch (e) {
 			showError((e as Error).message);
 		}
@@ -28,7 +29,8 @@
 		newGroupTeamId = '';
 		availableTeams = [];
 		try {
-			availableTeams = await api.listTeams();
+			const data = await api.listTeams();
+			availableTeams = data;
 			if (availableTeams.length > 0) {
 				newGroupTeamId = String(availableTeams[0].id);
 			}

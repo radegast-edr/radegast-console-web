@@ -19,7 +19,8 @@
 		try {
 			const me = await api.me();
 			privateKey = await getStoredPrivateKey(me.id);
-			logs = await api.listLogs(page, limit);
+			const logsData = await api.listLogs(page, limit);
+			logs = logsData;
 			
 			// Automatically decrypt all logs by default if privateKey is available
 			if (privateKey && logs.length > 0) {
@@ -52,7 +53,8 @@
 			try {
 				await initAgeWasm();
 				try {
-					devices = await api.listDevices();
+					const devicesData = await api.listDevices();
+					devices = devicesData;
 				} catch (e) {
 					console.error('Failed to load devices list:', e);
 				}
@@ -76,7 +78,7 @@
 	async function handleAlertClick(log: Log): Promise<void> {
 		if (log.seen) return;
 		try {
-			await api.markLogSeen(log.id);
+			await api.markLogSeen(Number(log.id));
 			log.seen = true;
 			logs = [...logs];
 		} catch (e) {

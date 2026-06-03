@@ -27,7 +27,8 @@
 
 	async function recover(): Promise<void> {
 		try {
-			const keys = await api.recoverKeys();
+			const keysData = await api.recoverKeys();
+			const keys = keysData;
 			let decryptedKey: string | null = null;
 			let matchedPublicKey: string | null = null;
 			for (const key of keys) {
