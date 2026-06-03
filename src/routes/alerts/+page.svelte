@@ -242,8 +242,8 @@
 	async function performSearch(): Promise<void> {
 		isSearching = true;
 		loading = true;
-		logs = [];
-		decryptionState = {};
+		let newLogs: Log[] = [];
+		let newDecryptionState = { ...decryptionState };
 
 		const fromUtc = fromTime ? new Date(fromTime).toISOString() : null;
 		const toUtc = toTime ? new Date(toTime).toISOString() : null;
@@ -270,12 +270,12 @@
 							knownLogIds.add(log.id);
 						}
 					}
-					logs = [...logs, ...logsData];
+					newLogs = [...newLogs, ...logsData];
 					
 					// Automatically decrypt new batch
 					if (privateKey) {
 						for (const log of logsData) {
-							if (decryptionState[log.id]) continue;
+							if (newDecryptionState[log.id]) continue;
 							try {
 								const dec = decrypt(log.content, privateKey);
 								let parsed: any;
@@ -284,12 +284,11 @@
 								} catch (e) {
 									parsed = dec;
 								}
-								decryptionState[log.id] = { success: true, parsed };
+								newDecryptionState[log.id] = { success: true, parsed };
 							} catch (e) {
-								decryptionState[log.id] = { success: false, error: (e as Error).message };
+								newDecryptionState[log.id] = { success: false, error: (e as Error).message };
 							}
 						}
-						decryptionState = { ...decryptionState };
 					}
 				}
 
@@ -301,6 +300,8 @@
 					await new Promise(resolve => setTimeout(resolve, 20));
 				}
 			}
+			logs = newLogs;
+			decryptionState = newDecryptionState;
 		} catch (e) {
 			showError('Search failed: ' + (e as Error).message);
 		} finally {
