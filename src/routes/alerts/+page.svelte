@@ -53,12 +53,22 @@
 		return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
 	}
 
-	// Capture default initial datetime values (last 4 days and now)
-	const initialFrom = formatForDateTimeLocal(new Date(Date.now() - 4 * 24 * 60 * 60 * 1000));
-	const initialTo = formatForDateTimeLocal(new Date());
+	// Capture default initial datetime values (last 4 days and current time + 1 day)
+	const defaultFrom = formatForDateTimeLocal(new Date(Date.now() - 4 * 24 * 60 * 60 * 1000));
+	const defaultTo = formatForDateTimeLocal(new Date(Date.now() + 24 * 60 * 60 * 1000));
 
-	let fromTime = $state(initialFrom);
-	let toTime = $state(initialTo);
+	let initialFrom = $state(defaultFrom);
+	let initialTo = $state(defaultTo);
+
+	let fromTime = $state(defaultFrom);
+	let toTime = $state(defaultTo);
+	let userChangedSettings = $state(false);
+
+	$effect(() => {
+		if (fromTime !== initialFrom || toTime !== initialTo) {
+			userChangedSettings = true;
+		}
+	});
 
 	// Filter is active if query is not empty or datetime differs from default
 	let isFilterActive = $derived(
@@ -92,23 +102,27 @@
 
 		const severity_number = (severityVal !== null && severityVal !== undefined) ? mapSeverityToNumber(severityVal) : undefined;
 
+		const meta: any = {
+			alert_id: log.id,
+			device_id: log.device_id,
+			reported_timestamp: reported_timestamp,
+			device: deviceName,
+			status: status
+		};
+		if (last_seen !== undefined) {
+			meta.last_seen = last_seen;
+		}
+		if (severityVal !== null && severityVal !== undefined) {
+			meta.severity = severityVal;
+		}
+		if (severity_number !== undefined) {
+			meta.severity_number = severity_number;
+		}
+
 		if (!decState) {
 			let alertVal = 'encrypted alert';
 			if (privateKey) {
 				alertVal = 'decrypting...';
-			}
-			const meta: any = {
-				alert_id: log.id,
-				device_id: log.device_id,
-				reported_timestamp: reported_timestamp,
-				device: deviceName,
-				status: status
-			};
-			if (last_seen !== undefined) {
-				meta.last_seen = last_seen;
-			}
-			if (severity_number !== undefined) {
-				meta.severity_number = severity_number;
 			}
 			return {
 				meta,
@@ -117,34 +131,24 @@
 		}
 
 		if (decState.success) {
-			const meta: any = {
-				alert_id: log.id,
-				device_id: log.device_id,
-				reported_timestamp: reported_timestamp,
-				device: deviceName,
-				status: status
-			};
-			if (last_seen !== undefined) {
-				meta.last_seen = last_seen;
-			}
-			if (severity_number !== undefined) {
-				meta.severity_number = severity_number;
-			}
 			return {
 				meta,
 				alert: decState.parsed
 			};
 		} else {
-			const meta: any = {
+			const failedMeta: any = {
 				alert_id: log.id,
 				device_id: log.device_id,
 				reported_timestamp: reported_timestamp
 			};
+			if (severityVal !== null && severityVal !== undefined) {
+				failedMeta.severity = severityVal;
+			}
 			if (severity_number !== undefined) {
-				meta.severity_number = severity_number;
+				failedMeta.severity_number = severity_number;
 			}
 			return {
-				meta,
+				meta: failedMeta,
 				alert: `decrpytion failed: ${decState.error}`
 			};
 		}
@@ -320,8 +324,14 @@
 					const to = hashParams.get('to');
 
 					if (q !== null) searchQuery = q;
-					if (from !== null) fromTime = from;
-					if (to !== null) toTime = to;
+					if (from !== null) {
+						fromTime = from;
+						userChangedSettings = true;
+					}
+					if (to !== null) {
+						toTime = to;
+						userChangedSettings = true;
+					}
 
 					// If non-default parameters are loaded, automatically expand the filter
 					if (q || (from && from !== initialFrom) || (to && to !== initialTo)) {
@@ -354,17 +364,42 @@
 			await performSearch();
 		}, 60000);
 
+		// Move the latest date filter to current time + 1 day every hour
+		const hourInterval = setInterval(() => {
+			if (!userChangedSettings) {
+				initialTo = formatForDateTimeLocal(new Date(Date.now() + 24 * 60 * 60 * 1000));
+				toTime = initialTo;
+				performSearch();
+			}
+		}, 3600000); // 1 hour in ms
+
 		// Handle hash change events dynamically
 		const handleHashChange = () => {
 			const hashParams = new URLSearchParams(window.location.hash.substring(1));
 			const q = hashParams.get('q') || '';
-			const from = hashParams.get('from') || initialFrom;
-			const to = hashParams.get('to') || initialTo;
+			const from = hashParams.get('from');
+			const to = hashParams.get('to');
 
 			let changed = false;
 			if (searchQuery !== q) { searchQuery = q; changed = true; }
-			if (fromTime !== from) { fromTime = from; changed = true; }
-			if (toTime !== to) { toTime = to; changed = true; }
+			
+			if (from !== null) {
+				if (fromTime !== from) { fromTime = from; changed = true; }
+				userChangedSettings = true;
+			} else {
+				if (fromTime !== initialFrom) { fromTime = initialFrom; changed = true; }
+			}
+
+			if (to !== null) {
+				if (toTime !== to) { toTime = to; changed = true; }
+				userChangedSettings = true;
+			} else {
+				if (toTime !== initialTo) { toTime = initialTo; changed = true; }
+			}
+
+			if (from === null && to === null) {
+				userChangedSettings = false;
+			}
 
 			if (changed) {
 				performSearch();
@@ -375,6 +410,7 @@
 		return () => {
 			window.removeEventListener('hashchange', handleHashChange);
 			clearInterval(interval);
+			clearInterval(hourInterval);
 		};
 	});
 
@@ -468,6 +504,8 @@
 							type="datetime-local"
 							class="form-control"
 							bind:value={fromTime}
+							onchange={() => userChangedSettings = true}
+							oninput={() => userChangedSettings = true}
 							style="font-size: 0.85rem; height: 35px;"
 						/>
 					</div>
@@ -479,6 +517,8 @@
 							type="datetime-local"
 							class="form-control"
 							bind:value={toTime}
+							onchange={() => userChangedSettings = true}
+							oninput={() => userChangedSettings = true}
 							style="font-size: 0.85rem; height: 35px;"
 						/>
 					</div>
