@@ -470,8 +470,25 @@
 							type="checkbox"
 							id="notifyDowntimeMaintenance"
 							bind:checked={notifications.notify_downtime_maintenance}
-						/>
+						>
 						<label class="form-check-label" for="notifyDowntimeMaintenance">Platform downtime and maintenance emails</label>
+					</div>
+					<div class="mb-3">
+						<label for="notificationLevel" class="form-label fw-semibold">Notification Severity Threshold</label>
+						<select
+							id="notificationLevel"
+							class="form-select form-select-sm"
+							bind:value={notifications.notification_level}
+						>
+							<option value="informational">Informational</option>
+							<option value="low">Low</option>
+							<option value="medium">Medium</option>
+							<option value="high">High</option>
+							<option value="critical">Critical</option>
+						</select>
+						<div class="form-text text-muted small">
+							Notifications are only sent for alerts meeting or exceeding this severity level.
+						</div>
 					</div>
 					<button class="btn btn-primary" onclick={saveNotifications} disabled={notifSaving}>
 						{notifSaving ? 'Saving…' : 'Save Preferences'}

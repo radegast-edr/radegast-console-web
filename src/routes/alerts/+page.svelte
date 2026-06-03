@@ -27,6 +27,22 @@
 
 	let isFilterExpanded = $state(false);
 
+	let knownLogIds = new Set<number>();
+	let isInitialLoad = true;
+
+	function showBrowserNotification(log: Log) {
+		if (typeof window !== 'undefined' && 'Notification' in window) {
+			if (Notification.permission === 'granted') {
+				const devObj = deviceMap.get(log.device_id);
+				const deviceName = devObj ? devObj.name : `Device #${log.device_id}`;
+				const severityStr = log.severity ? ` [${log.severity.toUpperCase()}]` : '';
+				new Notification(`New Alert${severityStr} - Radegast EDR`, {
+					body: `New alert from ${deviceName}`
+				});
+			}
+		}
+	}
+
 	function formatForDateTimeLocal(date: Date): string {
 		const pad = (num: number) => String(num).padStart(2, '0');
 		const yyyy = date.getFullYear();
@@ -67,7 +83,15 @@
 
 		const reported_timestamp = new Date(log.time).toISOString();
 
+		// Check if severity is present in decrypted alert payload or outer log record
 		const decState = decryptionState[log.id];
+		let severityVal: any = log.severity;
+		if (decState && decState.success && decState.parsed && typeof decState.parsed === 'object' && decState.parsed.severity !== undefined) {
+			severityVal = decState.parsed.severity;
+		}
+
+		const severity_number = (severityVal !== null && severityVal !== undefined) ? mapSeverityToNumber(severityVal) : undefined;
+
 		if (!decState) {
 			let alertVal = 'encrypted alert';
 			if (privateKey) {
@@ -75,12 +99,16 @@
 			}
 			const meta: any = {
 				alert_id: log.id,
+				device_id: log.device_id,
 				reported_timestamp: reported_timestamp,
 				device: deviceName,
 				status: status
 			};
 			if (last_seen !== undefined) {
 				meta.last_seen = last_seen;
+			}
+			if (severity_number !== undefined) {
+				meta.severity_number = severity_number;
 			}
 			return {
 				meta,
@@ -91,6 +119,7 @@
 		if (decState.success) {
 			const meta: any = {
 				alert_id: log.id,
+				device_id: log.device_id,
 				reported_timestamp: reported_timestamp,
 				device: deviceName,
 				status: status
@@ -98,19 +127,24 @@
 			if (last_seen !== undefined) {
 				meta.last_seen = last_seen;
 			}
-			if (decState.parsed && typeof decState.parsed === 'object' && decState.parsed.severity !== undefined) {
-				meta.severity_number = mapSeverityToNumber(decState.parsed.severity);
+			if (severity_number !== undefined) {
+				meta.severity_number = severity_number;
 			}
 			return {
 				meta,
 				alert: decState.parsed
 			};
 		} else {
+			const meta: any = {
+				alert_id: log.id,
+				device_id: log.device_id,
+				reported_timestamp: reported_timestamp
+			};
+			if (severity_number !== undefined) {
+				meta.severity_number = severity_number;
+			}
 			return {
-				meta: {
-					alert_id: log.id,
-					reported_timestamp: reported_timestamp
-				},
+				meta,
 				alert: `decrpytion failed: ${decState.error}`
 			};
 		}
@@ -218,6 +252,20 @@
 			while (hasMore) {
 				const logsData = await api.listLogs(currentPage, limitVal, null, fromUtc, toUtc);
 				if (logsData.length > 0) {
+					if (!isInitialLoad) {
+						for (const log of logsData) {
+							if (!knownLogIds.has(log.id)) {
+								knownLogIds.add(log.id);
+								if (!log.seen) {
+									showBrowserNotification(log);
+								}
+							}
+						}
+					} else {
+						for (const log of logsData) {
+							knownLogIds.add(log.id);
+						}
+					}
 					logs = [...logs, ...logsData];
 					
 					// Automatically decrypt new batch
@@ -288,6 +336,12 @@
 					console.error('Failed to load devices list:', e);
 				}
 				await performSearch();
+				isInitialLoad = false;
+				if (typeof window !== 'undefined' && 'Notification' in window) {
+					if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+						Notification.requestPermission();
+					}
+				}
 			} catch (e) {
 				showError('Failed to load crypto library: ' + (e as Error).message);
 				loading = false;
@@ -489,6 +543,9 @@
 									<span class="badge bg-primary px-2 py-0.5">New</span>
 								{/if}
 								<span>Time: {new Date(log.time).toLocaleString()}</span>
+								{#if log.severity}
+									<span class="text-capitalize">• Severity: {log.severity}</span>
+								{/if}
 								{#if !log.signature}
 									<span class="badge bg-danger px-2 py-0.5" title="Unsigned alert! Content integrity cannot be guaranteed.">Unsigned</span>
 								{/if}

@@ -1541,6 +1541,8 @@ export interface components {
             content: string;
             /** Signature */
             signature?: string | null;
+            /** Severity */
+            severity?: ("informational" | "low" | "medium" | "high" | "critical") | null;
         };
         /** LogResponse */
         LogResponse: {
@@ -1562,6 +1564,8 @@ export interface components {
              * @default false
              */
             seen: boolean;
+            /** Severity */
+            severity?: ("informational" | "low" | "medium" | "high" | "critical") | null;
         };
         /** MfaHardwareTokenAssertionOptionsRequest */
         MfaHardwareTokenAssertionOptionsRequest: {
@@ -1656,6 +1660,12 @@ export interface components {
             notify_device_log: boolean;
             /** Notify Downtime Maintenance */
             notify_downtime_maintenance: boolean;
+            /**
+             * Notification Level
+             * @default medium
+             * @enum {string}
+             */
+            notification_level: "informational" | "low" | "medium" | "high" | "critical";
         };
         /** PackCreate */
         PackCreate: {

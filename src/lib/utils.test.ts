@@ -122,36 +122,49 @@ describe('utils', () => {
 	describe('mapSeverityToNumber', () => {
 		it('maps standard levels correctly', () => {
 			expect(mapSeverityToNumber('trace')).toBe(1);
-			expect(mapSeverityToNumber('debug')).toBe(5);
-			expect(mapSeverityToNumber('info')).toBe(9);
-			expect(mapSeverityToNumber('warn')).toBe(13);
-			expect(mapSeverityToNumber('error')).toBe(17);
-			expect(mapSeverityToNumber('fatal')).toBe(21);
+			expect(mapSeverityToNumber('debug')).toBe(1);
+			expect(mapSeverityToNumber('info')).toBe(1);
+			expect(mapSeverityToNumber('warn')).toBe(3);
+			expect(mapSeverityToNumber('error')).toBe(4);
+			expect(mapSeverityToNumber('fatal')).toBe(5);
 		});
 
 		it('maps custom/syslog levels correctly', () => {
-			expect(mapSeverityToNumber('low')).toBe(9);
-			expect(mapSeverityToNumber('medium')).toBe(13);
-			expect(mapSeverityToNumber('med')).toBe(13);
-			expect(mapSeverityToNumber('high')).toBe(17);
-			expect(mapSeverityToNumber('critical')).toBe(21);
-			expect(mapSeverityToNumber('crit')).toBe(21);
-			expect(mapSeverityToNumber('alert')).toBe(23);
-			expect(mapSeverityToNumber('emergency')).toBe(24);
-			expect(mapSeverityToNumber('emerg')).toBe(24);
-			expect(mapSeverityToNumber('notice')).toBe(12);
-			expect(mapSeverityToNumber('warning')).toBe(13);
-			expect(mapSeverityToNumber('informational')).toBe(9);
+			expect(mapSeverityToNumber('low')).toBe(2);
+			expect(mapSeverityToNumber('medium')).toBe(3);
+			expect(mapSeverityToNumber('med')).toBe(3);
+			expect(mapSeverityToNumber('high')).toBe(4);
+			expect(mapSeverityToNumber('critical')).toBe(5);
+			expect(mapSeverityToNumber('crit')).toBe(5);
+			expect(mapSeverityToNumber('alert')).toBe(5);
+			expect(mapSeverityToNumber('emergency')).toBe(5);
+			expect(mapSeverityToNumber('emerg')).toBe(5);
+			expect(mapSeverityToNumber('notice')).toBe(1);
+			expect(mapSeverityToNumber('warning')).toBe(3);
+			expect(mapSeverityToNumber('informational')).toBe(1);
 		});
 
 		it('handles casing, spacing, and numbers', () => {
-			expect(mapSeverityToNumber('  ERROR  ')).toBe(17);
-			expect(mapSeverityToNumber('CRITICAL')).toBe(21);
-			expect(mapSeverityToNumber('15')).toBe(15);
-			expect(mapSeverityToNumber(18)).toBe(18);
+			expect(mapSeverityToNumber('  ERROR  ')).toBe(4);
+			expect(mapSeverityToNumber('CRITICAL')).toBe(5);
+			expect(mapSeverityToNumber('5')).toBe(5);
+			expect(mapSeverityToNumber(3)).toBe(3);
 			expect(mapSeverityToNumber(null)).toBe(0);
 			expect(mapSeverityToNumber(undefined)).toBe(0);
 			expect(mapSeverityToNumber('unknown')).toBe(0);
+			
+			// OpenTelemetry severity mapping checks
+			expect(mapSeverityToNumber(9)).toBe(1);  // INFO (9-12) -> 1
+			expect(mapSeverityToNumber('13')).toBe(3); // WARN (13-16) -> 3
+			expect(mapSeverityToNumber(17)).toBe(4); // ERROR (17-20) -> 4
+			expect(mapSeverityToNumber('21')).toBe(5); // FATAL (21-24) -> 5
+
+			// Out-of-bounds numbers and invalid numeric strings
+			expect(mapSeverityToNumber(0)).toBe(0);
+			expect(mapSeverityToNumber(-1)).toBe(0);
+			expect(mapSeverityToNumber(25)).toBe(0);
+			expect(mapSeverityToNumber('100')).toBe(0);
+			expect(mapSeverityToNumber('5a')).toBe(0);
 		});
 	});
 });

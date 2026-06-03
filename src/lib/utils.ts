@@ -79,99 +79,71 @@ export async function matchesJsonata(obj: any, query: string): Promise<boolean> 
 }
 
 export function mapSeverityToNumber(severity: any): number {
-	// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/logs/data-model.md#field-severitynumber
+	// https://github.com/SigmaHQ/sigma-specification/blob/main/specification/sigma-rules-specification.md#level
 	if (severity === null || severity === undefined) {
 		return 0;
 	}
-	if (typeof severity !== 'string') {
-		if (typeof severity === 'number') {
-			return Math.round(severity);
+
+	let numVal: number | null = null;
+	if (typeof severity === 'number') {
+		numVal = Math.round(severity);
+	} else if (typeof severity === 'string') {
+		const trimmed = severity.trim();
+		const parsed = parseInt(trimmed, 10);
+		if (!isNaN(parsed) && String(parsed) === trimmed) {
+			numVal = parsed;
+		}
+	}
+
+	if (numVal !== null) {
+		if (numVal >= 1 && numVal <= 5) {
+			return numVal;
+		}
+		if (numVal >= 6 && numVal <= 12) {
+			return 1;
+		}
+		if (numVal >= 13 && numVal <= 16) {
+			return 3;
+		}
+		if (numVal >= 17 && numVal <= 20) {
+			return 4;
+		}
+		if (numVal >= 21 && numVal <= 24) {
+			return 5;
 		}
 		return 0;
 	}
+
+	if (typeof severity !== 'string') {
+		return 0;
+	}
+
 	const sev = severity.toLowerCase().trim();
 	switch (sev) {
-		// TRACE range: 1-4
-		case 'trace':
-		case 'trace1':
-			return 1;
-		case 'trace2':
-			return 2;
-		case 'trace3':
-			return 3;
-		case 'trace4':
-			return 4;
-
-		// DEBUG range: 5-8
-		case 'debug':
-		case 'debug1':
-			return 5;
-		case 'debug2':
-			return 6;
-		case 'debug3':
-			return 7;
-		case 'debug4':
-			return 8;
-
-		// INFO range: 9-12
-		case 'info':
-		case 'info1':
 		case 'informational':
-		case 'low':
-			return 9;
-		case 'info2':
-			return 10;
-		case 'info3':
-			return 11;
-		case 'info4':
+		case 'info':
 		case 'notice':
-			return 12;
-
-		// WARN range: 13-16
-		case 'warn':
-		case 'warn1':
-		case 'warning':
+		case 'trace':
+		case 'debug':
+			return 1;
+		case 'low':
+			return 2;
 		case 'medium':
 		case 'med':
-			return 13;
-		case 'warn2':
-			return 14;
-		case 'warn3':
-			return 15;
-		case 'warn4':
-			return 16;
-
-		// ERROR range: 17-20
-		case 'error':
-		case 'error1':
+		case 'warn':
+		case 'warning':
+			return 3;
 		case 'high':
-			return 17;
-		case 'error2':
-			return 18;
-		case 'error3':
-			return 19;
-		case 'error4':
-			return 20;
-
-		// FATAL range: 21-24
-		case 'fatal':
-		case 'fatal1':
+		case 'error':
+			return 4;
 		case 'critical':
 		case 'crit':
-			return 21;
-		case 'fatal2':
+		case 'fatal':
 		case 'alert':
-			return 23;
-		case 'fatal4':
 		case 'emergency':
 		case 'emerg':
-			return 24;
-
+			return 5;
 		default:
-			const num = parseInt(sev, 10);
-			if (!isNaN(num)) {
-				return num;
-			}
 			return 0;
 	}
 }
