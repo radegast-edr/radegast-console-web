@@ -29,7 +29,8 @@ describe('store', () => {
 			has_keys: true,
 			mfa_required_level: 'none',
 			mfa_setup_missing: false,
-			mfa_configured_level: 'none'
+			mfa_configured_level: 'none',
+			extended_edr_enabled: false
 		});
 		expect(get(user)).toEqual(expect.objectContaining({ id: 1, email: 'test@example.com' }));
 

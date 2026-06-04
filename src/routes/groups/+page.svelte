@@ -69,7 +69,7 @@
 {#if groups.length === 0}
 	<p class="text-muted">No device groups found. Create one to get started.</p>
 {:else}
-	<table class="table table-striped">
+	<table class="table table-hover align-middle">
 		<thead>
 			<tr>
 				<th>Name</th>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
 	import { api, type Pack, type Team, type PackVersion } from '$lib/api';
@@ -97,7 +98,7 @@
 			groupStates = groupDataList.map((item) => {
 				const enabledPack = item.enabledPacks.find((pe) => pe.pack_name === packRes.name);
 				const hasWrite = !!item.detail.teams?.some(
-					(team) => userTeamIds.has(team.id) && team.permission_pack === 'write'
+					(team: { id: number; permission_pack?: string | null }) => userTeamIds.has(team.id) && team.permission_pack === 'write'
 				);
 				return {
 					groupId: item.id,
@@ -139,7 +140,7 @@
 
 	async function deletePack(): Promise<void> {
 		if (!pack) return;
-		if (!confirm('Are you sure you want to delete this pack and all its versions? This cannot be undone.')) return;
+		if (!await askConfirm('Are you sure you want to delete this pack and all its versions? This cannot be undone.')) return;
 		try {
 			await api.deletePack(pack.id);
 			showFlash('Pack deleted');
@@ -253,37 +254,41 @@
 										Select one or more teams that you want to associate this private pack with.
 									{/if}
 								</p>
-								<div class="border rounded p-3 bg-light mb-3" style="max-height: 200px; overflow-y: auto;">
+								<div class="team-access-list d-flex flex-column gap-2 mb-3 border rounded p-3 bg-body-tertiary" style="max-height: 250px; overflow-y: auto;">
 									{#each teams as team}
 										{#if $user && ($user.role === 'admin' || $user.role === 'maintainer' || team.permission_pack === 'write')}
-											<div class="form-check mb-1">
-												<input
-													class="form-check-input"
-													type="checkbox"
-													id="team-check-detail-{team.id}"
-													value={team.id}
-													checked={editTeamIds.includes(team.id)}
-													onchange={(e) => {
-														const target = e.target as HTMLInputElement;
-														if (target.checked) {
-															editTeamIds = [...editTeamIds, team.id];
-														} else {
-															editTeamIds = editTeamIds.filter((id) => id !== team.id);
-														}
-													}}
-												/>
-												<label class="form-check-label d-flex align-items-center justify-content-between w-100" for="team-check-detail-{team.id}">
-													<span>{team.name}</span>
-													{#if team.permission_pack === 'write'}
-														<span class="badge bg-success-subtle text-success ms-1 small">Write</span>
-													{:else if team.permission_pack === 'read'}
-														<span class="badge bg-info-subtle text-info ms-1 small">Read</span>
-													{/if}
-												</label>
-											</div>
+											{@const isSelected = editTeamIds.includes(team.id)}
+											<label 
+												class="team-access-item d-flex align-items-center justify-content-between p-2.5 rounded-3 border transition-all {isSelected ? 'border-primary bg-primary-subtle bg-opacity-25' : 'border-light-subtle bg-body'}"
+												style="cursor: pointer;"
+											>
+												<div class="d-flex align-items-center gap-2">
+													<input
+														class="form-check-input m-0"
+														type="checkbox"
+														id="team-check-detail-{team.id}"
+														value={team.id}
+														checked={isSelected}
+														onchange={(e) => {
+															const target = e.target as HTMLInputElement;
+															if (target.checked) {
+																editTeamIds = [...editTeamIds, team.id];
+															} else {
+																editTeamIds = editTeamIds.filter((id) => id !== team.id);
+															}
+														}}
+													/>
+													<span class="fw-semibold text-body small">{team.name}</span>
+												</div>
+												{#if team.permission_pack === 'write'}
+													<span class="badge bg-success-subtle text-success small border border-success-subtle px-2 py-0.5" style="font-size: 0.75rem;">Write</span>
+												{:else if team.permission_pack === 'read'}
+													<span class="badge bg-info-subtle text-info small border border-info-subtle px-2 py-0.5" style="font-size: 0.75rem;">Read</span>
+												{/if}
+											</label>
 										{/if}
 									{:else}
-										<p class="text-muted mb-0 small">No teams available.</p>
+										<p class="text-muted mb-0 small text-center py-3">No teams available.</p>
 									{/each}
 								</div>
 							</div>
@@ -311,7 +316,7 @@
 								<span class="fw-bold small text-secondary">Associated Teams:</span>
 								<div class="d-flex gap-1 flex-wrap mt-1">
 									{#each teams.filter((t) => pack?.team_ids?.includes(t.id)) as t}
-										<span class="badge bg-light text-dark border">{t.name}</span>
+										<span class="badge bg-body-secondary text-body border">{t.name}</span>
 									{:else}
 										<span class="text-muted small">Loading team names...</span>
 									{/each}
@@ -324,7 +329,7 @@
 
 			<!-- Versions list card -->
 			<div class="card shadow-sm">
-				<div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+				<div class="card-header bg-body-tertiary py-3 d-flex justify-content-between align-items-center">
 					<h5 class="mb-0 fw-bold">Pack Versions</h5>
 					{#if canManage}
 						<button class="btn btn-sm btn-primary" onclick={() => { uploadVersion = ''; uploadReleaseNotes = ''; uploadFile = null; showUpload = true; }}>
@@ -337,7 +342,7 @@
 						<p class="text-muted p-4 mb-0 text-center">No versions uploaded yet.</p>
 					{:else}
 						<div class="table-responsive">
-							<table class="table table-striped align-middle mb-0">
+							<table class="table table-hover align-middle mb-0">
 								<thead>
 									<tr>
 										<th class="ps-4" style="width: 20%">Version</th>
@@ -374,7 +379,7 @@
 		<!-- Right Column: Enable in Groups -->
 		<div class="col-lg-5">
 			<div class="card shadow-sm">
-				<div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+				<div class="card-header bg-body-tertiary py-3 d-flex justify-content-between align-items-center">
 					<h5 class="mb-0 fw-bold">Group Assignments</h5>
 					<button class="btn btn-sm btn-success" onclick={saveGroupAccess} disabled={savingAccess || groupStates.length === 0}>
 						{savingAccess ? 'Saving...' : 'Save Assignments'}
@@ -388,58 +393,66 @@
 					{#if groupStates.length === 0}
 						<p class="text-muted text-center py-4 mb-0">No device groups visible.</p>
 					{:else}
-						<div class="list-group list-group-flush border-top border-bottom mb-3">
+						<div class="group-assignment-list d-flex flex-column gap-3 mb-3 max-height-scroll border rounded p-3 bg-body-tertiary" style="max-height: 500px; overflow-y: auto;">
 							{#each groupStates as gs}
-								<div class="list-group-item px-0 py-3">
-									<div class="d-flex align-items-start gap-3">
-										<input
-											class="form-check-input mt-1"
-											type="checkbox"
-											id="group-check-{gs.groupId}"
-											bind:checked={gs.checked}
-											disabled={!gs.hasWrite}
-										/>
-										<div class="flex-grow-1">
-											<label class="form-check-label fw-bold d-block" for="group-check-{gs.groupId}">
+								{@const isAssigned = gs.checked}
+								<div 
+									class="group-assignment-card p-3 rounded-3 border transition-all {isAssigned ? 'border-success bg-success-subtle bg-opacity-10' : 'border-light-subtle bg-body'} {!gs.hasWrite ? 'opacity-75' : ''}"
+								>
+									<div class="d-flex align-items-center justify-content-between mb-2">
+										<div class="d-flex align-items-center gap-3">
+											<input
+												class="form-check-input m-0"
+												type="checkbox"
+												id="group-check-{gs.groupId}"
+												bind:checked={gs.checked}
+												disabled={!gs.hasWrite}
+											/>
+											<label class="fw-bold fs-6 mb-0 text-body cursor-pointer" for="group-check-{gs.groupId}">
 												{gs.groupName}
 											</label>
-											{#if !gs.hasWrite}
-												<span class="badge bg-light text-secondary small">Read Only</span>
-											{/if}
-
-											{#if gs.checked}
-												<div class="mt-2 bg-light p-2 rounded">
-													<div class="mb-2">
-														<label for="ver-select-{gs.groupId}" class="form-label small mb-1 text-secondary fw-semibold">Version to Enable</label>
-														<select
-															class="form-select form-select-sm"
-															id="ver-select-{gs.groupId}"
-															bind:value={gs.packVersionId}
-															disabled={!gs.hasWrite}
-														>
-															{#each versions as v}
-																<option value={String(v.id)}>{v.version}</option>
-															{:else}
-																<option value="">No versions available</option>
-															{/each}
-														</select>
-													</div>
-													<div class="form-check">
-														<input
-															class="form-check-input"
-															type="checkbox"
-															id="auto-check-{gs.groupId}"
-															bind:checked={gs.autoupdate}
-															disabled={!gs.hasWrite}
-														/>
-														<label class="form-check-label small text-muted" for="auto-check-{gs.groupId}">
-															Autoupdate to latest versions
-														</label>
-													</div>
-												</div>
-											{/if}
 										</div>
+										{#if !gs.hasWrite}
+											<span class="badge bg-secondary-subtle text-secondary small border px-2 py-1">Read Only</span>
+										{:else if isAssigned}
+											<span class="badge bg-success-subtle text-success small border border-success-subtle px-2 py-1">Assigned</span>
+										{:else}
+											<span class="badge bg-body-secondary text-secondary small border px-2 py-1">Unassigned</span>
+										{/if}
 									</div>
+
+									{#if gs.checked}
+										<div class="mt-3 bg-body p-3 rounded-2 border border-light-subtle shadow-sm">
+											<div class="mb-3">
+												<label for="ver-select-{gs.groupId}" class="form-label small mb-1 text-secondary fw-semibold">Version to Enable</label>
+												<select
+													class="form-select form-select-sm fw-semibold"
+													id="ver-select-{gs.groupId}"
+													bind:value={gs.packVersionId}
+													disabled={!gs.hasWrite}
+												>
+													{#each versions as v}
+														<option value={String(v.id)}>{v.version}</option>
+													{:else}
+														<option value="">No versions available</option>
+													{/each}
+												</select>
+											</div>
+											<div class="form-check form-switch m-0">
+												<input
+													class="form-check-input"
+													type="checkbox"
+													role="switch"
+													id="auto-check-{gs.groupId}"
+													bind:checked={gs.autoupdate}
+													disabled={!gs.hasWrite}
+												/>
+												<label class="form-check-label small fw-semibold text-muted" for="auto-check-{gs.groupId}">
+													Autoupdate to latest version
+												</label>
+											</div>
+										</div>
+									{/if}
 								</div>
 							{/each}
 						</div>
@@ -496,3 +509,27 @@
 		</button>
 	</form>
 </Modal>
+
+<style>
+	.team-access-item, .group-assignment-card {
+		transition: all 0.2s ease-in-out;
+	}
+	.team-access-item:hover, .group-assignment-card:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+	}
+	/* Custom thin scrollbar for lists */
+	.team-access-list::-webkit-scrollbar, .group-assignment-list::-webkit-scrollbar {
+		width: 6px;
+	}
+	.team-access-list::-webkit-scrollbar-track, .group-assignment-list::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	.team-access-list::-webkit-scrollbar-thumb, .group-assignment-list::-webkit-scrollbar-thumb {
+		background-color: rgba(0, 0, 0, 0.1);
+		border-radius: 3px;
+	}
+	.team-access-list::-webkit-scrollbar-thumb:hover, .group-assignment-list::-webkit-scrollbar-thumb:hover {
+		background-color: rgba(0, 0, 0, 0.2);
+	}
+</style>

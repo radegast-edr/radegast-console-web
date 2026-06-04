@@ -1,12 +1,13 @@
 <script lang="ts">
+	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import { api, type Device, type Group } from '$lib/api';
+	import { api, type DeviceDetail, type Group } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
 	import { isDeviceActive, formatFullDateTime } from '$lib/utils';
 	import AgentSetupInstructions from '$lib/components/AgentSetupInstructions.svelte';
 
-	let device = $state<Device | null>(null);
+	let device = $state<DeviceDetail | null>(null);
 	let allGroups = $state<Group[]>([]);
 	let addGroupId = $state('');
 	let newDeviceToken = $state('');
@@ -27,7 +28,7 @@
 			]);
 			device = deviceData;
 			allGroups = groupsData;
-			const deviceGroupIds = new Set((device?.groups || []).map((g) => g.id));
+			const deviceGroupIds = new Set((device?.groups || []).map((g: { id: number }) => g.id));
 			allGroups = allGroups.filter((g) => !deviceGroupIds.has(g.id));
 			addGroupId = allGroups.length > 0 ? String(allGroups[0].id) : '';
 		} catch (e) {
@@ -79,7 +80,7 @@
 	async function confirmReinstall(): Promise<void> {
 		if (!device) return;
 		const msg = 'Are you sure you want to reinstall this device? The token will be changed, but the signing key cannot be changed and must be backed-up manually if moving to another device.';
-		if (!confirm(msg)) return;
+		if (!await askConfirm(msg)) return;
 		try {
 			const res = await api.reinstallDevice(Number(device.id));
 			newDeviceToken = res.token;

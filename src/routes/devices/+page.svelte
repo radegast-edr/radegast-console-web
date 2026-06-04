@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api, type Device, type Team, type Group } from '$lib/api';
@@ -65,7 +66,7 @@
 	}
 
 	async function deleteDevice(id: string | number): Promise<void> {
-		if (!confirm('Delete this device?')) return;
+		if (!await askConfirm('Delete this device?')) return;
 		try {
 			await api.deleteDevice(Number(id));
 			await loadDevices();
@@ -93,7 +94,7 @@
 	onDismiss={() => (newDeviceToken = '')}
 />
 
-<table class="table table-striped">
+<table class="table table-hover align-middle">
 	<thead>
 		<tr>
 			<th>Name</th>

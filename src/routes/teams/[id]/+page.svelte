@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -20,7 +21,7 @@
 	let editingName = $state(false);
 	let editName = $state('');
 
-	let teamId = $derived(page.params.id ?? '');
+	let teamId = $derived(Number(page.params.id ?? '0'));
 	let eligibleTeams = $derived(team ? allTeams.filter((t) => t.id !== team?.id) : []);
 
 	onMount(async () => {
@@ -76,9 +77,9 @@
 	}
 
 	async function removeMember(userId: string | number): Promise<void> {
-		if (!confirm('Remove this member?')) return;
+		if (!await askConfirm('Remove this member?')) return;
 		try {
-			await api.removeMember(teamId, userId);
+			await api.removeMember(teamId, Number(userId));
 			await loadTeam();
 			showFlash('Member removed');
 		} catch (e) {

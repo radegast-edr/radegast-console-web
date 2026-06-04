@@ -129,12 +129,14 @@ export type KeyTransferStatusResponse = components['schemas']['KeyTransferStatus
 export type EnabledPack = components['schemas']['PackEnabledResponse'];
 export type MfaSettings = components['schemas']['MfaSettingsResponse'];
 export type NotificationSettings = components['schemas']['NotificationSettings'];
+export type MfaOtpSetupResponse = components['schemas']['MfaOtpSetupResponse'];
 
 // ---------------------------------------------------------------------------
 // API surface
 // ---------------------------------------------------------------------------
 
 export const api = {
+	client,
 	// Auth
 	register: (email: string, password: string, turnstile_token: string | null = null) =>
 		call(callOp('register_api_v1_auth_register_post', { body: { email, password, turnstile_token } })),
@@ -247,7 +249,7 @@ export const api = {
 	listGroups: (): Promise<Group[]> =>
 		call(callOp('list_groups_api_v1_groups__get', {})),
 
-	getGroup: (group_id: number): Promise<Group> =>
+	getGroup: (group_id: number): Promise<Group & { devices: Device[]; teams: Team[] }> =>
 		call(callOp('get_group_api_v1_groups__group_id__get', { params: { path: { group_id } } })),
 
 	renameGroup: (group_id: number, name: string): Promise<Group> =>
@@ -343,6 +345,24 @@ export const api = {
 				}
 			})
 		),
+
+	getLogsCount: (
+		device_id: number | null = null,
+		from_time: string | null = null,
+		to_time: string | null = null
+	): Promise<{ total_count: number }> =>
+		call(
+			callOp('get_logs_count_api_v1_logs_count_get', {
+				params: {
+					query: {
+						...(device_id ? { device_id } : {}),
+						...(from_time ? { from_time } : {}),
+						...(to_time ? { to_time } : {})
+					}
+				}
+			})
+		),
+
 
 	getUnreadLogsCount: (): Promise<{ unread_count: number }> =>
 		call(callOp('get_unread_logs_count_api_v1_logs_unread_count_get', {})),

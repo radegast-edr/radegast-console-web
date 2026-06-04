@@ -1,7 +1,11 @@
 <script lang="ts">
+	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
 	import 'bootstrap/dist/css/bootstrap.min.css';
-	import Navbar from '$lib/components/Navbar.svelte';
+	import '@fontsource/open-sans';
+	import 'hack-font/build/web/hack.css';
+	import Sidebar from '$lib/components/Sidebar.svelte';
+	import GlobalConfirm from '$lib/components/GlobalConfirm.svelte';
 	import { onMount, type Snippet } from 'svelte';
 	import { goto, beforeNavigate } from '$app/navigation';
 	import { user } from '$lib/store';
@@ -67,13 +71,11 @@
 			const encryptedRecoveryPriv = await aesEncrypt(recoveryPriv, aesKeyHex);
 
 			// 5. Submit to backend
-			await client.POST('/api/v1/auth/keys/setup', {
-				body: {
-					public_key: mainPub,
-					recovery_public_key: recoveryPub,
-					recovery_encrypted_private_key: encryptedRecoveryPriv,
-					name: 'Primary Key'
-				}
+			await api.setupKeys({
+				public_key: mainPub,
+				recovery_public_key: recoveryPub,
+				recovery_encrypted_private_key: encryptedRecoveryPriv,
+				name: 'Primary Key'
 			});
 
 			// 6. Store main private and public key in IndexedDB keyed by user ID
@@ -89,8 +91,8 @@
 			showRecoveryModal = true;
 
 			// Refresh user store
-			const { data: me2 } = await client.GET('/api/v1/auth/me', {});
-			$user = me2!;
+			const me2 = await api.me();
+			$user = me2;
 		} catch (e: any) {
 			setupError = 'Automatic key setup failed: ' + e.message;
 		} finally {
@@ -98,11 +100,17 @@
 		}
 	}
 
-	beforeNavigate(({ cancel }) => {
-		if (showRecoveryModal) {
-			if (!confirm('Are you sure you want to leave? Your recovery key will be lost if you have not saved it.')) {
-				cancel();
-			}
+	let navigateToUrl: string | null = null;
+
+	beforeNavigate(({ cancel, to }) => {
+		if (showRecoveryModal && !navigateToUrl) {
+			cancel();
+			askConfirm('Are you sure you want to leave? Your recovery key will be lost if you have not saved it.').then(confirmed => {
+				if (confirmed && to) {
+					navigateToUrl = to.url.href;
+					goto(to.url.href);
+				}
+			});
 		}
 	});
 
@@ -116,22 +124,37 @@
 
 <svelte:window onbeforeunload={handleBeforeUnload} />
 
-<Navbar />
-<main class="container-fluid px-4 mt-4">
-	{#if $user && $user.mfa_setup_missing}
-		<div class="alert alert-danger shadow-sm border-0 d-flex align-items-center gap-3 mb-4" style="border-radius: 12px; padding: 1.25rem;">
-			<div class="fs-3">⚠️</div>
-			<div>
-				<h6 class="fw-bold mb-1 text-danger">Multi-Factor Authentication (MFA) Setup Required</h6>
-				<p class="mb-0 small text-dark-emphasis">
-					Your account role (<strong>{$user.role}</strong>) requires MFA level <strong>{$user.mfa_required_level}</strong>, but you have not configured any compatible MFA methods yet.
-					Please navigate to <a href="{base}/settings" class="fw-bold text-danger text-decoration-underline">Settings</a> to register an authenticator app or Yubikey.
-				</p>
+<div class="d-flex flex-column flex-md-row" style="min-height: 100vh; overflow-x: hidden;">
+	{#if $user}
+		<Sidebar />
+		<main class="w-100 bg-body d-flex flex-column flex-grow-1 main-content">
+			<div class="container-fluid px-4 mt-4">
+				{#if $user.mfa_setup_missing}
+					<div class="alert alert-danger shadow-sm border-0 d-flex align-items-center gap-3 mb-4" style="border-radius: 12px; padding: 1.25rem;">
+						<div class="fs-3">⚠️</div>
+						<div>
+							<h6 class="fw-bold mb-1 text-danger">Multi-Factor Authentication (MFA) Setup Required</h6>
+							<p class="mb-0 small text-dark-emphasis">
+								Your account role (<strong>{$user.role}</strong>) requires MFA level <strong>{$user.mfa_required_level}</strong>, but you have not configured any compatible MFA methods yet.
+								Please navigate to <a href="{base}/settings" class="fw-bold text-danger text-decoration-underline">Settings</a> to register an authenticator app or Yubikey.
+							</p>
+						</div>
+					</div>
+				{/if}
+				{@render children()}
 			</div>
+		</main>
+	{:else}
+		<div class="d-flex flex-column w-100">
+			<Sidebar />
+			<main class="container-fluid px-4 mt-4">
+				{@render children()}
+			</main>
 		</div>
 	{/if}
-	{@render children()}
-</main>
+</div>
+
+<GlobalConfirm />
 
 {#if generatingKeys}
 	<div class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-white" style="z-index: 1999; opacity: 0.9;">
@@ -146,7 +169,7 @@
 		<div class="alert alert-danger max-width-md mx-3 text-center" style="max-width: 500px;">
 			<h5 class="fw-bold mb-2">Setup Failed</h5>
 			<p>{setupError}</p>
-			<button class="btn btn-primary btn-sm px-4" onclick={() => { setupError = ''; client.GET('/api/v1/auth/me', {}).then(({ data: me }) => autoSetupKeys(me!)); }}>
+			<button class="btn btn-primary btn-sm px-4" onclick={() => { setupError = ''; api.me().then((me) => autoSetupKeys(me)); }}>
 				Retry Key Generation
 			</button>
 		</div>
@@ -200,3 +223,16 @@
 		</div>
 	</div>
 {/if}
+
+<style>
+	.main-content {
+		overflow-y: auto;
+		max-height: 100vh;
+	}
+	@media (max-width: 767.98px) {
+		.main-content {
+			overflow-y: visible;
+			max-height: none;
+		}
+	}
+</style>

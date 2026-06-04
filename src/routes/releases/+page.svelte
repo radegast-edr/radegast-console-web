@@ -1,11 +1,19 @@
 <script lang="ts">
+	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api';
 	import { user, showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 
-	let releases = $state<any[]>([]);
+	interface ReleaseArtifact {
+		version: string;
+		os: string;
+		arch: string;
+		size_bytes: number;
+		uploaded_at: number;
+	}
+	let releases = $state<ReleaseArtifact[]>([]);
 	let loading = $state(true);
 
 	// Upload state
@@ -62,9 +70,9 @@
 	async function loadReleases(): Promise<void> {
 		loading = true;
 		try {
-			releases = await api.listReleases();
-		} catch (e: any) {
-			showError(e.message);
+			releases = await api.listReleases() as ReleaseArtifact[];
+		} catch (e: unknown) {
+			showError((e as Error).message);
 		} finally {
 			loading = false;
 		}
@@ -87,7 +95,7 @@
 	}
 
 	async function deleteRelease(version: string, os: string, arch: string): Promise<void> {
-		if (!confirm(`Delete release ${version}/${os}/${arch}? This cannot be undone.`)) return;
+		if (!await askConfirm(`Delete release ${version}/${os}/${arch}? This cannot be undone.`)) return;
 		try {
 			await api.deleteRelease(version, os, arch);
 			await loadReleases();
@@ -131,7 +139,7 @@
 {:else}
 	{#each grouped as [version, osMap]}
 		<div class="card mb-4 border-0 shadow-sm">
-			<div class="card-header d-flex align-items-center justify-content-between bg-white border-bottom">
+			<div class="card-header d-flex align-items-center justify-content-between bg-body-tertiary border-bottom">
 				<div class="d-flex align-items-center gap-2">
 					<span class="badge bg-success fs-6 px-3 py-2">{version}</span>
 					<span class="text-muted small">{[...osMap.values()].flat().length} artifact(s)</span>
@@ -141,7 +149,7 @@
 			<div class="card-body p-0">
 				<div class="table-responsive">
 					<table class="table table-hover align-middle mb-0">
-						<thead class="table-light">
+						<thead class="table-active">
 							<tr>
 								<th class="ps-3">OS</th>
 								<th>Architecture</th>

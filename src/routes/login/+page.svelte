@@ -20,7 +20,7 @@
 		error = '';
 		try {
 			const pubKey = await getPublicKeyForLogin(email);
-			const res = await api.login(email, password, pubKey);
+			const res = await api.login(email, password, pubKey) as { status?: string; mfa_token?: string; methods?: string[] };
 
 			if (res && res.status === 'mfa_required') {
 				mfaToken = res.mfa_token || '';
@@ -88,8 +88,13 @@
 		error = '';
 		mfaLoading = true;
 		try {
+			interface AssertionOptions {
+				challenge: string | ArrayBuffer;
+				allowCredentials?: Array<{ id: string | ArrayBuffer; [key: string]: unknown }>;
+				[key: string]: unknown;
+			}
 			const authOptionsRes = await api.getMfaHardwareTokenAssertionOptions(mfaToken);
-			const options = authOptionsRes.options;
+			const options = authOptionsRes.options as unknown as AssertionOptions;
 
 			options.challenge = bufferFromBase64url(options.challenge as string);
 			if (options.allowCredentials) {

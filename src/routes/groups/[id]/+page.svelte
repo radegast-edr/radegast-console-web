@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { api, type Group, type Team, type Device, type EnabledPack, type Pack, type PackVersion } from '$lib/api';
@@ -6,7 +7,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import { isDeviceActive } from '$lib/utils';
 
-	let group = $state<Group | null>(null);
+	let group = $state<(Group & { devices: Device[]; teams: Team[] }) | null>(null);
 	let allTeams = $state<Team[]>([]);
 	let allDevices = $state<Device[]>([]);
 	let addTeamId = $state('');
@@ -17,7 +18,7 @@
 	let hasPackWrite = $derived.by(() => {
 		if (!group || userTeams.length === 0) return false;
 		const userTeamIds = new Set(userTeams.map((t) => t.id));
-		return (group.teams ?? []).some((t) => userTeamIds.has(t.id) && t.permission_pack === 'write');
+		return (group.teams ?? []).some((t: { id: number; permission_pack?: string | null }) => userTeamIds.has(t.id) && t.permission_pack === 'write');
 	});
 
 	// Pack Management State
@@ -135,7 +136,7 @@
 
 	async function disablePack(enabledId: string | number): Promise<void> {
 		if (!group) return;
-		if (!confirm('Disable this pack for the group?')) return;
+		if (!await askConfirm('Disable this pack for the group?')) return;
 		try {
 			await api.disablePack(Number(group.id), Number(enabledId));
 			showFlash('Pack disabled');

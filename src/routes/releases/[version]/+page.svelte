@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -8,7 +9,14 @@
 	import Modal from '$lib/components/Modal.svelte';
 
 	let currentVersion = $derived(page.params.version ?? '');
-	let releases = $state<any[]>([]);
+	interface ReleaseArtifact {
+		version: string;
+		os: string;
+		arch: string;
+		size_bytes: number;
+		uploaded_at: number;
+	}
+	let releases = $state<ReleaseArtifact[]>([]);
 	let loading = $state(true);
 
 	// Upload new artifact for this version state
@@ -41,9 +49,9 @@
 	async function loadReleases(): Promise<void> {
 		loading = true;
 		try {
-			releases = await api.listReleases();
-		} catch (e: any) {
-			showError(e.message);
+			releases = await api.listReleases() as ReleaseArtifact[];
+		} catch (e: unknown) {
+			showError((e as Error).message);
 		} finally {
 			loading = false;
 		}
@@ -75,7 +83,7 @@
 	}
 
 	async function deleteArtifact(os: string, arch: string): Promise<void> {
-		if (!confirm(`Delete artifact ${currentVersion}/${os}/${arch}? This cannot be undone.`)) return;
+		if (!await askConfirm(`Delete artifact ${currentVersion}/${os}/${arch}? This cannot be undone.`)) return;
 		try {
 			await api.deleteRelease(currentVersion, os, arch);
 			showFlash(`Deleted artifact ${os}/${arch}`);
@@ -130,13 +138,13 @@
 		<!-- Left Column: Artifacts Table -->
 		<div class="col-lg-7">
 			<div class="card border-0 shadow-sm">
-				<div class="card-header bg-white border-bottom py-3">
+				<div class="card-header bg-body-tertiary border-bottom py-3">
 					<h5 class="mb-0 fw-bold">Artifacts</h5>
 				</div>
 				<div class="card-body p-0">
 					<div class="table-responsive">
 						<table class="table table-hover align-middle mb-0">
-							<thead class="table-light">
+							<thead class="table-active">
 								<tr>
 									<th class="ps-3">OS</th>
 									<th>Architecture</th>
@@ -188,7 +196,7 @@
 		<!-- Right Column: Integration & Endpoints Info -->
 		<div class="col-lg-5">
 			<div class="card border-0 shadow-sm">
-				<div class="card-header bg-white border-bottom py-3">
+				<div class="card-header bg-body-tertiary border-bottom py-3">
 					<h5 class="mb-0 fw-bold">Endpoints & Integration</h5>
 				</div>
 				<div class="card-body">
@@ -200,12 +208,12 @@
 						<!-- Linux Endpoint -->
 						<div class="accordion-item border-0 mb-3 shadow-sm rounded">
 							<h2 class="accordion-header" id="headingLinux">
-								<button class="accordion-button bg-light fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLinux" aria-expanded="true" aria-controls="collapseLinux">
+								<button class="accordion-button bg-body-secondary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLinux" aria-expanded="true" aria-controls="collapseLinux">
 									🐧 Linux Deployment
 								</button>
 							</h2>
 							<div id="collapseLinux" class="accordion-collapse collapse show" aria-labelledby="headingLinux" data-bs-parent="#endpointsAccordion">
-								<div class="accordion-body bg-white pt-2">
+								<div class="accordion-body bg-body pt-2">
 									<div class="mb-3">
 										<label for="linux-dl-amd64" class="form-label small fw-bold text-secondary mb-1">Direct Download Link (amd64):</label>
 										<div class="input-group">
@@ -229,12 +237,12 @@
 						<!-- Windows Endpoint -->
 						<div class="accordion-item border-0 shadow-sm rounded">
 							<h2 class="accordion-header" id="headingWindows">
-								<button class="accordion-button collapsed bg-light fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWindows" aria-expanded="false" aria-controls="collapseWindows">
+								<button class="accordion-button collapsed bg-body-secondary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWindows" aria-expanded="false" aria-controls="collapseWindows">
 									🪟 Windows Deployment
 								</button>
 							</h2>
 							<div id="collapseWindows" class="accordion-collapse collapse" aria-labelledby="headingWindows" data-bs-parent="#endpointsAccordion">
-								<div class="accordion-body bg-white pt-2">
+								<div class="accordion-body bg-body pt-2">
 									<div class="mb-3">
 										<label for="win-dl-amd64" class="form-label small fw-bold text-secondary mb-1">Direct Download Link (amd64):</label>
 										<div class="input-group">
@@ -252,12 +260,12 @@
 						<!-- macOS Endpoint -->
 						<div class="accordion-item border-0 shadow-sm rounded mt-3">
 							<h2 class="accordion-header" id="headingMacOS">
-								<button class="accordion-button collapsed bg-light fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMacOS" aria-expanded="false" aria-controls="collapseMacOS">
+								<button class="accordion-button collapsed bg-body-secondary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMacOS" aria-expanded="false" aria-controls="collapseMacOS">
 									🍏 macOS Deployment
 								</button>
 							</h2>
 							<div id="collapseMacOS" class="accordion-collapse collapse" aria-labelledby="headingMacOS" data-bs-parent="#endpointsAccordion">
-								<div class="accordion-body bg-white pt-2">
+								<div class="accordion-body bg-body pt-2">
 									<div class="mb-3">
 										<label for="mac-dl-m5" class="form-label small fw-bold text-secondary mb-1">Direct Download Link (m5):</label>
 										<div class="input-group">

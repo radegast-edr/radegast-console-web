@@ -226,6 +226,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/extended-edr": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Extended Edr */
+        put: operations["update_extended_edr_api_v1_auth_extended_edr_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/keys/transfer/initiate": {
         parameters: {
             query?: never;
@@ -1077,6 +1094,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/logs/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Logs Count */
+        get: operations["get_logs_count_api_v1_logs_count_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/logs/{log_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Resolve Log */
+        patch: operations["resolve_log_api_v1_logs__log_id__resolve_patch"];
+        trace?: never;
+    };
     "/api/v1/logs/encryption-keys": {
         parameters: {
             query?: never;
@@ -1089,6 +1140,49 @@ export interface paths {
          * @description Returns all public keys of users with log read permission for this device's groups.
          */
         get: operations["get_encryption_keys_api_v1_logs_encryption_keys_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/logs/{log_id}/encryption-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Log Encryption Keys For User
+         * @description Returns all public keys for users with access to encrypt/decrypt this log's device.
+         */
+        get: operations["get_log_encryption_keys_for_user_api_v1_logs__log_id__encryption_keys_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/logs/{log_id}/device-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Log Device Keys For Triage
+         * @description User-accessible endpoint: returns all public keys of users with log-read access
+         *     on the device associated with this log.  Used by the frontend to encrypt triage notes
+         *     so that every analyst who can see the log can also decrypt the note.
+         *     Uses the same shared utility as the device-facing encryption-keys endpoint.
+         */
+        get: operations["get_log_device_keys_for_triage_api_v1_logs__log_id__device_keys_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1461,6 +1555,11 @@ export interface components {
             /** Signature Public Key */
             signature_public_key: string;
         };
+        /** ExtendedEdrSettings */
+        ExtendedEdrSettings: {
+            /** Extended Edr Enabled */
+            extended_edr_enabled: boolean;
+        };
         /** GroupRename */
         GroupRename: {
             /** Name */
@@ -1530,6 +1629,11 @@ export interface components {
             /** Encrypted Private Key */
             encrypted_private_key?: string | null;
         };
+        /** LogCountResponse */
+        LogCountResponse: {
+            /** Total Count */
+            total_count: number;
+        };
         /** LogCreate */
         LogCreate: {
             /**
@@ -1543,6 +1647,13 @@ export interface components {
             signature?: string | null;
             /** Severity */
             severity?: ("informational" | "low" | "medium" | "high" | "critical") | null;
+        };
+        /** LogResolveRequest */
+        LogResolveRequest: {
+            /** Alert Resolution */
+            alert_resolution?: string | null;
+            /** Triage Note */
+            triage_note?: string | null;
         };
         /** LogResponse */
         LogResponse: {
@@ -1566,6 +1677,10 @@ export interface components {
             seen: boolean;
             /** Severity */
             severity?: ("informational" | "low" | "medium" | "high" | "critical") | null;
+            /** Alert Resolution */
+            alert_resolution?: string | null;
+            /** Triage Note */
+            triage_note?: string | null;
         };
         /** MfaHardwareTokenAssertionOptionsRequest */
         MfaHardwareTokenAssertionOptionsRequest: {
@@ -1872,6 +1987,11 @@ export interface components {
              * @default none
              */
             mfa_configured_level: string;
+            /**
+             * Extended Edr Enabled
+             * @default false
+             */
+            extended_edr_enabled: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -2295,6 +2415,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationSettings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_extended_edr_api_v1_auth_extended_edr_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtendedEdrSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtendedEdrSettings"];
                 };
             };
             /** @description Validation Error */
@@ -4227,6 +4380,74 @@ export interface operations {
             };
         };
     };
+    get_logs_count_api_v1_logs_count_get: {
+        parameters: {
+            query?: {
+                device_id?: number | null;
+                from_time?: string | null;
+                to_time?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogCountResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_log_api_v1_logs__log_id__resolve_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                log_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_encryption_keys_api_v1_logs_encryption_keys_get: {
         parameters: {
             query?: never;
@@ -4243,6 +4464,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_log_encryption_keys_for_user_api_v1_logs__log_id__encryption_keys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                log_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_log_device_keys_for_triage_api_v1_logs__log_id__device_keys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                log_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

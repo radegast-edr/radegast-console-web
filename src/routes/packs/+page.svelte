@@ -224,37 +224,41 @@
 					Select one or more teams that you want to associate this private pack with.
 				{/if}
 			</p>
-			<div class="border rounded p-3 bg-light" style="max-height: 200px; overflow-y: auto;">
+			<div class="team-access-list d-flex flex-column gap-2 mb-3 border rounded p-3 bg-body-tertiary" style="max-height: 250px; overflow-y: auto;">
 				{#each teams as team}
 					{#if $user && ($user.role === 'admin' || $user.role === 'maintainer' || team.permission_pack === 'write')}
-						<div class="form-check mb-1">
-							<input
-								class="form-check-input"
-								type="checkbox"
-								id="team-check-new-{team.id}"
-								value={team.id}
-								checked={newPackTeamIds.includes(team.id)}
-								onchange={(e) => {
-									const target = e.target as HTMLInputElement;
-									if (target.checked) {
-										newPackTeamIds = [...newPackTeamIds, team.id];
-									} else {
-										newPackTeamIds = newPackTeamIds.filter((id) => id !== team.id);
-									}
-								}}
-							/>
-							<label class="form-check-label d-flex align-items-center justify-content-between w-100" for="team-check-new-{team.id}">
-								<span>{team.name}</span>
-								{#if team.permission_pack === 'write'}
-									<span class="badge bg-success-subtle text-success ms-1 small">Write</span>
-								{:else if team.permission_pack === 'read'}
-									<span class="badge bg-info-subtle text-info ms-1 small">Read</span>
-								{/if}
-							</label>
-						</div>
+						{@const isSelected = newPackTeamIds.includes(team.id)}
+						<label 
+							class="team-access-item d-flex align-items-center justify-content-between p-2.5 rounded-3 border transition-all {isSelected ? 'border-primary bg-primary-subtle bg-opacity-25' : 'border-light-subtle bg-body'}"
+							style="cursor: pointer;"
+						>
+							<div class="d-flex align-items-center gap-2">
+								<input
+									class="form-check-input m-0"
+									type="checkbox"
+									id="team-check-new-{team.id}"
+									value={team.id}
+									checked={isSelected}
+									onchange={(e) => {
+										const target = e.target as HTMLInputElement;
+										if (target.checked) {
+											newPackTeamIds = [...newPackTeamIds, team.id];
+										} else {
+											newPackTeamIds = newPackTeamIds.filter((id) => id !== team.id);
+										}
+									}}
+								/>
+								<span class="fw-semibold text-body small">{team.name}</span>
+							</div>
+							{#if team.permission_pack === 'write'}
+								<span class="badge bg-success-subtle text-success small border border-success-subtle px-2 py-0.5" style="font-size: 0.75rem;">Write</span>
+							{:else if team.permission_pack === 'read'}
+								<span class="badge bg-info-subtle text-info small border border-info-subtle px-2 py-0.5" style="font-size: 0.75rem;">Read</span>
+							{/if}
+						</label>
 					{/if}
 				{:else}
-					<p class="text-muted mb-0 small">No teams available.</p>
+					<p class="text-muted mb-0 small text-center py-3">No teams available.</p>
 				{/each}
 			</div>
 		</div>
@@ -281,37 +285,41 @@
 					Select one or more teams that you want to associate this private pack with.
 				{/if}
 			</p>
-			<div class="border rounded p-3 bg-light" style="max-height: 200px; overflow-y: auto;">
+			<div class="team-access-list d-flex flex-column gap-2 mb-3 border rounded p-3 bg-body-tertiary" style="max-height: 250px; overflow-y: auto;">
 				{#each teams as team}
 					{#if $user && ($user.role === 'admin' || $user.role === 'maintainer' || team.permission_pack === 'write')}
-						<div class="form-check mb-1">
-							<input
-								class="form-check-input"
-								type="checkbox"
-								id="team-check-edit-{team.id}"
-								value={team.id}
-								checked={editPackTeamIds.includes(team.id)}
-								onchange={(e) => {
-									const target = e.target as HTMLInputElement;
-									if (target.checked) {
-										editPackTeamIds = [...editPackTeamIds, team.id];
-									} else {
-										editPackTeamIds = editPackTeamIds.filter((id) => id !== team.id);
-									}
-								}}
-							/>
-							<label class="form-check-label d-flex align-items-center justify-content-between w-100" for="team-check-edit-{team.id}">
-								<span>{team.name}</span>
-								{#if team.permission_pack === 'write'}
-									<span class="badge bg-success-subtle text-success ms-1 small">Write</span>
-								{:else if team.permission_pack === 'read'}
-									<span class="badge bg-info-subtle text-info ms-1 small">Read</span>
-								{/if}
-							</label>
-						</div>
+						{@const isSelected = editPackTeamIds.includes(team.id)}
+						<label 
+							class="team-access-item d-flex align-items-center justify-content-between p-2.5 rounded-3 border transition-all {isSelected ? 'border-primary bg-primary-subtle bg-opacity-25' : 'border-light-subtle bg-body'}"
+							style="cursor: pointer;"
+						>
+							<div class="d-flex align-items-center gap-2">
+								<input
+									class="form-check-input m-0"
+									type="checkbox"
+									id="team-check-edit-{team.id}"
+									value={team.id}
+									checked={isSelected}
+									onchange={(e) => {
+										const target = e.target as HTMLInputElement;
+										if (target.checked) {
+											editPackTeamIds = [...editPackTeamIds, team.id];
+										} else {
+											editPackTeamIds = editPackTeamIds.filter((id) => id !== team.id);
+										}
+									}}
+								/>
+								<span class="fw-semibold text-body small">{team.name}</span>
+							</div>
+							{#if team.permission_pack === 'write'}
+								<span class="badge bg-success-subtle text-success small border border-success-subtle px-2 py-0.5" style="font-size: 0.75rem;">Write</span>
+							{:else if team.permission_pack === 'read'}
+								<span class="badge bg-info-subtle text-info small border border-info-subtle px-2 py-0.5" style="font-size: 0.75rem;">Read</span>
+							{/if}
+						</label>
 					{/if}
 				{:else}
-					<p class="text-muted mb-0 small">No teams available.</p>
+					<p class="text-muted mb-0 small text-center py-3">No teams available.</p>
 				{/each}
 			</div>
 		</div>
@@ -393,3 +401,26 @@
 		<button type="submit" class="btn btn-primary">Upload</button>
 	</form>
 </Modal>
+
+<style>
+	.team-access-item {
+		transition: all 0.2s ease-in-out;
+	}
+	.team-access-item:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+	}
+	.team-access-list::-webkit-scrollbar {
+		width: 6px;
+	}
+	.team-access-list::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	.team-access-list::-webkit-scrollbar-thumb {
+		background-color: rgba(0, 0, 0, 0.1);
+		border-radius: 3px;
+	}
+	.team-access-list::-webkit-scrollbar-thumb:hover {
+		background-color: rgba(0, 0, 0, 0.2);
+	}
+</style>

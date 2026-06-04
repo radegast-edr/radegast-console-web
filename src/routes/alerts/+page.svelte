@@ -1,39 +1,29 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { api, type Log, type Device } from '$lib/api';
-	import { showError } from '$lib/store';
-	import { initAgeWasm, getStoredPrivateKey, decrypt } from '$lib/crypto';
-	import { isDeviceActive, formatFullDateTime, preprocessQuery, matchesJsonata, mapSeverityToNumber } from '$lib/utils';
-	import jsonata from 'jsonata';
+	import { showError, showFlash, user } from '$lib/store';
+	import { initAgeWasm, getStoredPrivateKey, aesEncrypt, decrypt, encrypt } from '$lib/crypto';
+	import { LogManager } from '$lib/logManager.svelte';
+	import { isDeviceActive, formatFullDateTime } from '$lib/utils';
 
-	interface DecryptionResult {
-		success: boolean;
-		parsed?: any;
-		error?: string;
-	}
-
-	let logs = $state<Log[]>([]);
-	let decryptionState = $state<Record<string | number, DecryptionResult>>({});
+	let logManager: LogManager | null = $state(null);
 	let privateKey = $state<string | null>(null);
-	let loading = $state(true);
-	let isSearching = $state(false);
-	let devices = $state<Device[]>([]);
-	let deviceMap = $derived(new Map<number, Device>(devices.map(d => [d.id, d])));
 
 	let searchQuery = $state('');
-	let searchError = $state('');
-	let filteredLogs = $state<Log[]>([]);
-
 	let isFilterExpanded = $state(false);
 
-	let knownLogIds = new Set<number>();
-	let isInitialLoad = true;
+	let selectedLog = $state<Log | null>(null);
+	let resolution = $state<string>('none');
+	let triageNote = $state<string>('');
+	let savingResolution = $state(false);
 
-	function showBrowserNotification(log: Log) {
+	let fromTime = $state<string | null>(null);
+	let toTime = $state<string | null>(null);
+
+	function showBrowserNotification(log: Log, devObj: Device | undefined) {
 		if (typeof window !== 'undefined' && 'Notification' in window) {
 			if (Notification.permission === 'granted') {
-				const devObj = deviceMap.get(log.device_id);
 				const deviceName = devObj ? devObj.name : `Device #${log.device_id}`;
 				const severityStr = log.severity ? ` [${log.severity.toUpperCase()}]` : '';
 				new Notification(`New Alert${severityStr} - Radegast EDR`, {
@@ -43,575 +33,374 @@
 		}
 	}
 
-	function formatForDateTimeLocal(date: Date): string {
-		const pad = (num: number) => String(num).padStart(2, '0');
-		const yyyy = date.getFullYear();
-		const mm = pad(date.getMonth() + 1);
-		const dd = pad(date.getDate());
-		const hh = pad(date.getHours());
-		const min = pad(date.getMinutes());
-		return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-	}
+	onMount(async () => {
+		try {
+			await initAgeWasm();
+			const me = await api.me();
+			$user = me;
+			privateKey = await getStoredPrivateKey(me.id);
+			
+			logManager = new LogManager(privateKey, showBrowserNotification);
+			const devicesData = await api.listDevices();
+			logManager.setDevices(devicesData);
 
-	// Capture default initial datetime values (last 4 days and current time + 1 day)
-	const defaultFrom = formatForDateTimeLocal(new Date(Date.now() - 4 * 24 * 60 * 60 * 1000));
-	const defaultTo = formatForDateTimeLocal(new Date(Date.now() + 24 * 60 * 60 * 1000));
+			// Setup defaults
+			const now = new Date();
+			const fourDaysAgo = new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000);
+			const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+			const pad = (num: number) => String(num).padStart(2, '0');
+			const formatLocal = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-	let initialFrom = $state(defaultFrom);
-	let initialTo = $state(defaultTo);
+			fromTime = formatLocal(fourDaysAgo);
+			toTime = formatLocal(tomorrow);
 
-	let fromTime = $state(defaultFrom);
-	let toTime = $state(defaultTo);
-	let userChangedSettings = $state(false);
-
-	$effect(() => {
-		if (fromTime !== initialFrom || toTime !== initialTo) {
-			userChangedSettings = true;
+			await performSearch();
+			
+			if (typeof window !== 'undefined' && 'Notification' in window) {
+				if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+					Notification.requestPermission();
+				}
+			}
+		} catch (e) {
+			showError('Failed to initialize: ' + (e as Error).message);
 		}
 	});
 
-	// Filter is active if query is not empty or datetime differs from default
-	let isFilterActive = $derived(
-		searchQuery.trim() !== '' ||
-		fromTime !== initialFrom ||
-		toTime !== initialTo
-	);
-
-	function getAlertObject(log: Log): any {
-		const devObj = deviceMap.get(log.device_id);
-		const deviceName = devObj ? devObj.name : `Device #${log.device_id}`;
-		let status = 'offline';
-		let last_seen: string | undefined = undefined;
-		if (devObj) {
-			if (isDeviceActive(devObj.last_seen)) {
-				status = 'online';
-			} else {
-				status = 'offline';
-				last_seen = formatFullDateTime(devObj.last_seen);
-			}
-		}
-
-		const reported_timestamp = new Date(log.time).toISOString();
-
-		// Check if severity is present in decrypted alert payload or outer log record
-		const decState = decryptionState[log.id];
-		let severityVal: any = log.severity;
-		if (decState && decState.success && decState.parsed && typeof decState.parsed === 'object' && decState.parsed.severity !== undefined) {
-			severityVal = decState.parsed.severity;
-		}
-
-		const severity_number = (severityVal !== null && severityVal !== undefined) ? mapSeverityToNumber(severityVal) : undefined;
-
-		const meta: any = {
-			alert_id: log.id,
-			device_id: log.device_id,
-			reported_timestamp: reported_timestamp,
-			device: deviceName,
-			status: status
-		};
-		if (last_seen !== undefined) {
-			meta.last_seen = last_seen;
-		}
-		if (severityVal !== null && severityVal !== undefined) {
-			meta.severity = severityVal;
-		}
-		if (severity_number !== undefined) {
-			meta.severity_number = severity_number;
-		}
-
-		if (!decState) {
-			let alertVal = 'encrypted alert';
-			if (privateKey) {
-				alertVal = 'decrypting...';
-			}
-			return {
-				meta,
-				alert: alertVal
-			};
-		}
-
-		if (decState.success) {
-			return {
-				meta,
-				alert: decState.parsed
-			};
-		} else {
-			const failedMeta: any = {
-				alert_id: log.id,
-				device_id: log.device_id,
-				reported_timestamp: reported_timestamp
-			};
-			if (severityVal !== null && severityVal !== undefined) {
-				failedMeta.severity = severityVal;
-			}
-			if (severity_number !== undefined) {
-				failedMeta.severity_number = severity_number;
-			}
-			return {
-				meta: failedMeta,
-				alert: `decrpytion failed: ${decState.error}`
-			};
-		}
+	async function performSearch() {
+		if (!logManager) return;
+		await logManager.performSearch(fromTime, toTime);
+		await logManager.runFilter(searchQuery);
 	}
+
+	$effect(() => {
+		if (logManager) {
+			const _ = logManager.logs;
+			logManager.runFilter(searchQuery);
+		}
+	});
 
 	function syntaxHighlightJson(json: string): string {
 		if (!json) return '';
-		const escaped = json
-			.replace(/&/g, '&amp;')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;');
-		
+		const escaped = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 		return escaped.replace(
 			/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
 			(match) => {
 				let cls = 'number';
 				if (match.startsWith('"')) {
-					if (match.endsWith(':')) {
-						cls = 'key';
-					} else {
-						cls = 'string';
-					}
-				} else if (match === 'true' || match === 'false') {
-					cls = 'boolean';
-				} else if (match === 'null') {
-					cls = 'null';
-				}
+					if (match.endsWith(':')) cls = 'key';
+					else cls = 'string';
+				} else if (match === 'true' || match === 'false') cls = 'boolean';
+				else if (match === 'null') cls = 'null';
 
-				if (cls === 'key') {
-					return `<span style="color: #ff79c6; font-weight: bold;">${match}</span>`;
-				} else if (cls === 'string') {
-					return `<span style="color: #f1fa8c;">${match}</span>`;
-				} else if (cls === 'number') {
-					return `<span style="color: #bd93f9;">${match}</span>`;
-				} else if (cls === 'boolean') {
-					return `<span style="color: #50fa7b; font-weight: bold;">${match}</span>`;
-				} else {
-					return `<span style="color: #6272a4;">${match}</span>`;
-				}
+				if (cls === 'key') return `<span style="color: #ff79c6; font-weight: bold;">${match}</span>`;
+				else if (cls === 'string') return `<span style="color: #f1fa8c;">${match}</span>`;
+				else if (cls === 'number') return `<span style="color: #bd93f9;">${match}</span>`;
+				else if (cls === 'boolean') return `<span style="color: #50fa7b; font-weight: bold;">${match}</span>`;
+				else return `<span style="color: #6272a4;">${match}</span>`;
 			}
 		);
 	}
 
-	$effect(() => {
-		async function runFilter() {
-			if (!searchQuery.trim()) {
-				filteredLogs = logs;
-				searchError = '';
-				return;
-			}
+	let markedSeenIds = new Set<number>();
 
+	async function selectLog(log: Log) {
+		selectedLog = log;
+		resolution = log.alert_resolution || 'none';
+		
+		if (log.triage_note && privateKey) {
 			try {
-				const processed = preprocessQuery(searchQuery);
-				jsonata(processed); // Validate query syntax
-				searchError = '';
+				triageNote = decrypt(log.triage_note, privateKey);
 			} catch (e) {
-				searchError = (e as Error).message;
-				return;
+				triageNote = 'Failed to decrypt note: ' + (e as Error).message;
 			}
-
-			const matches = await Promise.all(
-				logs.map(async (log) => {
-					const obj = getAlertObject(log);
-					return await matchesJsonata(obj, searchQuery);
-				})
-			);
-
-			filteredLogs = logs.filter((_, idx) => matches[idx]);
+		} else {
+			triageNote = '';
 		}
 
-		runFilter();
-	});
+		// In basic mode: mark as seen on click (no resolution required).
+		// In extended EDR mode: only mark as seen if the log already has a resolution
+		// (alerts without a resolution must stay active/unread until triaged).
+		const hasResolution = !!(log.alert_resolution && log.alert_resolution !== 'none');
+		const shouldMarkSeen = $user && !log.seen && !markedSeenIds.has(log.id) &&
+			(!$user.extended_edr_enabled || hasResolution);
 
-	// Record search settings in the URL fragment
-	$effect(() => {
-		if (typeof window !== 'undefined') {
-			const params = new URLSearchParams();
-			if (searchQuery) params.set('q', searchQuery);
-			if (fromTime && fromTime !== initialFrom) params.set('from', fromTime);
-			if (toTime && toTime !== initialTo) params.set('to', toTime);
-
-			const hash = params.toString();
-			if (hash) {
-				window.location.hash = hash;
-			} else {
-				history.replaceState(null, '', window.location.pathname + window.location.search);
-			}
-		}
-	});
-
-	async function performSearch(): Promise<void> {
-		isSearching = true;
-		loading = true;
-		let newLogs: Log[] = [];
-		let newDecryptionState = { ...decryptionState };
-
-		const fromUtc = fromTime ? new Date(fromTime).toISOString() : null;
-		const toUtc = toTime ? new Date(toTime).toISOString() : null;
-
-		try {
-			let currentPage = 1;
-			let hasMore = true;
-			const limitVal = 100;
-
-			while (hasMore) {
-				const logsData = await api.listLogs(currentPage, limitVal, null, fromUtc, toUtc);
-				if (logsData.length > 0) {
-					if (!isInitialLoad) {
-						for (const log of logsData) {
-							if (!knownLogIds.has(log.id)) {
-								knownLogIds.add(log.id);
-								if (!log.seen) {
-									showBrowserNotification(log);
-								}
-							}
-						}
-					} else {
-						for (const log of logsData) {
-							knownLogIds.add(log.id);
-						}
-					}
-					newLogs = [...newLogs, ...logsData];
-					
-					// Automatically decrypt new batch
-					if (privateKey) {
-						for (const log of logsData) {
-							if (newDecryptionState[log.id]) continue;
-							try {
-								const dec = decrypt(log.content, privateKey);
-								let parsed: any;
-								try {
-									parsed = JSON.parse(dec);
-								} catch (e) {
-									parsed = dec;
-								}
-								newDecryptionState[log.id] = { success: true, parsed };
-							} catch (e) {
-								newDecryptionState[log.id] = { success: false, error: (e as Error).message };
-							}
-						}
-					}
-				}
-
-				if (logsData.length < limitVal) {
-					hasMore = false;
-				} else {
-					currentPage++;
-					// Small yielding delay to keep UI responsive
-					await new Promise(resolve => setTimeout(resolve, 20));
-				}
-			}
-			logs = newLogs;
-			decryptionState = newDecryptionState;
-		} catch (e) {
-			showError('Search failed: ' + (e as Error).message);
-		} finally {
-			loading = false;
-			isSearching = false;
-		}
-	}
-
-	onMount(() => {
-		const loadData = async () => {
+		if (shouldMarkSeen) {
 			try {
-				await initAgeWasm();
-				const me = await api.me();
-				privateKey = await getStoredPrivateKey(me.id);
-
-				// Load query/datetime parameters from URL fragment hash
-				if (typeof window !== 'undefined' && window.location.hash) {
-					const hashParams = new URLSearchParams(window.location.hash.substring(1));
-					const q = hashParams.get('q');
-					const from = hashParams.get('from');
-					const to = hashParams.get('to');
-
-					if (q !== null) searchQuery = q;
-					if (from !== null) {
-						fromTime = from;
-						userChangedSettings = true;
-					}
-					if (to !== null) {
-						toTime = to;
-						userChangedSettings = true;
-					}
-
-					// If non-default parameters are loaded, automatically expand the filter
-					if (q || (from && from !== initialFrom) || (to && to !== initialTo)) {
-						isFilterExpanded = true;
-					}
-				}
-
-				try {
-					const devicesData = await api.listDevices();
-					devices = devicesData;
-				} catch (e) {
-					console.error('Failed to load devices list:', e);
-				}
-				await performSearch();
-				isInitialLoad = false;
-				if (typeof window !== 'undefined' && 'Notification' in window) {
-					if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-						Notification.requestPermission();
-					}
-				}
-			} catch (e) {
-				showError('Failed to load crypto library: ' + (e as Error).message);
-				loading = false;
-			}
-		};
-		loadData();
-
-		// Auto-refresh alerts page data every 60 seconds
-		const interval = setInterval(async () => {
-			await performSearch();
-		}, 60000);
-
-		// Move the latest date filter to current time + 1 day every hour
-		const hourInterval = setInterval(() => {
-			if (!userChangedSettings) {
-				initialTo = formatForDateTimeLocal(new Date(Date.now() + 24 * 60 * 60 * 1000));
-				toTime = initialTo;
-				performSearch();
-			}
-		}, 3600000); // 1 hour in ms
-
-		// Handle hash change events dynamically
-		const handleHashChange = () => {
-			const hashParams = new URLSearchParams(window.location.hash.substring(1));
-			const q = hashParams.get('q') || '';
-			const from = hashParams.get('from');
-			const to = hashParams.get('to');
-
-			let changed = false;
-			if (searchQuery !== q) { searchQuery = q; changed = true; }
-			
-			if (from !== null) {
-				if (fromTime !== from) { fromTime = from; changed = true; }
-				userChangedSettings = true;
-			} else {
-				if (fromTime !== initialFrom) { fromTime = initialFrom; changed = true; }
-			}
-
-			if (to !== null) {
-				if (toTime !== to) { toTime = to; changed = true; }
-				userChangedSettings = true;
-			} else {
-				if (toTime !== initialTo) { toTime = initialTo; changed = true; }
-			}
-
-			if (from === null && to === null) {
-				userChangedSettings = false;
-			}
-
-			if (changed) {
-				performSearch();
-			}
-		};
-		window.addEventListener('hashchange', handleHashChange);
-
-		return () => {
-			window.removeEventListener('hashchange', handleHashChange);
-			clearInterval(interval);
-			clearInterval(hourInterval);
-		};
-	});
-
-	async function handleAlertClick(log: Log): Promise<void> {
-		if (log.seen) return;
-		try {
-			await api.markLogSeen(Number(log.id));
-			log.seen = true;
-			logs = [...logs];
-		} catch (e) {
-			showError('Failed to mark alert as seen: ' + (e as Error).message);
-		}
-	}
-
-	async function markAllAsSeen(): Promise<void> {
-		try {
-			await api.markAllLogsSeen();
-			for (const log of logs) {
+				await api.markLogSeen(log.id);
+				markedSeenIds.add(log.id);
+				// Always update local state to reflect seen status —
+				// in extended EDR the visual indicator is resolution-based, but seen
+				// still needs to be accurate so the opacity/border reflects the DB state.
 				log.seen = true;
+			} catch (e) {
+				console.error("Failed to mark log as seen", e);
 			}
-			logs = [...logs];
-		} catch (e) {
-			showError('Failed to mark all alerts as seen: ' + (e as Error).message);
 		}
 	}
+
+	async function saveResolution() {
+		if (!selectedLog || !logManager) return;
+		savingResolution = true;
+		try {
+			let encryptedNote: string | null = null;
+			if (triageNote.trim() && privateKey) {
+				// Fetch device-based public keys: all users with log-read access on this log's device.
+				// Using the /device-keys endpoint (user-accessible) which replicates the same
+				// key set as the device-facing encryption-keys endpoint via a shared utility.
+				const keysRes = await api.client.GET('/api/v1/logs/{log_id}/device-keys', {
+					params: { path: { log_id: selectedLog.id } }
+				});
+				if (keysRes.error) {
+					const detail = typeof keysRes.error.detail === 'string' ? keysRes.error.detail : (keysRes.error.detail ? JSON.stringify(keysRes.error.detail) : 'Unknown error');
+					throw new Error("Failed to fetch encryption keys: " + detail);
+				}
+				const keys = (keysRes.data as any) || [];
+				const activeKeys = keys.filter((k: any) => k.key_type !== 'recovery').map((k: any) => k.public_key);
+				if (activeKeys.length === 0) {
+					throw new Error("No active public keys found to encrypt the triage note.");
+				}
+				encryptedNote = encrypt(triageNote, activeKeys);
+			}
+			
+			const res = await api.client.PATCH('/api/v1/logs/{log_id}/resolve', {
+				params: { path: { log_id: selectedLog.id } },
+				body: { alert_resolution: resolution === 'none' ? null : resolution, triage_note: encryptedNote }
+			});
+
+			if (res.error) {
+				const detail = typeof res.error.detail === 'string' ? res.error.detail : (res.error.detail ? JSON.stringify(res.error.detail) : 'Unknown error');
+				throw new Error(detail);
+			}
+
+			showFlash('Resolution saved successfully');
+			
+			// Update local state
+			selectedLog.alert_resolution = resolution === 'none' ? null : resolution;
+			selectedLog.triage_note = encryptedNote; 
+			// In extended EDR, only mark as seen when a real resolution is set.
+			// Clearing the resolution should leave the log visually "active" (unread).
+			const hasRealResolution = resolution && resolution !== 'none';
+			if (!$user?.extended_edr_enabled || hasRealResolution) {
+				selectedLog.seen = true;
+			}
+			
+		} catch (e) {
+			showError('Failed to save resolution: ' + (e as Error).message);
+		} finally {
+			savingResolution = false;
+		}
+	}
+
 </script>
 
 <svelte:head>
-	<title>Alerts - Radegast</title>
+	<title>Threat Triage - Radegast</title>
 </svelte:head>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-	<h2 class="mb-0">Alerts</h2>
-	{#if logs.length > 0}
-		<button class="btn btn-outline-primary btn-sm" onclick={markAllAsSeen}>
-			Mark All As Seen
-		</button>
-	{/if}
-</div>
-
-{#if !loading && !privateKey}
-	<div class="alert alert-info mb-3">
-		No private key found in this browser. <a href="{base}/keys/recovery">Recover your keys</a> to decrypt alerts.
+<div class="alerts-page-wrapper">
+	<div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-3">
+		<h2 class="mb-0 fw-bold">Threat Triage</h2>
 	</div>
-{/if}
 
-<!-- Query Filters Card (Expandable/Collapsible) -->
-<div class="card mb-3">
-	<button
-		class="btn btn-light d-flex justify-content-between align-items-center w-100 p-3 text-start border-0"
-		onclick={() => isFilterExpanded = !isFilterExpanded}
-		aria-expanded={isFilterExpanded}
-		style="background: none; border-radius: 8px;"
-	>
-		<span class="fw-semibold">
-			Query & Datetime Filter
-			{#if isFilterActive}
-				<span class="badge bg-secondary ms-2">Active</span>
-			{/if}
-		</span>
-		<span class="small text-muted">{isFilterExpanded ? '▲ Collapse' : '▼ Expand'}</span>
-	</button>
-
-	{#if isFilterExpanded}
-		<div class="card-body border-top p-3">
-			<div class="row g-3">
-				<!-- Left Column: JSONata filter query (wide) -->
-				<div class="col-md-8 col-lg-9">
-					<div class="d-flex justify-content-between align-items-center mb-1">
-						<label for="alert-search" class="form-label mb-0 fw-semibold" style="font-size: 0.85rem;">JSONata Filter Query</label>
-						<a href="https://jsonata.org/" target="_blank" rel="noopener noreferrer" class="small text-decoration-none" style="font-size: 0.75rem;">Docs &raquo;</a>
-					</div>
-					<div class="input-group">
-						<span class="input-group-text font-monospace" style="font-size: 0.9rem;">&gt;_</span>
-						<textarea
-							id="alert-search"
-							class="form-control font-monospace"
-							placeholder='e.g., meta.device = "MyLaptop" and alert.severity = "high"'
-							bind:value={searchQuery}
-							style="resize: vertical; font-size: 0.85rem; height: 161px;"
-						></textarea>
-					</div>
-				</div>
-				
-				<!-- Right Column: Datetime inputs stacked vertically -->
-				<div class="col-md-4 col-lg-3">
-					<div class="mb-2">
-						<label for="from-time" class="form-label mb-1 fw-semibold" style="font-size: 0.85rem;">From</label>
-						<input
-							id="from-time"
-							type="datetime-local"
-							class="form-control"
+	{#if !logManager || logManager.loading && logManager.logs.length === 0}
+		<div class="text-center p-5 text-muted">
+			<span class="spinner-border spinner-border-sm me-2"></span> Loading alerts...
+		</div>
+	{:else}
+		<div class="alerts-container">
+			<!-- Left Pane: Alert List -->
+			<div class="left-pane border-end pe-3 d-flex flex-column">
+			<div class="mb-3">
+				<input 
+					type="text" 
+					class="form-control mb-2" 
+					placeholder="Filter alerts (JSONata)..." 
+					bind:value={searchQuery}
+				/>
+				<div class="row g-2">
+					<div class="col-6">
+						<label for="alerts-from-time" class="form-label small fw-bold mb-1">From</label>
+						<input 
+							id="alerts-from-time"
+							type="datetime-local" 
+							class="form-control form-control-sm" 
 							bind:value={fromTime}
-							onchange={() => userChangedSettings = true}
-							oninput={() => userChangedSettings = true}
-							style="font-size: 0.85rem; height: 35px;"
+							onchange={() => logManager?.performSearch(fromTime, toTime, 1)}
 						/>
 					</div>
-					
-					<div class="mb-2">
-						<label for="to-time" class="form-label mb-1 fw-semibold" style="font-size: 0.85rem;">To</label>
-						<input
-							id="to-time"
-							type="datetime-local"
-							class="form-control"
+					<div class="col-6">
+						<label for="alerts-to-time" class="form-label small fw-bold mb-1">To</label>
+						<input 
+							id="alerts-to-time"
+							type="datetime-local" 
+							class="form-control form-control-sm" 
 							bind:value={toTime}
-							onchange={() => userChangedSettings = true}
-							oninput={() => userChangedSettings = true}
-							style="font-size: 0.85rem; height: 35px;"
+							onchange={() => logManager?.performSearch(fromTime, toTime, 1)}
 						/>
-					</div>
-					
-					<div>
-						<button
-							class="btn btn-primary w-100"
-							onclick={performSearch}
-							disabled={isSearching}
-							style="font-size: 0.85rem; height: 35px;"
-						>
-							{#if isSearching}
-								<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-								Searching...
-							{:else}
-								Search
-							{/if}
-						</button>
 					</div>
 				</div>
 			</div>
-			{#if searchQuery && searchError}
-				<div class="text-danger small mt-2 font-monospace">⚠️ {searchError}</div>
-			{:else if searchQuery}
-				<div class="text-success small mt-2 font-monospace">✓ Valid query (showing {filteredLogs.length} of {logs.length} alerts)</div>
-			{/if}
-		</div>
-	{/if}
-</div>
-
-{#if loading && logs.length === 0}
-	<div class="text-muted">
-		<span class="spinner-border spinner-border-sm text-primary me-2" role="status"></span>
-		Loading alerts…
-	</div>
-{:else}
-	<div class="d-flex justify-content-between align-items-center mb-2 px-1">
-		<div class="text-muted small fw-semibold">
-			Found {filteredLogs.length} alert{filteredLogs.length === 1 ? '' : 's'}
-		</div>
-	</div>
-
-	<div class="row g-2">
-		{#each filteredLogs as log (log.id)}
-			{@const alertObj = getAlertObject(log)}
-			{@const jsonString = JSON.stringify(alertObj, null, 2)}
-			<div class="col-12">
-				<div 
-					onclick={() => handleAlertClick(log)}
-					onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleAlertClick(log); }}
-					role="button"
-					tabindex="0"
-					style="cursor: pointer;"
-					class="card mb-1 {log.seen ? 'opacity-75' : 'border-primary'}"
-				>
-					<div class="card-body p-2">
-						<pre class="p-2 rounded mb-1 font-monospace" style="background-color: #282a36 !important; color: #f8f8f2 !important; max-height: 400px; overflow: auto; white-space: pre-wrap; word-break: break-all; font-size: 0.85rem; border: 1px solid #44475a;">{@html syntaxHighlightJson(jsonString)}</pre>
-						
-						<div class="d-flex justify-content-between align-items-center mt-1 px-1 small text-muted font-monospace" style="font-size: 0.75rem;">
-							<div class="d-flex align-items-center gap-2">
-								{#if !log.seen}
-									<span class="badge bg-primary px-2 py-0.5">New</span>
-								{/if}
-								<span>Time: {new Date(log.time).toLocaleString()}</span>
-								{#if log.severity}
-									<span class="text-capitalize">• Severity: {log.severity}</span>
-								{/if}
-								{#if !log.signature}
-									<span class="badge bg-danger px-2 py-0.5" title="Unsigned alert! Content integrity cannot be guaranteed.">Unsigned</span>
-								{/if}
+			
+			<div class="flex-grow-1 overflow-auto" style="height: 0;">
+				{#each logManager.filteredLogs as log}
+					{@const alertObj = logManager.getAlertObject(log)}
+					{@const ruleName = alertObj.alert?.rule?.name || `An alert on ${alertObj.meta.device || 'Unknown Device'}`}
+					{@const isRead = $user?.extended_edr_enabled ? (!!log.alert_resolution && log.alert_resolution !== 'none') : !!log.seen}
+					
+					<div 
+						class="card mb-2 border-0 shadow-sm {selectedLog?.id === log.id ? 'bg-primary text-white' : 'bg-body-tertiary'} {isRead ? 'opacity-75' : 'border-start border-3 border-danger'}" 
+						style="cursor: pointer; border-radius: 8px;"
+						onclick={() => selectLog(log)}
+						onkeydown={(e) => { if (e.key === 'Enter') selectLog(log); }}
+						role="button"
+						tabindex="0"
+					>
+						<div class="card-body p-3">
+							<div class="d-flex justify-content-between mb-1">
+								<span class="fw-bold text-truncate" style="max-width: 70%;">{ruleName}</span>
+								<span class="small opacity-75">{new Date(log.time).toLocaleTimeString()}</span>
 							</div>
-							<div>
-								<a 
-									href="{base}/devices/{log.device_id}" 
-									onclick={(e) => e.stopPropagation()} 
-									class="text-decoration-none fw-bold link-primary"
-								>
-									Device details &raquo;
-								</a>
+							<div class="d-flex justify-content-between align-items-center small">
+								<span class="opacity-75">{alertObj.meta.device}</span>
+								<div class="d-flex gap-1 align-items-center">
+									{#if log.alert_resolution && log.alert_resolution !== 'none'}
+										{@const res = log.alert_resolution}
+										<span class="badge {res === 'true_positive' ? 'bg-danger' : (res === 'false_positive' ? 'bg-success' : 'bg-secondary')}">
+											{res === 'true_positive' ? 'tp' : (res === 'false_positive' ? 'fp' : 'read')}
+										</span>
+									{:else if !$user?.extended_edr_enabled && log.seen}
+										<span class="badge bg-secondary">read</span>
+									{/if}
+									{#if log.severity}
+										<span class="badge {log.severity === 'high' || log.severity === 'critical' ? 'bg-danger' : 'bg-warning text-dark'} text-uppercase">{log.severity}</span>
+									{/if}
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
-			</div>
-		{:else}
-			<div class="col-12 text-muted text-center py-4 card">
-				{#if !searchQuery.trim() && logs.length === 0}
-					No alerts at all.
-				{:else}
-					No alerts found matching your criteria.
+				{/each}
+				{#if logManager.filteredLogs.length === 0}
+					<div class="text-muted text-center p-4">No alerts found.</div>
 				{/if}
 			</div>
-		{/each}
+
+			<div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+				<button 
+					class="btn btn-outline-secondary btn-sm fw-bold" 
+					disabled={logManager.currentPage <= 1 || logManager.loading}
+					onclick={() => logManager?.performSearch(fromTime, toTime, logManager.currentPage - 1)}
+				>
+					&laquo; Prev
+				</button>
+				<span class="small fw-semibold text-muted">
+					Page {logManager.currentPage} of {logManager.totalPages} ({logManager.totalLogs} total)
+				</span>
+				<button 
+					class="btn btn-outline-secondary btn-sm fw-bold" 
+					disabled={logManager.currentPage >= logManager.totalPages || logManager.loading}
+					onclick={() => logManager?.performSearch(fromTime, toTime, logManager.currentPage + 1)}
+				>
+					Next &raquo;
+				</button>
+			</div>
+		</div>
+
+		<!-- Right Pane: Alert Details -->
+		<div class="right-pane ps-3 d-flex flex-column overflow-auto">
+			{#if selectedLog}
+				{@const alertObj = logManager.getAlertObject(selectedLog)}
+				{@const ruleName = alertObj.alert?.rule?.name || `An alert on ${alertObj.meta.device || 'Unknown Device'}`}
+				
+				<div class="card border-0 shadow-sm mb-3" style="border-radius: 12px; background: var(--bs-body-bg);">
+					<div class="card-header bg-transparent border-bottom-0 pt-4 pb-0">
+						<h4 class="fw-bold mb-1">{ruleName}</h4>
+						<div class="d-flex gap-3 text-muted small">
+							<span><strong>Device:</strong> {alertObj.meta.device}</span>
+							<span><strong>Time:</strong> {new Date(selectedLog.time).toLocaleString()}</span>
+							<span><strong>Severity:</strong> {selectedLog.severity ? selectedLog.severity.toUpperCase() : 'N/A'}</span>
+						</div>
+					</div>
+					<div class="card-body">
+						<h6 class="fw-bold mb-2">RAW TELEMETRY (Decrypted locally):</h6>
+						<pre class="p-3 rounded mb-0 font-monospace" style="background-color: #282a36 !important; color: #f8f8f2 !important; white-space: pre-wrap; word-break: break-all; font-size: 0.85rem; border: 1px solid #44475a;">{@html syntaxHighlightJson(JSON.stringify(alertObj.alert, null, 2))}</pre>
+					</div>
+				</div>
+
+				{#if $user && $user.extended_edr_enabled}
+					<div class="card border-0 shadow-sm" style="border-radius: 12px; background: var(--bs-body-bg);">
+						<div class="card-body">
+							<div class="d-flex justify-content-between align-items-center mb-3">
+								<h6 class="fw-bold mb-0 text-primary">Extended EDR Triage</h6>
+								<span class="badge bg-primary">Enabled</span>
+							</div>
+							
+							<div class="mb-3">
+								<label for="triageNote" class="form-label fw-bold small">TRIAGE NOTES (E2EE):</label>
+								<textarea 
+									id="triageNote" 
+									class="form-control" 
+									rows="3" 
+									placeholder="Analyst reviewed the process. Expected IT behavior. Marking as false positive."
+									bind:value={triageNote}
+								></textarea>
+							</div>
+
+							<div class="d-flex align-items-end gap-3">
+								<div class="flex-grow-1">
+									<label for="resolution" class="form-label fw-bold small">RESOLUTION:</label>
+									<select id="resolution" class="form-select fw-bold" bind:value={resolution}>
+										<option value="none">None</option>
+										<option value="read">Read (Acknowledge)</option>
+										<option value="true_positive">True Positive</option>
+										<option value="false_positive">False Positive</option>
+									</select>
+								</div>
+								<button class="btn btn-primary fw-bold" onclick={saveResolution} disabled={savingResolution}>
+									{savingResolution ? 'Saving...' : 'Save Triage'}
+								</button>
+							</div>
+						</div>
+					</div>
+				{/if}
+			{:else}
+				<div class="d-flex align-items-center justify-content-center h-100 text-muted">
+					Select an alert from the list to view details and triage.
+				</div>
+			{/if}
+		</div>
 	</div>
 {/if}
+</div>
+
+<style>
+	.alerts-container {
+		height: auto;
+	}
+	@media (min-width: 768px) {
+		.alerts-page-wrapper {
+			display: grid;
+			grid-template-rows: auto 1fr;
+			height: calc(100vh - 48px);
+			overflow: hidden;
+		}
+		.alerts-container {
+			display: grid;
+			grid-template-columns: 5fr 7fr;
+			grid-template-rows: 100%;
+			height: 100%;
+			overflow: hidden;
+		}
+		.left-pane {
+			height: 100%;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+		}
+		.right-pane {
+			height: 100%;
+			display: flex;
+			flex-direction: column;
+			overflow-y: auto;
+		}
+	}
+</style>

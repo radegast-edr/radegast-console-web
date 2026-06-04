@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api, type UserInfo, type Device, type Pack } from '$lib/api';
@@ -35,7 +36,7 @@
 	}
 
 	async function deleteUser(id: string | number): Promise<void> {
-		if (!confirm('Delete this user?')) return;
+		if (!await askConfirm('Delete this user?')) return;
 		try {
 			await api.adminDeleteUser(Number(id));
 			await loadAll();
@@ -46,7 +47,7 @@
 	}
 
 	async function resetUserPassword(u: UserInfo): Promise<void> {
-		if (!confirm(`Are you sure you want to reset the password and clear all MFA devices for user ${u.email}?`)) return;
+		if (!await askConfirm(`Are you sure you want to reset the password and clear all MFA devices for user ${u.email}?`)) return;
 		try {
 			await api.adminResetUserPassword(Number(u.id));
 			resetPasswordResult = { email: u.email };
@@ -58,7 +59,7 @@
 	}
 
 	async function deleteDevice(id: string | number): Promise<void> {
-		if (!confirm('Delete this device?')) return;
+		if (!await askConfirm('Delete this device?')) return;
 		try {
 			await api.adminDeleteDevice(Number(id));
 			await loadAll();
@@ -69,7 +70,7 @@
 	}
 
 	async function deletePack(id: string | number): Promise<void> {
-		if (!confirm('Delete this pack and all its versions?')) return;
+		if (!await askConfirm('Delete this pack and all its versions?')) return;
 		try {
 			await api.adminDeletePack(Number(id));
 			await loadAll();
@@ -119,7 +120,7 @@
 		</div>
 	{/if}
 
-	<table class="table table-striped">
+	<table class="table table-hover align-middle">
 		<thead>
 			<tr>
 				<th>ID</th>
@@ -166,7 +167,7 @@
 		</tbody>
 	</table>
 {:else if activeTab === 'devices'}
-	<table class="table table-striped">
+	<table class="table table-hover align-middle">
 		<thead>
 			<tr>
 				<th>ID</th>
@@ -194,7 +195,7 @@
 		</tbody>
 	</table>
 {:else if activeTab === 'packs'}
-	<table class="table table-striped">
+	<table class="table table-hover align-middle">
 		<thead>
 			<tr>
 				<th>ID</th>

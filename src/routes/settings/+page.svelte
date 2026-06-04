@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api';
+	import { api, type NotificationSettings, type UserKey, type MfaSettings, type MfaOtpSetupResponse } from '$lib/api';
 	import { showFlash, showError, user } from '$lib/store';
 	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt, getStoredPublicKey } from '$lib/crypto';
 
@@ -12,15 +12,22 @@
 	let pwSaving = $state(false);
 
 	// Notification prefs
-	let notifications = $state<any>(null);
+	let notifications = $state<NotificationSettings | null>(null);
 	let notifSaving = $state(false);
 
 	// Encryption Keys Management
-	let keys = $state<any[]>([]);
+	let keys = $state<UserKey[]>([]);
 	let keysLoading = $state(true);
 	let wasmReady = $state(false);
-	let userId = $state<any>(null);
-	let currentLocalPubKey = $state<any>(null);
+	let userId = $state<number | null>(null);
+	let currentLocalPubKey = $state<string | null>(null);
+
+	let extendedEdrEnabled = $state(false);
+	$effect(() => {
+		if ($user) {
+			extendedEdrEnabled = $user.extended_edr_enabled;
+		}
+	});
 
 	// Add key state
 	let isRecovery = $state(false);
@@ -147,6 +154,9 @@
 					name: newKeyName.trim()
 				});
 
+				if (userId === null) {
+					throw new Error('User ID not set');
+				}
 				// Store private key locally in IndexedDB along with public key
 				await storePrivateKey(userId, privateKey, publicKey);
 				
@@ -187,8 +197,8 @@
 			oldPassword = '';
 			newPassword = '';
 			confirmPassword = '';
-		} catch (e: any) {
-			showError(e.message);
+		} catch (e: unknown) {
+			showError((e as Error).message);
 		} finally {
 			pwSaving = false;
 		}
@@ -198,19 +208,32 @@
 		if (!notifications) return;
 		notifSaving = true;
 		try {
-			notifications = await api.updateNotifications(notifications);
+			notifications = await api.updateNotifications(notifications) as NotificationSettings;
 			showFlash('Notification preferences saved.');
-		} catch (e: any) {
-			showError(e.message);
+		} catch (e: unknown) {
+			showError((e as Error).message);
 		} finally {
 			notifSaving = false;
 		}
 	}
 
-	let mfaSettings = $state<any>(null);
+	async function saveExtendedEdr(): Promise<void> {
+		if (!$user) return;
+		try {
+			await api.client.PUT('/api/v1/auth/extended-edr', {
+				body: { extended_edr_enabled: extendedEdrEnabled }
+			});
+			$user.extended_edr_enabled = extendedEdrEnabled;
+			showFlash('Extended EDR preference saved.');
+		} catch (e: unknown) {
+			showError((e as Error).message);
+		}
+	}
+
+	let mfaSettings = $state<MfaSettings | null>(null);
 	let mfaLoading = $state(true);
 	let otpSetupActive = $state(false);
-	let otpSetupData = $state<any>(null);
+	let otpSetupData = $state<MfaOtpSetupResponse | null>(null);
 	let hardwareTokenName = $state('');
 	let hardwareTokenRegistering = $state(false);
 	let otpCode = $state('');
@@ -231,7 +254,7 @@
 
 	async function startOtpSetup(): Promise<void> {
 		try {
-			otpSetupData = await api.setupMfaOtp();
+			otpSetupData = await api.setupMfaOtp() as MfaOtpSetupResponse;
 			otpSetupActive = true;
 		} catch (e: any) {
 			showError('Failed to start OTP setup: ' + e.message);
@@ -301,8 +324,14 @@
 		}
 		hardwareTokenRegistering = true;
 		try {
+			interface CredentialOptions {
+				challenge: string | ArrayBuffer;
+				user: { id: string | ArrayBuffer };
+				excludeCredentials?: Array<{ id: string | ArrayBuffer; [key: string]: unknown }>;
+				[key: string]: unknown;
+			}
 			const setupRes = await api.setupMfaHardwareToken();
-			const options = setupRes.options;
+			const options = setupRes.options as unknown as CredentialOptions;
 
 			options.challenge = bufferFromBase64url(options.challenge as string);
 			options.user.id = bufferFromBase64url(options.user.id as string);
@@ -331,8 +360,8 @@
 			hardwareTokenName = '';
 			hardwareTokenSetupActive = false;
 			await loadMfaSettings();
-		} catch (e: any) {
-			showError('Failed to register Hardware token: ' + e.message);
+		} catch (e: unknown) {
+			showError('Failed to register Hardware token: ' + (e as Error).message);
 		} finally {
 			hardwareTokenRegistering = false;
 		}
@@ -344,11 +373,11 @@
 			'Are you sure you want to delete this security key? You will no longer be able to use it to log in.',
 			async () => {
 				try {
-					await api.deleteMfaHardwareToken(id);
+					await api.deleteMfaHardwareToken(Number(id));
 					showFlash('Hardware token deleted successfully.');
 					await loadMfaSettings();
-				} catch (e: any) {
-					showError('Failed to delete Hardware token: ' + e.message);
+				} catch (e: unknown) {
+					showError('Failed to delete Hardware token: ' + (e as Error).message);
 				}
 			}
 		);
@@ -653,7 +682,7 @@
 			<div class="card-body">
 				{#if mfaLoading}
 					<div class="text-muted">Loading MFA preferences…</div>
-				{:else}
+				{:else if mfaSettings}
 					<p class="text-muted small">
 						Configure additional security verification methods. Required MFA level for your role is <strong>{mfaSettings.required_level}</strong> (current session level: <strong>{mfaSettings.current_level}</strong>).
 					</p>
@@ -677,7 +706,7 @@
 											Disable OTP
 										</button>
 									{/if}
-								{:else if otpSetupActive}
+								{:else if otpSetupActive && otpSetupData}
 									<div class="mb-3 p-3 bg-light rounded text-center">
 										<p class="small fw-semibold mb-2">1. Scan QR code or enter manual secret key:</p>
 										<div class="bg-white p-2 border d-inline-block mb-3">
@@ -761,6 +790,28 @@
 </div>
 
 <div class="row g-4 mt-2">
+	<!-- Extended EDR Preferences Card -->
+	<div class="col-12">
+		<div class="card">
+			<div class="card-header"><h5 class="mb-0">Extended EDR Preferences</h5></div>
+			<div class="card-body">
+				<div class="form-check mb-2">
+					<input
+						class="form-check-input"
+						type="checkbox"
+						id="extendedEdr"
+						bind:checked={extendedEdrEnabled}
+						onchange={saveExtendedEdr}
+					/>
+					<label class="form-check-label fw-bold" for="extendedEdr">Enable Extended EDR Features</label>
+				</div>
+				<p class="text-muted small mb-0 ms-4">
+					Enables advanced threat triage (E2EE analyst notes, resolution dropdowns), bypassing automatic read-on-click behaviors.
+				</p>
+			</div>
+		</div>
+	</div>
+
 	<!-- Legal & Policies Card -->
 	<div class="col-12 mb-4">
 		<div class="card">

@@ -18,7 +18,7 @@
 
 	onMount(async () => {
 		try {
-			const config = await api.getAuthConfig();
+			const config = await api.getAuthConfig() as { turnstile_site_key?: string | null };
 			turnstileSiteKey = config.turnstile_site_key || null;
 			if (turnstileSiteKey) {
 				const checkTurnstile = setInterval(() => {

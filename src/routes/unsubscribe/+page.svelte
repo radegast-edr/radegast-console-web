@@ -17,10 +17,10 @@
 			return;
 		}
 		try {
-			const res = await api.unsubscribe(token);
+			const res = await api.unsubscribe(token) as { message?: string };
 			successMessage = res.message || 'You have been successfully unsubscribed.';
 			status = 'success';
-		} catch (e) {
+		} catch (e: unknown) {
 			status = 'error';
 			errorMessage = (e as Error).message || 'The unsubscribe link is invalid or has expired.';
 			if (errorMessage.toLowerCase().includes('expired') || errorMessage.toLowerCase().includes('log in') || errorMessage.toLowerCase().includes('manual')) {

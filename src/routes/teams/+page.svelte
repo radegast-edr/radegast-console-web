@@ -52,7 +52,7 @@
 {#if teams.length === 0}
 	<p class="text-muted">No teams yet.</p>
 {:else}
-	<table class="table table-striped">
+	<table class="table table-hover align-middle">
 		<thead>
 			<tr>
 				<th>Name</th>
