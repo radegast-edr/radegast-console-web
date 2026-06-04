@@ -126,6 +126,10 @@
 			{:else}
 				<span class="badge bg-secondary">Not set</span>
 			{/if}
+			<span class="mx-2">|</span>
+			Agent: <span class="badge bg-info text-dark">{device.agent_version ?? 'N/A'}</span>
+			<span class="mx-2">|</span>
+			Rustinel: <span class="badge bg-info text-dark">{device.rustinel_version ?? 'N/A'}</span>
 		</p>
 	</div>
 

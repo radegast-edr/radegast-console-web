@@ -1514,6 +1514,10 @@ export interface components {
             signature_public_key: string | null;
             /** Last Seen */
             last_seen?: string | null;
+            /** Agent Version */
+            agent_version?: string | null;
+            /** Rustinel Version */
+            rustinel_version?: string | null;
             /** Groups */
             groups: components["schemas"]["DeviceGroupResponse"][];
         };
@@ -1560,6 +1564,10 @@ export interface components {
             signature_public_key: string | null;
             /** Last Seen */
             last_seen?: string | null;
+            /** Agent Version */
+            agent_version?: string | null;
+            /** Rustinel Version */
+            rustinel_version?: string | null;
         };
         /** DeviceSetSigningKey */
         DeviceSetSigningKey: {
@@ -4189,7 +4197,10 @@ export interface operations {
     };
     device_available_packs_api_v1_packs_device_available_get: {
         parameters: {
-            query?: never;
+            query?: {
+                agent_version?: string | null;
+                rustinel_version?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4203,6 +4214,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
