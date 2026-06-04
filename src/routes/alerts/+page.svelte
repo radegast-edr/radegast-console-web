@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
 	import { onMount, onDestroy } from 'svelte';
 	import { api, type Log, type Device } from '$lib/api';
@@ -191,6 +192,60 @@
 		}
 	}
 
+	async function markAllSeen() {
+		if (!logManager) return;
+
+		const isEdr = $user?.extended_edr_enabled;
+		if (isEdr) {
+			const count = logManager.filteredLogs.length;
+			if (count === 0) return;
+
+			const confirmed = await askConfirm(`Are you sure you want to resolve all ${count} currently shown alerts as 'read'?`);
+			if (!confirmed) return;
+
+			try {
+				logManager.loading = true;
+				await Promise.all(
+					logManager.filteredLogs.map(async (log) => {
+						const res = await api.client.PATCH('/api/v1/logs/{log_id}/resolve', {
+							params: { path: { log_id: log.id } },
+							body: { alert_resolution: 'read', triage_note: null }
+						});
+						if (res.error) {
+							const detail = typeof res.error.detail === 'string' ? res.error.detail : (res.error.detail ? JSON.stringify(res.error.detail) : 'Unknown error');
+							throw new Error(detail);
+						}
+						log.alert_resolution = 'read';
+						log.seen = true;
+					})
+				);
+				logManager.logs = [...logManager.logs];
+				showFlash(`Successfully resolved ${count} alerts as 'read'`);
+			} catch (e) {
+				showError('Failed to resolve alerts: ' + (e as Error).message);
+			} finally {
+				logManager.loading = false;
+			}
+		} else {
+			const confirmed = await askConfirm('Are you sure you want to mark all alerts as seen?');
+			if (!confirmed) return;
+
+			try {
+				logManager.loading = true;
+				await api.markAllLogsSeen();
+				logManager.logs.forEach(log => {
+					log.seen = true;
+				});
+				logManager.logs = [...logManager.logs];
+				showFlash('All alerts marked as seen successfully');
+			} catch (e) {
+				showError('Failed to mark all as seen: ' + (e as Error).message);
+			} finally {
+				logManager.loading = false;
+			}
+		}
+	}
+
 </script>
 
 <svelte:head>
@@ -200,6 +255,25 @@
 <div class="alerts-page-wrapper">
 	<div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-3">
 		<h2 class="mb-0 fw-bold">Threat Triage</h2>
+		{#if $user}
+			{#if $user.extended_edr_enabled}
+				<button 
+					class="btn btn-outline-primary btn-sm fw-bold" 
+					onclick={markAllSeen}
+					disabled={!logManager || logManager.loading || logManager.filteredLogs.length === 0}
+				>
+					Resolve All as Read
+				</button>
+			{:else}
+				<button 
+					class="btn btn-outline-primary btn-sm fw-bold" 
+					onclick={markAllSeen}
+					disabled={!logManager || logManager.loading || logManager.logs.length === 0}
+				>
+					Mark All as Seen
+				</button>
+			{/if}
+		{/if}
 	</div>
 
 	{#if !logManager || logManager.loading && logManager.logs.length === 0}

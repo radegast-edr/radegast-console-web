@@ -8,6 +8,10 @@ vi.mock('$app/paths', () => ({
 	base: ''
 }));
 
+vi.mock('$lib/confirm', () => ({
+	askConfirm: vi.fn().mockResolvedValue(true)
+}));
+
 vi.mock('$app/navigation', () => ({
 	goto: vi.fn()
 }));
@@ -36,6 +40,7 @@ vi.mock('$lib/api', () => ({
 		listLogs: vi.fn(),
 		getLogsCount: vi.fn(),
 		markLogSeen: vi.fn(),
+		markAllLogsSeen: vi.fn(),
 		client: {
 			GET: vi.fn(),
 			PATCH: vi.fn()
@@ -318,6 +323,59 @@ describe('Alerts Page', () => {
 			await waitFor(() => {
 				const card = screen.getByText('Flat Rule Title').closest('.card');
 				expect(card).toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('Bulk actions - Mark All as Seen / Resolve All as Read', () => {
+		it('renders Mark All as Seen in basic mode, prompts, and calls api.markAllLogsSeen', async () => {
+			const { askConfirm } = await import('$lib/confirm');
+			vi.mocked(askConfirm).mockResolvedValue(true);
+
+			const log = makeLog({ id: 101, seen: false });
+			vi.mocked(api.listLogs).mockResolvedValue([log] as any);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+			vi.mocked(api.markAllLogsSeen).mockResolvedValue({ message: 'All logs marked as seen' } as any);
+
+			render(Alerts);
+
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule')).toBeInTheDocument();
+			});
+
+			const button = screen.getByText('Mark All as Seen');
+			await fireEvent.click(button);
+
+			expect(askConfirm).toHaveBeenCalledWith('Are you sure you want to mark all alerts as seen?');
+			expect(api.markAllLogsSeen).toHaveBeenCalled();
+		});
+
+		it('renders Resolve All as Read in Extended EDR mode, prompts, and resolves shown alerts', async () => {
+			const { askConfirm } = await import('$lib/confirm');
+			vi.mocked(askConfirm).mockResolvedValue(true);
+
+			const edrUser = { ...mockUser, extended_edr_enabled: true };
+			user.set(edrUser as any);
+			vi.mocked(api.me).mockResolvedValue(edrUser as any);
+
+			const log = makeLog({ id: 102, seen: false, alert_resolution: null });
+			vi.mocked(api.listLogs).mockResolvedValue([log] as any);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+			vi.mocked(api.client.PATCH).mockResolvedValue({ data: {} } as any);
+
+			render(Alerts);
+
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule')).toBeInTheDocument();
+			});
+
+			const button = screen.getByText('Resolve All as Read');
+			await fireEvent.click(button);
+
+			expect(askConfirm).toHaveBeenCalledWith("Are you sure you want to resolve all 1 currently shown alerts as 'read'?");
+			expect(api.client.PATCH).toHaveBeenCalledWith('/api/v1/logs/{log_id}/resolve', {
+				params: { path: { log_id: 102 } },
+				body: { alert_resolution: 'read', triage_note: null }
 			});
 		});
 	});

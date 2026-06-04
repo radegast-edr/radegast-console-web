@@ -13,7 +13,8 @@
 	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt, getStoredPrivateKey, getStoredPublicKey } from '$lib/crypto';
 
 	import { page } from '$app/stores';
-	import Icon from "@iconify/svelte";
+	import BoxiconsNoEntry from '~icons/boxicons/no-entry';
+	import MaterialSymbolsKey from '~icons/material-symbols/key';
 
 	let showNoKeyBanner = $state(false);
 
@@ -160,7 +161,7 @@
 			<div class="container-fluid px-4 mt-4">
 				{#if $user.mfa_setup_missing}
 					<div class="alert alert-danger d-flex align-items-center gap-3 mb-4" style="padding: 1.25rem;">
-						<div class="fs-3"><Icon icon="boxicons:no-entry"></Icon></div>
+						<div class="fs-3"><BoxiconsNoEntry /></div>
 						<div>
 							<h6 class="fw-bold mb-1">Multi-Factor Authentication (MFA) Setup Required</h6>
 							<p class="mb-0 small text-body-secondary">
@@ -172,7 +173,7 @@
 				{/if}
 				{#if showNoKeyBanner}
 					<div class="alert alert-warning d-flex align-items-center gap-3 mb-4" style="padding: 1.25rem;">
-						<div class="fs-3"><Icon icon="material-symbols:key"></Icon></div>
+						<div class="fs-3"><MaterialSymbolsKey /></div>
 						<div>
 							<h6 class="fw-bold mb-1 text-warning-emphasis">Local Encryption Key Missing</h6>
 							<p class="mb-0 small text-body-secondary">

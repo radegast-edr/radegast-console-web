@@ -6,7 +6,19 @@
 	import { page } from '$app/stores';
 	import { theme, type ThemeType } from '$lib/theme';
 	import { fly } from 'svelte/transition';
-	import Icon from '@iconify/svelte';
+
+	// Icon components compiled statically at build-time via unplugin-icons
+	import LayoutDashboard from '~icons/lucide/layout-dashboard';
+	import Users from '~icons/lucide/users';
+	import Server from '~icons/lucide/server';
+	import Laptop from '~icons/lucide/laptop';
+	import Package from '~icons/lucide/package';
+	import Bell from '~icons/lucide/bell';
+	import Crosshair from '~icons/lucide/crosshair';
+	import Shield from '~icons/lucide/shield';
+	import Archive from '~icons/lucide/archive';
+	import CollapseLeft from '~icons/pajamas/collapse-left';
+	import CollapseRight from '~icons/pajamas/collapse-right';
 
 	async function logout(): Promise<void> {
 		await api.logout();
@@ -86,7 +98,9 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="d-md-none" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1040;" onclick={() => mobileOpen = false}></div>
-	{/if}	<div class="sidebar d-flex flex-column flex-shrink-0 p-2 bg-body-tertiary border-end {mobileOpen ? 'mobile-open' : ''}" style="--sidebar-width: {collapsed ? '60px' : '180px'};">
+	{/if}
+
+	<div class="sidebar d-flex flex-column flex-shrink-0 p-2 bg-body-tertiary border-end {mobileOpen ? 'mobile-open' : ''}" style="--sidebar-width: {collapsed ? '60px' : '180px'};">
 		<div class="d-none d-md-flex align-items-center justify-content-center mb-3 px-1 mt-2">
 			<a href="{base}/" class="link-body-emphasis text-decoration-none text-truncate logo">
 				<span class="logo-parenthesis">[</span>
@@ -99,44 +113,44 @@
 		<ul class="nav nav-pills flex-column mb-auto">
 			<li class="nav-item">
 				<a href="{base}/" class="nav-link {isActive('/') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Dashboard">
-					<Icon icon="lucide:layout-dashboard" width="20" height="20" />
+					<LayoutDashboard style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Dashboard</span>{/if}
 				</a>
 			</li>
 			<li>
 				<a href="{base}/teams" class="nav-link {isActive('/teams') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Teams">
-					<Icon icon="lucide:users" width="20" height="20" />
+					<Users style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Teams</span>{/if}
 				</a>
 			</li>
 			<li>
 				<a href="{base}/groups" class="nav-link {isActive('/groups') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Groups">
-					<Icon icon="lucide:server" width="20" height="20" />
+					<Server style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Groups</span>{/if}
 				</a>
 			</li>
 			<li>
 				<a href="{base}/devices" class="nav-link {isActive('/devices') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Devices">
-					<Icon icon="lucide:laptop" width="20" height="20" />
+					<Laptop style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Devices</span>{/if}
 				</a>
 			</li>
 			<li>
 				<a href="{base}/packs" class="nav-link {isActive('/packs') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Packs">
-					<Icon icon="lucide:package" width="20" height="20" />
+					<Package style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Packs</span>{/if}
 				</a>
 			</li>
 			<li>
 				<a href="{base}/alerts" class="nav-link {isActive('/alerts') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Alerts">
-					<Icon icon="lucide:bell" width="20" height="20" />
+					<Bell style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Alerts</span>{/if}
 				</a>
 			</li>
 			{#if $user.extended_edr_enabled}
 				<li>
 					<a href="{base}/hunt" class="nav-link {isActive('/hunt') ? 'active text-bg-warning' : 'link-body-emphasis fw-bold text-warning'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Hunt Mode">
-						<Icon icon="lucide:crosshair" width="20" height="20" />
+						<Crosshair style="width: 20px; height: 20px;" />
 						{#if !collapsed}<span class="text-truncate">Hunt Mode</span>{/if}
 					</a>
 				</li>
@@ -151,13 +165,13 @@
 				{/if}
 				<li>
 					<a href="{base}/admin" class="nav-link {isActive('/admin') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Admin">
-						<Icon icon="lucide:shield" width="20" height="20" />
+						<Shield style="width: 20px; height: 20px;" />
 						{#if !collapsed}<span class="text-truncate">Admin</span>{/if}
 					</a>
 				</li>
 				<li>
 					<a href="{base}/releases" class="nav-link {isActive('/releases') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Releases">
-						<Icon icon="lucide:archive" width="20" height="20" />
+						<Archive style="width: 20px; height: 20px;" />
 						{#if !collapsed}<span class="text-truncate">Releases</span>{/if}
 					</a>
 				</li>
@@ -166,10 +180,10 @@
 		<div class="d-none d-md-flex align-items-center {collapsed ? 'justify-content-center' : 'justify-content-end'} px-2 mb-2">
 			<button class="btn btn-sm btn-outline-secondary border-0 text-center w-100 d-flex justify-content-between align-items-center" onclick={toggleCollapse} title="Toggle Sidebar" style="min-width: 32px; padding: 0.25rem;">
 				{#if !collapsed}
-					<Icon icon="pajamas:collapse-left"></Icon>
+					<CollapseLeft />
 					<span>Hide Sidebar</span>
 				{:else}
-					<Icon icon="pajamas:collapse-right"></Icon>
+					<CollapseRight />
 				{/if}
 			</button>
 		</div>
