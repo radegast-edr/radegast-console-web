@@ -283,7 +283,7 @@
 	{:else}
 		<div class="alerts-container">
 			<!-- Left Pane: Alert List -->
-			<div class="left-pane border-end pe-3 d-flex flex-column">
+			<div class="left-pane">
 			<div class="mb-3">
 				<input 
 					type="text" 
@@ -315,7 +315,7 @@
 				</div>
 			</div>
 			
-			<div class="flex-grow-1 overflow-auto" style="height: 0;">
+			<div class="alerts-list flex-grow-1 overflow-auto">
 				{#each logManager.filteredLogs as log}
 					{@const alertObj = logManager.getAlertObject(log)}
 					{@const ruleName = alertObj.alert?.['rule.name'] || alertObj.alert?.rule?.name || `An alert on ${alertObj.meta.device || 'Unknown Device'}`}
@@ -380,7 +380,7 @@
 		</div>
 
 		<!-- Right Pane: Alert Details -->
-		<div class="right-pane ps-3 d-flex flex-column overflow-auto">
+		<div class="right-pane">
 			{#if selectedLog}
 				{@const alertObj = logManager.getAlertObject(selectedLog)}
 				{@const ruleName = alertObj.alert?.['rule.name'] || alertObj.alert?.rule?.name || `An alert on ${alertObj.meta.device || 'Unknown Device'}`}
@@ -447,10 +447,24 @@
 </div>
 
 <style>
+	.alerts-list {
+		height: auto;
+	}
 	.alerts-container {
 		height: auto;
 	}
+	.left-pane {
+		border-right: none;
+		padding-right: 0 !important;
+		margin-bottom: 1.5rem;
+	}
+	.right-pane {
+		padding-left: 0 !important;
+	}
 	@media (min-width: 768px) {
+		.alerts-list {
+			height: 0;
+		}
 		.alerts-page-wrapper {
 			display: grid;
 			grid-template-rows: auto 1fr;
@@ -465,12 +479,16 @@
 			overflow: hidden;
 		}
 		.left-pane {
+			border-right: 1px solid var(--bs-border-color);
+			padding-right: 1rem !important;
+			margin-bottom: 0;
 			height: 100%;
 			display: flex;
 			flex-direction: column;
 			overflow: hidden;
 		}
 		.right-pane {
+			padding-left: 1rem !important;
 			height: 100%;
 			display: flex;
 			flex-direction: column;
