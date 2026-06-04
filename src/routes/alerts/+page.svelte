@@ -5,7 +5,7 @@
 	import { showError, showFlash, user } from '$lib/store';
 	import { initAgeWasm, getStoredPrivateKey, aesEncrypt, decrypt, encrypt } from '$lib/crypto';
 	import { LogManager } from '$lib/logManager.svelte';
-	import { isDeviceActive, formatFullDateTime } from '$lib/utils';
+	import { isDeviceActive, formatFullDateTime, mapSeverityToNumber } from '$lib/utils';
 
 	let logManager: LogManager | null = $state(null);
 	let privateKey = $state<string | null>(null);
@@ -245,7 +245,7 @@
 				{#each logManager.filteredLogs as log}
 					{@const alertObj = logManager.getAlertObject(log)}
 					{@const ruleName = alertObj.alert?.['rule.name'] || alertObj.alert?.rule?.name || `An alert on ${alertObj.meta.device || 'Unknown Device'}`}
-					{@const isRead = $user?.extended_edr_enabled ? (!!log.alert_resolution && log.alert_resolution !== 'none') : !!log.seen}
+					{@const isRead = ($user?.extended_edr_enabled ? (!!log.alert_resolution && log.alert_resolution !== 'none') : !!log.seen) || (log.severity && mapSeverityToNumber(log.severity) < mapSeverityToNumber($user?.notification_level))}
 					
 					<div 
 						class="card mb-2 border-0 shadow-sm {selectedLog?.id === log.id ? 'bg-primary text-white' : 'bg-body-tertiary'} {isRead ? 'opacity-75' : 'border-start border-3 border-danger'}" 

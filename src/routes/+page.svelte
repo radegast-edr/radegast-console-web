@@ -5,6 +5,7 @@
 	import { user } from '$lib/store';
 	import { getStoredPrivateKey } from '$lib/crypto';
 	import { goto } from '$app/navigation';
+	import { mapSeverityToNumber } from '$lib/utils';
 
 	let teams = $state<Team[]>([]);
 	let groups = $state<Group[]>([]);
@@ -90,8 +91,11 @@
  					} else {
  						sevCounts.unknown++;
  					}
- 					let res = 'unread';
-					if (log.alert_resolution && log.alert_resolution !== 'none') {
+ 					const isBelowSeverity = log.severity && $user && mapSeverityToNumber(log.severity) < mapSeverityToNumber($user.notification_level);
+					let res = 'unread';
+					if (isBelowSeverity) {
+						res = 'read';
+					} else if (log.alert_resolution && log.alert_resolution !== 'none') {
 						if ($user && !$user.extended_edr_enabled) {
 							// Basic mode: a log is "read" once seen, regardless of resolution.
 							res = log.seen ? log.alert_resolution : 'unread';
@@ -146,8 +150,11 @@
  			const logsRes = await api.listLogs(1, 1000).catch(() => []);
  			let unread = 0;
  			logsRes.forEach(log => {
+ 				const isBelowSeverity = log.severity && $user && mapSeverityToNumber(log.severity) < mapSeverityToNumber($user.notification_level);
  				let res = 'unread';
- 				if (log.alert_resolution && log.alert_resolution !== 'none') {
+ 				if (isBelowSeverity) {
+ 					res = 'read';
+ 				} else if (log.alert_resolution && log.alert_resolution !== 'none') {
  					if ($user && !$user.extended_edr_enabled) {
  						res = log.seen ? log.alert_resolution : 'unread';
  					} else {

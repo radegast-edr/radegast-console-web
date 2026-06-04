@@ -2017,6 +2017,11 @@ export interface components {
              * @default false
              */
             extended_edr_enabled: boolean;
+            /**
+             * Notification Level
+             * @default medium
+             */
+            notification_level: string;
         };
         /** ValidationError */
         ValidationError: {
