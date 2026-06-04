@@ -87,7 +87,11 @@
 {#if $user}
 	<!-- Mobile top bar -->
 	<div class="d-md-none d-flex align-items-center justify-content-between bg-body-tertiary border-bottom p-2 w-100 sticky-top z-3">
-		<a href="{base}/" class="text-decoration-none ms-2"><span class="fs-5 fw-bold text-primary">Radegast</span></a>
+		<a href="{base}/" class="link-body-emphasis text-decoration-none text-truncate logo ms-2">
+			<span class="logo-parenthesis">[</span>
+			<span class="fs-5 fw-bold">radegast</span>
+			<span class="logo-parenthesis">]</span>
+		</a>
 		<button class="btn btn-outline-secondary border-0" onclick={() => mobileOpen = !mobileOpen}>
 			<span class="fs-4">☰</span>
 		</button>
@@ -224,7 +228,11 @@
 	<!-- Top navbar for public routes (login/register) -->
 	<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom w-100">
 		<div class="container-fluid px-4">
-			<a class="navbar-brand fw-bold text-primary" href="{base}/">Radegast EDR</a>
+			<a class="navbar-brand link-body-emphasis text-decoration-none text-truncate logo" href="{base}/">
+				<span class="logo-parenthesis">[</span>
+				<span class="fs-5 fw-bold">radegast</span>
+				<span class="logo-parenthesis">]</span>
+			</a>
 			<div class="ms-auto d-flex gap-2">
 				<button class="btn btn-sm btn-outline-secondary" onclick={cycleTheme}>Theme: {$theme}</button>
 				<a class="btn btn-sm btn-outline-primary" href="{base}/login">Login</a>
