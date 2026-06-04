@@ -3,12 +3,12 @@
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { api, type Team, type UserInfo, type Group, type Device } from '$lib/api';
+	import { api, type Team, type TeamMember, type Group, type Device } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 
 	let team = $state<Team | null>(null);
-	let members = $state<UserInfo[]>([]);
+	let members = $state<TeamMember[]>([]);
 	let groups = $state<Group[]>([]);
 	let teamDevices = $state<Device[]>([]);
 	let allTeams = $state<Team[]>([]);

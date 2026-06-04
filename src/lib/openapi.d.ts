@@ -1522,6 +1522,17 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** DeviceGroupDetail */
+        DeviceGroupDetail: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Teams */
+            teams: components["schemas"]["TeamResponse"][];
+            /** Devices */
+            devices: components["schemas"]["DeviceResponse"][];
+        };
         /** DeviceGroupResponse */
         DeviceGroupResponse: {
             /** Id */
@@ -1681,6 +1692,11 @@ export interface components {
             alert_resolution?: string | null;
             /** Triage Note */
             triage_note?: string | null;
+        };
+        /** MessageResponse */
+        MessageResponse: {
+            /** Message */
+            message: string;
         };
         /** MfaHardwareTokenAssertionOptionsRequest */
         MfaHardwareTokenAssertionOptionsRequest: {
@@ -1906,6 +1922,15 @@ export interface components {
         TeamInvite: {
             /** Email */
             email: string;
+        };
+        /** TeamMemberResponse */
+        TeamMemberResponse: {
+            /** Id */
+            id: number;
+            /** Email */
+            email: string;
+            /** Role */
+            role: string;
         };
         /** TeamResponse */
         TeamResponse: {
@@ -3078,7 +3103,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["MessageResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3109,9 +3134,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["TeamMemberResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -3143,7 +3166,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["MessageResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3241,7 +3264,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["MessageResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3272,7 +3295,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DeviceResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -3676,7 +3699,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DeviceGroupResponse"][];
                 };
             };
         };
@@ -3698,7 +3721,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DeviceGroupDetail"];
                 };
             };
             /** @description Validation Error */
@@ -3733,7 +3756,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DeviceGroupResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3765,7 +3788,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["MessageResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3797,7 +3820,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["MessageResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3829,7 +3852,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["MessageResponse"];
                 };
             };
             /** @description Validation Error */

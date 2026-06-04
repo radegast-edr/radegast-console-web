@@ -89,8 +89,10 @@
 	{/if}	<div class="sidebar d-flex flex-column flex-shrink-0 p-2 bg-body-tertiary border-end {mobileOpen ? 'mobile-open' : ''}" style="--sidebar-width: {collapsed ? '60px' : '180px'};">
 		<div class="d-none d-md-flex align-items-center {collapsed ? 'justify-content-center' : 'justify-content-between'} mb-3 px-1 mt-2">
 			{#if !collapsed}
-				<a href="{base}/" class="link-body-emphasis text-decoration-none text-truncate">
-					<span class="fs-5 fw-bold text-primary">Radegast</span>
+				<a href="{base}/" class="link-body-emphasis text-decoration-none text-truncate logo">
+					<span class="logo-parenthesis">[</span>
+					<span class="fs-5 fw-bold">radegast</span>
+					<span class="logo-parenthesis">]</span>
 				</a>
 			{/if}
 			<button class="btn btn-sm btn-outline-secondary border-0" onclick={toggleCollapse} title="Toggle Sidebar" style="min-width: 32px; padding: 0.25rem;">
@@ -244,6 +246,12 @@
 {/if}
 
 <style>
+	.logo {
+		.logo-parenthesis {
+			color: #0f8;
+		}
+	}
+
 	.sidebar {
 		transition: width 0.2s, transform 0.3s;
 		height: 100vh;
