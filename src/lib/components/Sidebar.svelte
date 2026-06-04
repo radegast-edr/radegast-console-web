@@ -87,17 +87,12 @@
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="d-md-none" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1040;" onclick={() => mobileOpen = false}></div>
 	{/if}	<div class="sidebar d-flex flex-column flex-shrink-0 p-2 bg-body-tertiary border-end {mobileOpen ? 'mobile-open' : ''}" style="--sidebar-width: {collapsed ? '60px' : '180px'};">
-		<div class="d-none d-md-flex align-items-center {collapsed ? 'justify-content-center' : 'justify-content-between'} mb-3 px-1 mt-2">
-			{#if !collapsed}
-				<a href="{base}/" class="link-body-emphasis text-decoration-none text-truncate logo">
-					<span class="logo-parenthesis">[</span>
-					<span class="fs-5 fw-bold">radegast</span>
-					<span class="logo-parenthesis">]</span>
-				</a>
-			{/if}
-			<button class="btn btn-sm btn-outline-secondary border-0" onclick={toggleCollapse} title="Toggle Sidebar" style="min-width: 32px; padding: 0.25rem;">
-				{collapsed ? '▶' : '◀'}
-			</button>
+		<div class="d-none d-md-flex align-items-center justify-content-center mb-3 px-1 mt-2">
+			<a href="{base}/" class="link-body-emphasis text-decoration-none text-truncate logo">
+				<span class="logo-parenthesis">[</span>
+				<span class="fs-5 fw-bold">{collapsed ? 'r' : 'radegast'}</span>
+				<span class="logo-parenthesis">]</span>
+			</a>
 		</div>
 		<hr class="mt-0 d-none d-md-block">
 		
@@ -168,7 +163,17 @@
 				</li>
 			{/if}
 		</ul>
-		<hr>
+		<div class="d-none d-md-flex align-items-center {collapsed ? 'justify-content-center' : 'justify-content-end'} px-2 mb-2">
+			<button class="btn btn-sm btn-outline-secondary border-0 text-center w-100 d-flex justify-content-between align-items-center" onclick={toggleCollapse} title="Toggle Sidebar" style="min-width: 32px; padding: 0.25rem;">
+				{#if !collapsed}
+					<Icon icon="pajamas:collapse-left"></Icon>
+					<span>Hide Sidebar</span>
+				{:else}
+					<Icon icon="pajamas:collapse-right"></Icon>
+				{/if}
+			</button>
+		</div>
+		<hr class="mt-0">
 		<div class="dropdown">
 			<button
 				type="button"
@@ -223,7 +228,7 @@
 			role="alert"
 			aria-live="assertive"
 			aria-atomic="true"
-			style="border-radius: 8px;"
+			style="border-radius: 3px;"
 		>
 			<div class="d-flex">
 				<div class="toast-body fw-semibold py-3 ps-3 pe-2">
@@ -277,7 +282,7 @@
 
 	.nav-link {
 		transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
-		border-radius: 6px;
+		border-radius: 3px;
 		margin-bottom: 2px;
 	}
 	.nav-link:hover:not(.active) {
