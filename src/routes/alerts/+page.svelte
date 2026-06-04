@@ -244,7 +244,7 @@
 			<div class="flex-grow-1 overflow-auto" style="height: 0;">
 				{#each logManager.filteredLogs as log}
 					{@const alertObj = logManager.getAlertObject(log)}
-					{@const ruleName = alertObj.alert?.rule?.name || `An alert on ${alertObj.meta.device || 'Unknown Device'}`}
+					{@const ruleName = alertObj.alert?.['rule.name'] || alertObj.alert?.rule?.name || `An alert on ${alertObj.meta.device || 'Unknown Device'}`}
 					{@const isRead = $user?.extended_edr_enabled ? (!!log.alert_resolution && log.alert_resolution !== 'none') : !!log.seen}
 					
 					<div 
@@ -309,7 +309,7 @@
 		<div class="right-pane ps-3 d-flex flex-column overflow-auto">
 			{#if selectedLog}
 				{@const alertObj = logManager.getAlertObject(selectedLog)}
-				{@const ruleName = alertObj.alert?.rule?.name || `An alert on ${alertObj.meta.device || 'Unknown Device'}`}
+				{@const ruleName = alertObj.alert?.['rule.name'] || alertObj.alert?.rule?.name || `An alert on ${alertObj.meta.device || 'Unknown Device'}`}
 				
 				<div class="card border-0 shadow-sm mb-3" style="border-radius: 12px; background: var(--bs-body-bg);">
 					<div class="card-header bg-transparent border-bottom-0 pt-4 pb-0">

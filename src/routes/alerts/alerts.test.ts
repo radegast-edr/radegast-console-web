@@ -303,4 +303,22 @@ describe('Alerts Page', () => {
 			expect(activeKeys).not.toContain('age1recovery...');
 		});
 	});
+
+	describe('Alert title resolution', () => {
+		it('renders flat rule.name key from decrypted telemetry if available', async () => {
+			const { decrypt } = await import('$lib/crypto');
+			vi.mocked(decrypt).mockReturnValueOnce('{"rule.name":"Flat Rule Title"}');
+
+			const log = makeLog({ id: 88, seen: false });
+			vi.mocked(api.listLogs).mockResolvedValue([log] as any);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			render(Alerts);
+
+			await waitFor(() => {
+				const card = screen.getByText('Flat Rule Title').closest('.card');
+				expect(card).toBeInTheDocument();
+			});
+		});
+	});
 });
