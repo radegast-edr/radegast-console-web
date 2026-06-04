@@ -10,9 +10,38 @@
 	import { goto, beforeNavigate } from '$app/navigation';
 	import { user } from '$lib/store';
 	import { api, type UserInfo } from '$lib/api';
-	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt } from '$lib/crypto';
+	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt, getStoredPrivateKey, getStoredPublicKey } from '$lib/crypto';
 
 	import { page } from '$app/stores';
+	import Icon from "@iconify/svelte";
+
+	let showNoKeyBanner = $state(false);
+
+	$effect(() => {
+		const currentUser = $user;
+		const path = $page.url.pathname;
+		const relativePath = path.startsWith(base) ? path.slice(base.length) : path;
+		const isBannerPage = relativePath === '/' || relativePath === '' || relativePath === '/alerts' || relativePath === '/hunt';
+
+		if (currentUser && isBannerPage) {
+			Promise.all([
+				getStoredPrivateKey(currentUser.id),
+				getStoredPublicKey(currentUser.id),
+				api.listKeys().catch(() => [])
+			]).then(([privKey, pubKey, serverKeys]) => {
+				if (!privKey || !pubKey || !currentUser.has_keys) {
+					showNoKeyBanner = true;
+				} else {
+					const isKeyActive = serverKeys.some((k) => k.public_key === pubKey);
+					showNoKeyBanner = !isKeyActive;
+				}
+			}).catch(() => {
+				showNoKeyBanner = true;
+			});
+		} else {
+			showNoKeyBanner = false;
+		}
+	});
 
 	let { children } = $props<{ children: Snippet }>();
 
@@ -130,13 +159,25 @@
 		<main class="w-100 bg-body d-flex flex-column flex-grow-1 main-content">
 			<div class="container-fluid px-4 mt-4">
 				{#if $user.mfa_setup_missing}
-					<div class="alert alert-danger shadow-sm border-0 d-flex align-items-center gap-3 mb-4" style="border-radius: 12px; padding: 1.25rem;">
-						<div class="fs-3">⚠️</div>
+					<div class="alert alert-danger d-flex align-items-center gap-3 mb-4" style="padding: 1.25rem;">
+						<div class="fs-3"><Icon icon="boxicons:no-entry"></Icon></div>
 						<div>
-							<h6 class="fw-bold mb-1 text-danger">Multi-Factor Authentication (MFA) Setup Required</h6>
-							<p class="mb-0 small text-dark-emphasis">
+							<h6 class="fw-bold mb-1">Multi-Factor Authentication (MFA) Setup Required</h6>
+							<p class="mb-0 small text-body-secondary">
 								Your account role (<strong>{$user.role}</strong>) requires MFA level <strong>{$user.mfa_required_level}</strong>, but you have not configured any compatible MFA methods yet.
-								Please navigate to <a href="{base}/settings" class="fw-bold text-danger text-decoration-underline">Settings</a> to register an authenticator app or Yubikey.
+								Please navigate to <a href="{base}/settings" class="fw-bold text-decoration-underline">Settings</a> to register an authenticator app or Yubikey.
+							</p>
+						</div>
+					</div>
+				{/if}
+				{#if showNoKeyBanner}
+					<div class="alert alert-warning d-flex align-items-center gap-3 mb-4" style="padding: 1.25rem;">
+						<div class="fs-3"><Icon icon="material-symbols:key"></Icon></div>
+						<div>
+							<h6 class="fw-bold mb-1 text-warning-emphasis">Local Encryption Key Missing</h6>
+							<p class="mb-0 small text-body-secondary">
+								You do not have your private encryption key configured locally on this browser. You won't be able to decrypt device logs.
+								Please visit the <a href="{base}/keys/transfer" class="fw-bold text-decoration-underline text-warning-emphasis">Key Transfer & Restoration</a> page to configure it.
 							</p>
 						</div>
 					</div>
