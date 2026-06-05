@@ -137,6 +137,10 @@ export type EnabledPack = components['schemas']['PackEnabledResponse'];
 export type MfaSettings = components['schemas']['MfaSettingsResponse'];
 export type NotificationSettings = components['schemas']['NotificationSettings'];
 export type MfaOtpSetupResponse = components['schemas']['MfaOtpSetupResponse'];
+export type APIKeyScopes = components['schemas']['APIKeyScopes'];
+export type APIKeyResponse = components['schemas']['APIKeyResponse'];
+export type APIKeyCreatedResponse = components['schemas']['APIKeyCreatedResponse'];
+
 
 // ---------------------------------------------------------------------------
 // API surface
@@ -466,6 +470,19 @@ export const api = {
 
 	getAuthConfig: () =>
 		call(callOp('get_auth_config_api_v1_auth_config_get', {})),
+
+	// API Keys Support
+	updateApiKeysEnabled: (api_keys_enabled: boolean) =>
+		call(callOp('update_api_keys_enabled_api_v1_auth_api_keys_enabled_put', { body: { api_keys_enabled } })),
+
+	listApiKeys: () =>
+		call(callOp('list_api_keys_api_v1_apikeys__get', {})),
+
+	createApiKey: (name: string, scopes: APIKeyScopes, expires_at: string | null = null) =>
+		call(callOp('create_api_key_api_v1_apikeys__post', { body: { name, scopes, expires_at } })),
+
+	deleteApiKey: (key_id: number) =>
+		call(callOp('delete_api_key_api_v1_apikeys__key_id__delete', { params: { path: { key_id } } })),
 
 	getBackendUrl: (): string => BACKEND_URL
 };

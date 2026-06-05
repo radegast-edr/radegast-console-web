@@ -29,6 +29,13 @@
 		}
 	});
 
+	let apiKeysEnabled = $state(false);
+	$effect(() => {
+		if ($user) {
+			apiKeysEnabled = $user.api_keys_enabled;
+		}
+	});
+
 	// Add key state
 	let isRecovery = $state(false);
 	let addKeyStep = $state<'idle' | 'generating' | 'show_recovery'>('idle'); // 'idle' | 'generating' | 'show_recovery'
@@ -225,6 +232,17 @@
 			});
 			$user.extended_edr_enabled = extendedEdrEnabled;
 			showFlash('Extended EDR preference saved.');
+		} catch (e: unknown) {
+			showError((e as Error).message);
+		}
+	}
+
+	async function saveApiKeys(): Promise<void> {
+		if (!$user) return;
+		try {
+			await api.updateApiKeysEnabled(apiKeysEnabled);
+			$user.api_keys_enabled = apiKeysEnabled;
+			showFlash('API keys preference saved.');
 		} catch (e: unknown) {
 			showError((e as Error).message);
 		}
@@ -493,7 +511,7 @@
 						/>
 						<label class="form-check-label" for="notifyDeviceLog">New alert notification</label>
 					</div>
-					<div class="form-check form-switch mb-3">
+					<div class="form-check form-switch mb-2">
 						<input
 							class="form-check-input"
 							type="checkbox"
@@ -501,6 +519,15 @@
 							bind:checked={notifications.notify_downtime_maintenance}
 						>
 						<label class="form-check-label" for="notifyDowntimeMaintenance">Platform downtime and maintenance emails</label>
+					</div>
+					<div class="form-check form-switch mb-3">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="notifyApiKeyModification"
+							bind:checked={notifications.notify_api_key_modification}
+						/>
+						<label class="form-check-label" for="notifyApiKeyModification">API key modification</label>
 					</div>
 					<div class="mb-3">
 						<label for="notificationLevel" class="form-label fw-semibold">Notification Severity Threshold</label>
@@ -805,8 +832,21 @@
 					/>
 					<label class="form-check-label fw-bold" for="extendedEdr">Enable Extended EDR Features</label>
 				</div>
-				<p class="text-muted small mb-0 ms-4">
+				<p class="text-muted small mb-3 ms-4">
 					Enables advanced threat triage (E2EE analyst notes, resolution dropdowns), bypassing automatic read-on-click behaviors.
+				</p>
+				<div class="form-check mb-2">
+					<input
+						class="form-check-input"
+						type="checkbox"
+						id="apiKeys"
+						bind:checked={apiKeysEnabled}
+						onchange={saveApiKeys}
+					/>
+					<label class="form-check-label fw-bold" for="apiKeys">Enable API Keys Support</label>
+				</div>
+				<p class="text-muted small mb-0 ms-4">
+					Enables programmatic API keys generation for automated integrations with external tools.
 				</p>
 			</div>
 		</div>

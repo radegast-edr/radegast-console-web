@@ -19,6 +19,7 @@
 	import Archive from '~icons/lucide/archive';
 	import CollapseLeft from '~icons/pajamas/collapse-left';
 	import CollapseRight from '~icons/pajamas/collapse-right';
+	import KeyIcon from '~icons/lucide/key';
 
 	async function logout(): Promise<void> {
 		await api.logout();
@@ -177,6 +178,20 @@
 					<a href="{base}/releases" class="nav-link {isActive('/releases') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Releases">
 						<Archive style="width: 20px; height: 20px;" />
 						{#if !collapsed}<span class="text-truncate">Releases</span>{/if}
+					</a>
+				</li>
+			{/if}
+			{#if $user.api_keys_enabled}
+				<hr>
+				{#if !collapsed}
+					<h6 class="sidebar-heading d-flex justify-content-between align-items-center px-2 mt-1 mb-1 text-muted text-uppercase text-truncate" style="font-size: 0.7rem; letter-spacing: 0.05em;">
+						<span>Development</span>
+					</h6>
+				{/if}
+				<li>
+					<a href="{base}/apikeys" class="nav-link {isActive('/apikeys') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="API Keys">
+						<KeyIcon style="width: 20px; height: 20px;" />
+						{#if !collapsed}<span class="text-truncate">API Keys</span>{/if}
 					</a>
 				</li>
 			{/if}
