@@ -81,10 +81,10 @@ describe('PackEditor Component', () => {
 			}
 		});
 
-		// Should show "Select a file to edit" initially or the first file
+		// Should show first file or select message
 		const selectMessage = screen.queryByText(/Select a file to edit/i);
-		const firstFile = screen.queryByText('rule1.yml');
-		expect(selectMessage || firstFile).toBeTruthy();
+		const firstFileContent = screen.queryByText(/Test Rule/);
+		expect(selectMessage || firstFileContent).toBeTruthy();
 	});
 
 	it('renders save bar with version input', () => {
@@ -159,25 +159,6 @@ describe('PackEditor Component', () => {
 		expect(onClose).toHaveBeenCalledTimes(1);
 	});
 
-	it('auto-suggests version bump', () => {
-		render(PackEditor, {
-			props: {
-				packId: 1,
-				packName: 'Test Pack',
-				versionId: 1,
-				initialVersion: '1.0.0',
-				versions: mockVersions,
-				files: mockFiles,
-				onSave,
-				onClose
-			}
-		});
-
-		const versionInput = screen.getByLabelText(/New Version/i) as HTMLInputElement;
-		// The auto-suggested version should be 1.0.1 (patch bump from 1.0.0)
-		// Note: This might not work if the component hasn't mounted yet
-	});
-
 	it('has correct container styling', () => {
 		const { container } = render(PackEditor, {
 			props: {
@@ -211,5 +192,61 @@ describe('PackEditor Component', () => {
 		});
 
 		expect(screen.getByText('Pack: Test Pack')).toBeInTheDocument();
+	});
+
+	it('displays file tree with nested directories', () => {
+		render(PackEditor, {
+			props: {
+				packId: 1,
+				packName: 'Test Pack',
+				versionId: 1,
+				initialVersion: '1.0.0',
+				versions: mockVersions,
+				files: mockFiles,
+				onSave,
+				onClose
+			}
+		});
+
+		// Check that directory structure is visible
+		expect(screen.getByText('sigma')).toBeInTheDocument();
+		expect(screen.getByText('yara')).toBeInTheDocument();
+	});
+
+	it('auto-suggests version bump from 1.0.0 to 1.0.1', () => {
+		render(PackEditor, {
+			props: {
+				packId: 1,
+				packName: 'Test Pack',
+				versionId: 1,
+				initialVersion: '1.0.0',
+				versions: mockVersions,
+				files: mockFiles,
+				onSave,
+				onClose
+			}
+		});
+
+		const versionInput = screen.getByLabelText(/New Version/i) as HTMLInputElement;
+		// The auto-suggested version should be 1.0.1
+		expect(versionInput.placeholder).toBe('1.0.1');
+	});
+
+	it('disables save button when no changes', () => {
+		render(PackEditor, {
+			props: {
+				packId: 1,
+				packName: 'Test Pack',
+				versionId: 1,
+				initialVersion: '1.0.0',
+				versions: mockVersions,
+				files: mockFiles,
+				onSave,
+				onClose
+			}
+		});
+
+		const saveBtn = screen.getByRole('button', { name: /Save as New Version/i });
+		expect(saveBtn).toBeDisabled();
 	});
 });
