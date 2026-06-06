@@ -174,7 +174,35 @@
 							<span class="badge bg-success" style="font-size: 0.7rem;">Global</span>
 						{/if}
 					</h5>
-					<p class="card-text text-muted flex-grow-1">{pack.description || 'No description'}</p>
+					<div class="mt-2 mb-2 d-flex gap-2 flex-wrap pack-tags">
+						{#if pack.latest?.meta?.os}
+							<span class="badge rounded-pill bg-secondary os-{pack.latest.meta.os}"
+							>
+								OS: {pack.latest.meta.os}
+							</span>
+						{/if}
+						{#if pack.latest?.meta?.status}
+							<span class="badge rounded-pill bg-secondary status-{pack.latest.meta.status}">
+								Status: {pack.latest.meta.status}
+							</span>
+						{/if}
+						{#if pack.latest?.meta?.expected_false_positive_level}
+							<span class="badge rounded-pill bg-secondary fp-{pack.latest.meta.expected_false_positive_level}">
+								FP: {pack.latest.meta.expected_false_positive_level}
+							</span>
+						{/if}
+					</div>
+					<p class="card-text text-muted flex-grow-1">
+						{#if pack.description || pack.latest?.meta?.description}
+							{pack.description || ''}
+							{#if pack.description && pack.latest?.meta?.description}
+								<br>
+							{/if}
+							{pack.latest?.meta?.description || ''}
+						{:else}
+							<i>No description provided.</i>
+						{/if}
+					</p>
 					<div class="mt-3 d-flex gap-2 flex-wrap">
 						<button
 							class="btn btn-sm btn-outline-info"
@@ -402,7 +430,35 @@
 	</form>
 </Modal>
 
+<!--suppress CssUnusedSymbol -->
 <style>
+	.pack-tags {
+		.os-windows {
+			background: #0a58ca !important;
+		}
+		.os-linux {
+			background: #0f5132 !important;
+		}
+		.os-macos {
+			background: #f44336 !important;
+		}
+		.status-experimental {
+			background: var(--bs-danger) !important;
+		}
+		.status-stable {
+			background: var(--bs-success) !important;
+		}
+		.fp-low {
+			background: var(--bs-success) !important;
+		}
+		.fp-medium {
+			background: var(--bs-warning) !important;
+		}
+		.fp-high {
+			background: var(--bs-danger) !important;
+		}
+	}
+
 	.team-access-item {
 		transition: all 0.2s ease-in-out;
 	}

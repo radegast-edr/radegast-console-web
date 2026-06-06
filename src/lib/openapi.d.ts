@@ -2037,6 +2037,7 @@ export interface components {
              * @default []
              */
             team_ids: number[];
+            latest?: components["schemas"]["PackVersionResponse"] | null;
         };
         /** PackUpdate */
         PackUpdate: {
@@ -2064,6 +2065,10 @@ export interface components {
             released: string;
             /** Release Notes */
             release_notes?: string | null;
+            /** Meta */
+            meta?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** PublicKeyAddRequest */
         PublicKeyAddRequest: {
