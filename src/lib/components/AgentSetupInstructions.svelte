@@ -51,7 +51,7 @@
 					<label for="linux-install-cmd" class="form-label fw-semibold">2. Run this command on your Linux device as root:</label>
 					<div class="input-group">
 						<code id="linux-install-cmd" class="form-control bg-dark text-light p-2 font-monospace" style="user-select: all;">
-							curl -sSL "{backendUrl}/device/install?os=linux" | sudo RADEGAST_TOKEN="{token}" sh
+							curl -sSL "{backendUrl}/api/v1/device/install?os=linux" | sudo RADEGAST_TOKEN="{token}" sh
 						</code>
 					</div>
 					<small class="form-text text-muted">
@@ -63,7 +63,7 @@
 					<label for="win-install-cmd" class="form-label fw-semibold">2. Run this command on your Windows device in an Administrator PowerShell prompt:</label>
 					<div class="input-group">
 						<code id="win-install-cmd" class="form-control bg-dark text-light p-2 font-monospace" style="user-select: all;">
-							$env:RADEGAST_TOKEN="{token}"; iwr -useb "{backendUrl}/device/install?os=windows" -OutFile install.bat; .\install.bat
+							$env:RADEGAST_TOKEN="{token}"; iwr -useb "{backendUrl}/api/v1/device/install?os=windows" -OutFile install.bat; .\install.bat
 						</code>
 					</div>
 					<small class="form-text text-muted">
