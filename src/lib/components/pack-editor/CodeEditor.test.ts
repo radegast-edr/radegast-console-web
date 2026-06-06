@@ -5,7 +5,7 @@ import CodeEditor from './CodeEditor.svelte';
 describe('CodeEditor Component', () => {
 	it('renders with empty content', () => {
 		render(CodeEditor, { props: { value: '', language: 'text' } });
-		const textarea = screen.getByRole('textbox');
+		const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
 		expect(textarea).toBeInTheDocument();
 		expect(textarea.value).toBe('');
 	});
@@ -13,7 +13,7 @@ describe('CodeEditor Component', () => {
 	it('renders with initial content', () => {
 		const initialValue = 'test content';
 		render(CodeEditor, { props: { value: initialValue, language: 'text' } });
-		const textarea = screen.getByRole('textbox');
+		const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
 		expect(textarea.value).toBe(initialValue);
 	});
 

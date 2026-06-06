@@ -1,4 +1,6 @@
 <script lang="ts">
+	import FileTreeNode from './FileTreeNode.svelte';
+
 	interface FileNode {
 		name: string;
 		path: string;
@@ -17,15 +19,18 @@
 	const isSelected = $derived(node.path === selectedPath);
 	const hasChildren = $derived(node.type === 'directory' && node.children && node.children.length > 0);
 	
-	// Check if any descendant is selected
+	// Check if any descendant is selected (iterative to avoid recursion)
 	const isAncestorOfSelected = $derived.by(() => {
 		if (node.type !== 'directory' || !node.children) return false;
-		const check = (n: FileNode): boolean => {
+		const stack = [...node.children];
+		while (stack.length > 0) {
+			const n = stack.pop()!;
 			if (n.path === selectedPath) return true;
-			if (n.children) return n.children.some(check);
-			return false;
-		};
-		return node.children.some(check);
+			if (n.children) {
+				stack.push(...n.children);
+			}
+		}
+		return false;
 	});
 
 	function getIcon(node: FileNode): string {
@@ -40,7 +45,7 @@
 		return '📎';
 	}
 
-	function handleClick(e: MouseEvent): void {
+	function handleClick(e: MouseEvent | KeyboardEvent): void {
 		e.stopPropagation();
 		if (node.type === 'file') {
 			onSelect(node);
@@ -56,7 +61,10 @@
 <div 
 	class="file-tree-node d-flex align-items-center {isSelected ? 'bg-primary-subtle' : ''}"
 	style="padding-left: {depth * 15 + 10}px; cursor: pointer;"
-	onclick={handleClick}
+	onclick={(e) => handleClick(e)}
+	onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(e); } }}
+	role="button"
+	tabindex="0"
 >
 	{#if hasChildren}
 		<button 
@@ -95,3 +103,23 @@
 		{/each}
 	</div>
 {/if}
+
+<style>
+	:global(.file-tree-node) {
+		padding: 4px 8px;
+		border-radius: 4px;
+		transition: background-color 0.15s;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	
+	:global(.file-tree-node:hover) {
+		background-color: rgba(0, 0, 0, 0.05);
+	}
+	
+	:global(.file-icon) {
+		font-size: 0.9em;
+		margin-right: 4px;
+	}
+</style>

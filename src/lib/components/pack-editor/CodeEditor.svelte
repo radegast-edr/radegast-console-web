@@ -8,7 +8,7 @@
 	let container: HTMLDivElement;
 
 	// Syntax highlighting themes
-	const themes: Record<string, { keywords?: string[]; comments?: string; strings?: string }> = {
+	const themes: Record<string, { keywords?: string[]; comments?: string; strings?: string[] }> = {
 		yaml: {
 			keywords: ['true', 'false', 'null', 'and', 'or', 'not', 'if', 'then', 'else', 'title', 'description', 'author', 'date', 'modified', 'logsource', 'detection', 'selection', 'filter', 'condition'],
 			comments: '#',
@@ -97,7 +97,6 @@
 
 	function handleInput(e: Event): void {
 		const target = e.target as HTMLTextAreaElement;
-		value = target.value;
 		onChange(value);
 		updateHighlighting();
 	}
@@ -159,16 +158,16 @@
 		padding: 12px;
 	}
 	
-	.code-keyword {
+	:global(.code-keyword) {
 		color: #569cd6;
 		font-weight: bold;
 	}
 	
-	.code-string {
+	:global(.code-string) {
 		color: #ce9178;
 	}
 	
-	.code-comment {
+	:global(.code-comment) {
 		color: #6a9955;
 		font-style: italic;
 	}

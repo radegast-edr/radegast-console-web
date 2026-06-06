@@ -55,7 +55,10 @@
 		return false;
 	});
 
+	// Load data when packId changes
+	const packIdParam = $derived(Number(page.params.id));
 	$effect(() => {
+		packIdParam;
 		loadAll();
 	});
 
@@ -358,10 +361,10 @@
 											<td class="text-muted small" style="white-space: pre-wrap;">{v.release_notes || '—'}</td>
 											<td class="text-muted small">{new Date(v.released).toLocaleString()}</td>
 											<td class="text-end pe-4">
-												{#if canManage}
+												{#if canManage && pack}
 													<button
 														class="btn btn-sm btn-outline-secondary me-2"
-														onclick={() => goto(`${base}/packs/${pack.id}/edit/${v.id}`)}
+														onclick={() => goto(`${base}/packs/${pack!.id}/edit/${v.id}`)}
 														title="Edit this version"
 													>
 														Edit

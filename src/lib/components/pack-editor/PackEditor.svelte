@@ -3,6 +3,7 @@
 	import type { PackVersion } from '$lib/api';
 	import FileTree from './FileTree.svelte';
 	import CodeEditor from './CodeEditor.svelte';
+	import Modal from '$lib/components/Modal.svelte';
 
 	interface FileNode {
 		name: string;
@@ -45,7 +46,21 @@
 		onClose?: () => void;
 	}>();
 
-	let state = $state<EditorState>({
+	interface ModalState {
+		showNewFileModal: boolean;
+		newFileName: string;
+		showDeleteConfirmModal: boolean;
+		fileToDelete: FileNode | null;
+		showErrorModal: boolean;
+		errorModalMessage: string;
+	}
+
+	interface FullState extends EditorState {
+		filesInitialized: boolean;
+		modal: ModalState;
+	}
+
+	let state = $state<FullState>({
 		loading: false,
 		error: null,
 		files: [],
@@ -54,7 +69,16 @@
 		unsavedChanges: new Map(),
 		newVersion: '',
 		releaseNotes: '',
-		isSaving: false
+		isSaving: false,
+		filesInitialized: false,
+		modal: {
+			showNewFileModal: false,
+			newFileName: '',
+			showDeleteConfirmModal: false,
+			fileToDelete: null,
+			showErrorModal: false,
+			errorModalMessage: ''
+		}
 	});
 
 	// File type to language mapping for syntax highlighting
@@ -153,11 +177,12 @@
 	}
 
 	function findFirstFile(nodes: FileNode[]): FileNode | null {
-		for (const node of nodes) {
+		const stack = [...nodes];
+		while (stack.length > 0) {
+			const node = stack.pop()!;
 			if (node.type === 'file') return node;
 			if (node.children) {
-				const found = findFirstFile(node.children);
-				if (found) return found;
+				stack.push(...node.children);
 			}
 		}
 		return null;
@@ -184,65 +209,94 @@
 
 	// Create a new file
 	function createNewFile(): void {
-		const newName = prompt('Enter filename:');
-		if (!newName) return;
+		state.modal.showNewFileModal = true;
+		state.modal.newFileName = '';
+	}
+
+	function confirmCreateNewFile(): void {
+		if (!state.modal.newFileName.trim()) {
+			state.modal.showErrorModal = true;
+			state.modal.errorModalMessage = 'Please enter a filename.';
+			return;
+		}
 
 		const currentPath = state.currentFile?.path || '';
 		const dirPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
-		const fullPath = dirPath ? `${dirPath}/${newName}` : newName;
+		const fullPath = dirPath ? `${dirPath}/${state.modal.newFileName.trim()}` : state.modal.newFileName.trim();
 
 		// Check if file already exists
 		if (findFileByPath(state.files, fullPath)) {
-			alert('File already exists!');
+			state.modal.showErrorModal = true;
+			state.modal.errorModalMessage = 'File already exists!';
 			return;
 		}
 
 		// Add the new file
 		const newFile: FileNode = {
-			name: newName,
+			name: state.modal.newFileName.trim(),
 			path: fullPath,
 			type: 'file',
 			content: '',
-			language: getLanguage(newName)
+			language: getLanguage(state.modal.newFileName.trim())
 		};
 
 		state.files = addFileToTree(state.files, newFile);
 		selectFile(newFile);
 		state.currentContent = '';
 		state.unsavedChanges.set(fullPath, '');
+		
+		state.modal.showNewFileModal = false;
+		state.modal.newFileName = '';
+	}
+
+	function cancelCreateNewFile(): void {
+		state.modal.showNewFileModal = false;
+		state.modal.newFileName = '';
 	}
 
 	function findFileByPath(nodes: FileNode[], path: string): FileNode | null {
-		for (const node of nodes) {
+		const stack = [...nodes];
+		while (stack.length > 0) {
+			const node = stack.pop()!;
 			if (node.path === path) return node;
 			if (node.children) {
-				const found = findFileByPath(node.children, path);
-				if (found) return found;
+				stack.push(...node.children);
 			}
 		}
 		return null;
 	}
 
+	function deepCloneNode(node: FileNode): FileNode {
+		return {
+			...node,
+			children: node.children ? node.children.map(deepCloneNode) : undefined
+		};
+	}
+
 	function addFileToTree(nodes: FileNode[], file: FileNode): FileNode[] {
+		// Create a deep copy of the tree to avoid mutation
+		const clonedNodes = nodes.map(deepCloneNode);
 		const pathParts = file.path.split('/').filter(p => p);
 		const filename = pathParts.pop();
 		
 		if (pathParts.length === 0) {
 			// Root level file
-			return [...nodes, file];
+			return [...clonedNodes, { ...file }];
 		}
 
 		// Find the directory to add to
-		let currentLevel = nodes;
+		let currentLevel = clonedNodes;
+		let currentPath = '';
 		for (const part of pathParts) {
-			const dir = currentLevel.find(n => n.name === part && n.type === 'directory');
+			currentPath = currentPath ? `${currentPath}/${part}` : part;
+			const dir = currentLevel.find(n => n.path === currentPath && n.type === 'directory');
 			if (dir && dir.children) {
 				currentLevel = dir.children;
 			} else {
 				// Directory doesn't exist, create it
 				const newDir: FileNode = {
 					name: part,
-					path: pathParts.slice(0, pathParts.indexOf(part) + 1).join('/'),
+					path: currentPath,
 					type: 'directory',
 					children: []
 				};
@@ -251,18 +305,23 @@
 			}
 		}
 
-		currentLevel.push(file);
-		return nodes;
+		currentLevel.push({ ...file });
+		return clonedNodes;
 	}
 
 	// Delete a file
 	function deleteFile(): void {
 		if (!state.currentFile || state.currentFile.type === 'directory') return;
 		
-		if (!confirm(`Delete ${state.currentFile.name}?`)) return;
+		state.modal.fileToDelete = state.currentFile;
+		state.modal.showDeleteConfirmModal = true;
+	}
 
-		state.files = removeFileFromTree(state.files, state.currentFile.path);
-		state.unsavedChanges.delete(state.currentFile.path);
+	function confirmDeleteFile(): void {
+		if (!state.modal.fileToDelete) return;
+		
+		state.files = removeFileFromTree(state.files, state.modal.fileToDelete.path);
+		state.unsavedChanges.delete(state.modal.fileToDelete.path);
 		
 		// Select next file or parent
 		const nextFile = findFirstFile(state.files);
@@ -272,18 +331,27 @@
 			state.currentFile = null;
 			state.currentContent = '';
 		}
+		
+		state.modal.fileToDelete = null;
+		state.modal.showDeleteConfirmModal = false;
+	}
+
+	function cancelDeleteFile(): void {
+		state.modal.fileToDelete = null;
+		state.modal.showDeleteConfirmModal = false;
 	}
 
 	function removeFileFromTree(nodes: FileNode[], path: string): FileNode[] {
 		return nodes.map(node => {
 			if (node.path === path) return null as any;
 			if (node.children) {
+				const filteredChildren = removeFileFromTree(node.children, path).filter(Boolean);
 				return {
 					...node,
-					children: removeFileFromTree(node.children, path).filter(Boolean)
+					children: filteredChildren.length > 0 ? filteredChildren : undefined
 				};
 			}
-			return node;
+			return { ...node };
 		}).filter(Boolean) as FileNode[];
 	}
 
@@ -291,7 +359,7 @@
 	function suggestVersionBump(): string {
 		if (!initialVersion) return '1.0.0';
 		
-		const parts = initialVersion.split('.').map(p => parseInt(p, 10) || 0);
+		const parts = initialVersion.split('.').map((p: string) => parseInt(p, 10) || 0);
 		if (parts.length !== 3) return `${parts[0]}.${parts[1] || 0}.${parts[2] || 0}`;
 		
 		// Simple bump: patch version
@@ -302,25 +370,29 @@
 	// Create new version from changes
 	async function saveAsNewVersion(): Promise<void> {
 		if (!hasUnsavedChanges() && state.newVersion === '') {
-			alert('No changes to save!');
+			state.modal.showErrorModal = true;
+			state.modal.errorModalMessage = 'No changes to save!';
 			return;
 		}
 
 		const version = state.newVersion || suggestVersionBump();
 		if (!version) {
-			alert('Please enter a version number');
+			state.modal.showErrorModal = true;
+			state.modal.errorModalMessage = 'Please enter a version number';
 			return;
 		}
 
 		// Validate version format
 		if (!/^\d+\.\d+\.\d+$/.test(version)) {
-			alert('Version must be in format X.Y.Z (e.g., 1.0.0)');
+			state.modal.showErrorModal = true;
+			state.modal.errorModalMessage = 'Version must be in format X.Y.Z (e.g., 1.0.0)';
 			return;
 		}
 
 		// Check if version already exists
-		if (versions.some(v => v.version === version)) {
-			alert(`Version ${version} already exists for this pack!`);
+		if (versions.some((v: { version: string }) => v.version === version)) {
+			state.modal.showErrorModal = true;
+			state.modal.errorModalMessage = `Version ${version} already exists for this pack!`;
 			return;
 		}
 
@@ -368,12 +440,13 @@
 		return files;
 	}
 
-	// Auto-suggest version on mount and load files
+	// Auto-suggest version and load files
 	$effect(() => {
 		if (initialVersion) {
 			state.newVersion = suggestVersionBump();
 		}
-		if (Object.keys(filesProp).length > 0) {
+		if (Object.keys(filesProp).length > 0 && !state.filesInitialized) {
+			state.filesInitialized = true;
 			setFiles(filesProp);
 		}
 	});
@@ -432,7 +505,7 @@
 							</div>
 							<div class="editor-content flex-grow-1 overflow-auto p-3">
 								<CodeEditor 
-									bind:value={state.currentContent}
+									value={state.currentContent}
 									language={state.currentFile.language}
 									onChange={updateContent}
 								/>
@@ -485,7 +558,41 @@
 					</div>
 				</div>
 			</div>
-</div>
+		</div>
+
+		<!-- New File Modal -->
+		<Modal show={state.modal.showNewFileModal} title="Create New File" onClose={cancelCreateNewFile}>
+			<div class="mb-3">
+				<label for="state.modal.newFileName" class="form-label">Filename:</label>
+				<input 
+					id="state.modal.newFileName" 
+					class="form-control" 
+					bind:value={state.modal.newFileName}
+					placeholder="Enter filename (e.g., rule.yml)"
+				/>
+			</div>
+			<div class="text-end">
+				<button class="btn btn-secondary me-2" onclick={cancelCreateNewFile}>Cancel</button>
+				<button class="btn btn-primary" onclick={confirmCreateNewFile}>Create</button>
+			</div>
+		</Modal>
+
+		<!-- Delete Confirmation Modal -->
+		<Modal show={state.modal.showDeleteConfirmModal} title="Confirm Delete" onClose={cancelDeleteFile}>
+			<p>Are you sure you want to delete {state.modal.fileToDelete?.name}?</p>
+			<div class="text-end">
+				<button class="btn btn-secondary me-2" onclick={cancelDeleteFile}>Cancel</button>
+				<button class="btn btn-danger" onclick={confirmDeleteFile}>Delete</button>
+			</div>
+		</Modal>
+
+		<!-- Error Modal -->
+		<Modal show={state.modal.showErrorModal} title="Error" onClose={() => state.modal.showErrorModal = false}>
+			<p>{state.modal.errorModalMessage}</p>
+			<div class="text-end">
+				<button class="btn btn-primary" onclick={() => state.modal.showErrorModal = false}>OK</button>
+			</div>
+		</Modal>
 
 <style>
 	.pack-editor-container {

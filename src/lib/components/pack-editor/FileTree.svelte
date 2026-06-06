@@ -1,4 +1,6 @@
 <script lang="ts">
+	import FileTreeNode from './FileTreeNode.svelte';
+
 	interface FileNode {
 		name: string;
 		path: string;
@@ -41,23 +43,5 @@
 	.file-tree {
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 		font-size: 0.9rem;
-	}
-	
-	.file-tree-node {
-		padding: 4px 8px;
-		border-radius: 4px;
-		transition: background-color 0.15s;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-	
-	.file-tree-node:hover {
-		background-color: rgba(0, 0, 0, 0.05);
-	}
-	
-	.file-icon {
-		font-size: 0.9em;
-		margin-right: 4px;
 	}
 </style>

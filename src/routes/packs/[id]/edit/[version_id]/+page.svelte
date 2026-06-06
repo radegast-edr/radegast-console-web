@@ -5,6 +5,7 @@
 	import { api, type Pack, type PackVersion } from '$lib/api';
 	import { user, showFlash, showError } from '$lib/store';
 	import { PackEditor } from '$lib/components/pack-editor';
+	import JSZip from 'jszip';
 
 	let pack = $state<Pack | null>(null);
 	let versions = $state<PackVersion[]>([]);
@@ -13,7 +14,7 @@
 	let editorKey = $state(0); // Used to force remount editor
 
 	let showEditor = $state(false);
-	let extractedFiles: Record<string, string> = {};
+	let extractedFiles = $state<Record<string, string>>({});
 
 	const packId = $derived(Number(page.params.id));
 	const versionId = $derived(Number(page.params.version_id));
@@ -26,7 +27,10 @@
 		return false;
 	});
 
+	// Load data when packId or versionId changes
 	$effect(() => {
+		packId;
+		versionId;
 		loadData();
 	});
 
@@ -83,7 +87,7 @@
 			for (const [filename, file] of Object.entries(zip.files)) {
 				if (!file.dir) {
 					try {
-						const content = await file.asyncText();
+						const content = await file.async('text');
 						files[filename] = content;
 					} catch (e) {
 						console.error(`Error reading file ${filename}:`, e);
@@ -147,10 +151,6 @@
 	}
 </script>
 
-<script lang="ts">
-	import JSZip from 'jszip';
-</script>
-
 <svelte:head>
 	<title>Edit Pack {pack?.name || ''} - Radegast</title>
 </svelte:head>
@@ -185,17 +185,18 @@
 			</div>
 			<div class="card-body p-0">
 				{#if showEditor}
-					<PackEditor
-						key={editorKey}
-						packId={packId}
-						packName={pack.name}
-						versionId={versionId}
-						initialVersion={versions.find(v => v.id === versionId)?.version || ''}
-						versions={versions}
-						files={extractedFiles}
-						onSave={handleSave}
-						onClose={handleClose}
-					/>
+					{#key editorKey}
+						<PackEditor
+							packId={packId}
+							packName={pack.name}
+							versionId={versionId}
+							initialVersion={versions.find(v => v.id === versionId)?.version || ''}
+							versions={versions}
+							files={extractedFiles}
+							onSave={handleSave}
+							onClose={handleClose}
+						/>
+					{/key}
 				{/if}
 			</div>
 		</div>
