@@ -358,6 +358,15 @@
 											<td class="text-muted small" style="white-space: pre-wrap;">{v.release_notes || '—'}</td>
 											<td class="text-muted small">{new Date(v.released).toLocaleString()}</td>
 											<td class="text-end pe-4">
+												{#if canManage}
+													<button
+														class="btn btn-sm btn-outline-secondary me-2"
+														onclick={() => goto(`${base}/packs/${pack.id}/edit/${v.id}`)}
+														title="Edit this version"
+													>
+														Edit
+													</button>
+												{/if}
 												<button
 													class="btn btn-sm btn-outline-primary"
 													onclick={() => downloadVersionFile(v)}
