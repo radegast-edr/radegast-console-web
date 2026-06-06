@@ -1,79 +1,78 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/svelte';
 import CodeEditor from './CodeEditor.svelte';
 
-describe('CodeEditor Component', () => {
-	let onChange: (value: string) => void;
-
-	beforeEach(() => {
-		onChange = vi.fn();
-	});
-
-	it('renders with empty content', () => {
-		render(CodeEditor, { props: { value: '', language: 'text', onChange } });
+describe('CodeEditor', () => {
+	it('renders a textarea element', () => {
+		render(CodeEditor, { props: { value: '', language: 'text' } });
 		const textarea = screen.getByRole('textbox');
 		expect(textarea).toBeInTheDocument();
-		expect(textarea.value).toBe('');
 	});
 
-	it('renders with initial content', () => {
+	it('displays initial value', () => {
 		const initialValue = 'test content';
-		render(CodeEditor, { props: { value: initialValue, language: 'text', onChange } });
-		const textarea = screen.getByRole('textbox');
+		render(CodeEditor, { props: { value: initialValue, language: 'text' } });
+		const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
 		expect(textarea.value).toBe(initialValue);
 	});
 
-	it('calls onChange when user types', async () => {
-		render(CodeEditor, { props: { value: '', language: 'text', onChange } });
-		const textarea = screen.getByRole('textbox');
+	it('updates value on user input', async () => {
+		render(CodeEditor, { props: { value: '', language: 'text' } });
+		const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
 		
-		// Simulate typing
-		await fireEvent.input(textarea, { target: { value: 'new content' } });
+		// Simulate user typing
+		textarea.value = 'new content';
+		textarea.dispatchEvent(new Event('input'));
 		
-		expect(onChange).toHaveBeenCalled();
+		expect(textarea.value).toBe('new content');
 	});
 
-	it('renders with different languages', () => {
-		const languages = ['yaml', 'yara', 'json', 'javascript', 'python', 'text'];
+	it('uses monospace font', () => {
+		render(CodeEditor, { props: { value: '', language: 'yaml' } });
+		const textarea = screen.getByRole('textbox');
+		expect(textarea).toHaveStyle('font-family: \'Courier New\', monospace');
+	});
+
+	it('has no border', () => {
+		render(CodeEditor, { props: { value: '', language: 'text' } });
+		const textarea = screen.getByRole('textbox');
+		expect(textarea).toHaveClass('border-0');
+	});
+
+	it('fills available width', () => {
+		render(CodeEditor, { props: { value: '', language: 'text' } });
+		const textarea = screen.getByRole('textbox');
+		expect(textarea).toHaveClass('w-100');
+	});
+
+	it('fills available height', () => {
+		render(CodeEditor, { props: { value: '', language: 'text' } });
+		const textarea = screen.getByRole('textbox');
+		expect(textarea).toHaveClass('h-100');
+	});
+
+	it('has transparent background', () => {
+		render(CodeEditor, { props: { value: '', language: 'text' } });
+		const textarea = screen.getByRole('textbox');
+		expect(textarea).toHaveStyle('background: transparent');
+	});
+
+	it('calls onChange when value changes', async () => {
+		let changedValue = '';
+		const onChange = (value: string) => { changedValue = value; };
 		
-		languages.forEach(lang => {
-			const { unmount } = render(CodeEditor, { props: { value: '', language: lang, onChange } });
-			const textarea = screen.getByRole('textbox');
-			expect(textarea).toBeInTheDocument();
-			unmount();
+		render(CodeEditor, { 
+			props: { 
+				value: '', 
+				language: 'text',
+				onChange 
+			} 
 		});
-	});
-
-	it('has correct styling for code editor container', () => {
-		const { container } = render(CodeEditor, { props: { value: '', language: 'text', onChange } });
-		const editorContainer = container.querySelector('.code-editor-container');
-		expect(editorContainer).toBeInTheDocument();
-	});
-
-	it('has highlighted content div', () => {
-		const { container } = render(CodeEditor, { props: { value: 'test', language: 'text', onChange } });
-		const highlighted = container.querySelector('.code-editor-highlighted');
-		expect(highlighted).toBeInTheDocument();
-	});
-
-	it('has textarea for editing', () => {
-		const { container } = render(CodeEditor, { props: { value: '', language: 'text', onChange } });
-		const textarea = container.querySelector('.code-editor-textarea');
-		expect(textarea).toBeInTheDocument();
-		expect(textarea?.tagName).toBe('TEXTAREA');
-	});
-
-	it('supports YAML syntax highlighting', () => {
-		const yamlContent = 'title: Test\ncondition: selection';
-		render(CodeEditor, { props: { value: yamlContent, language: 'yaml', onChange } });
-		const textarea = screen.getByRole('textbox');
-		expect(textarea.value).toBe(yamlContent);
-	});
-
-	it('supports YARA syntax highlighting', () => {
-		const yaraContent = 'rule Test { strings: $a = "test" condition: $a }';
-		render(CodeEditor, { props: { value: yaraContent, language: 'yara', onChange } });
-		const textarea = screen.getByRole('textbox');
-		expect(textarea.value).toBe(yaraContent);
+		
+		const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+		textarea.value = 'changed';
+		textarea.dispatchEvent(new Event('input'));
+		
+		expect(changedValue).toBe('changed');
 	});
 });

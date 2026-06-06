@@ -1,6 +1,4 @@
 <script lang="ts">
-	import FileTreeNode from './FileTreeNode.svelte';
-
 	interface FileNode {
 		name: string;
 		path: string;
@@ -16,10 +14,12 @@
 		depth?: number;
 	}>();
 
+	let isExpanded = $state(false);
+
 	const isSelected = $derived(node.path === selectedPath);
 	const hasChildren = $derived(node.type === 'directory' && node.children && node.children.length > 0);
 	
-	// Check if any descendant is selected (iterative to avoid recursion)
+	// Check if any descendant is selected
 	const isAncestorOfSelected = $derived.by(() => {
 		if (node.type !== 'directory' || !node.children) return false;
 		const stack = [...node.children];
@@ -33,9 +33,16 @@
 		return false;
 	});
 
+	// Auto-expand if this node or a descendant is selected
+	$effect(() => {
+		if (isSelected || isAncestorOfSelected) {
+			isExpanded = true;
+		}
+	});
+
 	function getIcon(node: FileNode): string {
 		if (node.type === 'directory') {
-			return node.children && node.children.length > 0 ? '📁' : '📂';
+			return isExpanded ? '📂' : '📁';
 		}
 		const ext = node.name.slice(node.name.lastIndexOf('.')).toLowerCase();
 		if (['.yaml', '.yml'].includes(ext)) return '📄';
@@ -47,14 +54,18 @@
 
 	function handleClick(e: MouseEvent | KeyboardEvent): void {
 		e.stopPropagation();
-		if (node.type === 'file') {
+		if (node.type === 'directory') {
+			isExpanded = !isExpanded;
+		} else {
 			onSelect(node);
 		}
 	}
 
 	function handleToggle(e: MouseEvent): void {
 		e.stopPropagation();
-		// Don't actually toggle - just let the click through to the node
+		if (hasChildren) {
+			isExpanded = !isExpanded;
+		}
 	}
 </script>
 
@@ -72,11 +83,7 @@
 			onclick={handleToggle}
 			style="width: 16px; height: 16px; font-size: 0.8rem;"
 		>
-			{#if isAncestorOfSelected}
-				▼
-			{:else}
-				▶
-			{/if}
+			{isExpanded ? '▼' : '▶'}
 		</button>
 	{/if}
 	{#if !hasChildren}
@@ -91,7 +98,7 @@
 		{/if}
 </div>
 
-{#if hasChildren && isAncestorOfSelected}
+{#if hasChildren && isExpanded}
 	<div>
 		{#each node.children as child}
 			<FileTreeNode 

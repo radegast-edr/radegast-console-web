@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import type { PackVersion } from '$lib/api';
 	import FileTree from './FileTree.svelte';
 	import CodeEditor from './CodeEditor.svelte';
@@ -56,7 +55,6 @@
 	}
 
 	interface FullState extends EditorState {
-		filesInitialized: boolean;
 		modal: ModalState;
 	}
 
@@ -70,7 +68,6 @@
 		newVersion: '',
 		releaseNotes: '',
 		isSaving: false,
-		filesInitialized: false,
 		modal: {
 			showNewFileModal: false,
 			newFileName: '',
@@ -204,7 +201,7 @@
 	}
 
 	function hasUnsavedChanges(): boolean {
-		return state.unsavedChanges.size > 0;
+		return state.unsavedChanges.size > 0 || state.newVersion !== '';
 	}
 
 	// Create a new file
@@ -369,7 +366,7 @@
 
 	// Create new version from changes
 	async function saveAsNewVersion(): Promise<void> {
-		if (!hasUnsavedChanges() && state.newVersion === '') {
+		if (!hasUnsavedChanges()) {
 			state.modal.showErrorModal = true;
 			state.modal.errorModalMessage = 'No changes to save!';
 			return;
@@ -448,7 +445,6 @@
 		// Always update files when filesProp changes
 		if (Object.keys(filesProp).length > 0) {
 			setFiles(filesProp);
-			state.filesInitialized = true;
 		}
 	});
 </script>
@@ -489,7 +485,7 @@
 					<!-- File Tree Sidebar -->
 					<div class="file-tree-sidebar border-end bg-body-tertiary overflow-auto" style="width: 250px; min-width: 200px;">
 						<div class="p-2">
-							<strong class="small text-muted">Files</strong>
+							<strong class="small text-body-secondary">Files</strong>
 						</div>
 						<FileTree nodes={state.files} selectedPath={state.currentFile?.path || ''} onSelect={selectFile} />
 					</div>
@@ -504,7 +500,7 @@
 									<span class="badge bg-body-secondary text-body small">{state.currentFile.language}</span>
 								</div>
 							</div>
-							<div class="editor-content flex-grow-1 overflow-auto p-3">
+							<div class="editor-content flex-grow-1 overflow-auto">
 								<CodeEditor 
 									bind:value={state.currentContent}
 									language={state.currentFile.language}
@@ -512,7 +508,7 @@
 								/>
 							</div>
 						{:else}
-							<div class="d-flex align-items-center justify-content-center flex-grow-1 text-muted">
+							<div class="d-flex align-items-center justify-content-center flex-grow-1 text-body-secondary">
 								Select a file to edit
 							</div>
 						{/if}
@@ -521,7 +517,7 @@
 
 				<!-- Save Bar -->
 				<div class="save-bar border-top p-3 bg-body-tertiary">
-					<div class="row g-3">
+					<div class="row g-3 align-items-end">
 						<div class="col-md-4">
 							<label for="newVersion" class="form-label small fw-semibold">New Version</label>
 							<div class="input-group">
@@ -535,8 +531,8 @@
 								<button class="btn btn-outline-secondary btn-sm" onclick={() => state.newVersion = suggestVersionBump()} title="Auto-suggest version">
 									Auto
 								</button>
+								</div>
 							</div>
-						</div>
 						<div class="col-md-5">
 							<label for="releaseNotes" class="form-label small fw-semibold">Release Notes</label>
 							<input
@@ -547,7 +543,7 @@
 								placeholder="Describe changes..."
 							/>
 						</div>
-						<div class="col-md-3 d-flex align-items-end">
+						<div class="col-md-3">
 							<button 
 								class="btn btn-primary btn-sm w-100"
 								disabled={!hasUnsavedChanges() || state.isSaving}
@@ -564,9 +560,9 @@
 		<!-- New File Modal -->
 		<Modal show={state.modal.showNewFileModal} title="Create New File" onClose={cancelCreateNewFile}>
 			<div class="mb-3">
-				<label for="state.modal.newFileName" class="form-label">Filename:</label>
+				<label for="newFileName" class="form-label">Filename:</label>
 				<input 
-					id="state.modal.newFileName" 
+					id="newFileName" 
 					class="form-control" 
 					bind:value={state.modal.newFileName}
 					placeholder="Enter filename (e.g., rule.yml)"
@@ -598,10 +594,8 @@
 <style>
 	.pack-editor-container {
 		background: var(--bs-body-bg);
-		border-radius: 8px;
-		border: 1px solid var(--bs-border-color);
-		min-height: 600px;
 		color: var(--bs-body-color);
+		min-height: 600px;
 	}
 	
 	.file-tree-sidebar {
@@ -628,5 +622,9 @@
 	
 	.file-icon {
 		font-size: 0.9em;
+	}
+	
+	.editor-content {
+		min-height: 0;
 	}
 </style>
