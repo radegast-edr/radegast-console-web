@@ -97,6 +97,7 @@
 
 	function handleInput(e: Event): void {
 		const target = e.target as HTMLTextAreaElement;
+		value = target.value;
 		onChange(value);
 		updateHighlighting();
 	}
@@ -136,39 +137,63 @@
 <style>
 	.code-editor-container {
 		position: relative;
-		background: #1e1e1e;
-		color: #d4d4d4;
 		border-radius: 4px;
 		overflow: auto;
 		min-height: 200px;
+		background: var(--bs-body-bg);
+		color: var(--bs-body-color);
+		border: 1px solid var(--bs-border-color);
 	}
 	
 	.code-editor-textarea {
 		color: transparent;
 		background: transparent;
-		caret-color: #d4d4d4;
+		caret-color: var(--bs-body-color);
 		z-index: 1;
 		position: relative;
 		padding: 12px;
+		font-family: 'Courier New', monospace;
+		font-size: 14px;
+		line-height: 1.5;
 	}
 	
 	.code-editor-highlighted {
 		z-index: 0;
-		background: #1e1e1e;
+		background: var(--bs-body-bg);
 		padding: 12px;
+		font-family: 'Courier New', monospace;
+		font-size: 14px;
+		line-height: 1.5;
+		white-space: pre-wrap;
+		word-break: break-all;
+	}
+	
+	/* Light theme colors */
+	:root,
+	[data-bs-theme="light"] {
+		--code-keyword-color: #0066cc;
+		--code-string-color: #a31515;
+		--code-comment-color: #364549;
+	}
+	
+	/* Dark theme colors */
+	[data-bs-theme="dark"] {
+		--code-keyword-color: #569cd6;
+		--code-string-color: #ce9178;
+		--code-comment-color: #6a9955;
 	}
 	
 	:global(.code-keyword) {
-		color: #569cd6;
+		color: var(--code-keyword-color);
 		font-weight: bold;
 	}
 	
 	:global(.code-string) {
-		color: #ce9178;
+		color: var(--code-string-color);
 	}
 	
 	:global(.code-comment) {
-		color: #6a9955;
+		color: var(--code-comment-color);
 		font-style: italic;
 	}
 </style>

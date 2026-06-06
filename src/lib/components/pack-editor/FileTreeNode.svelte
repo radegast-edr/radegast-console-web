@@ -87,7 +87,7 @@
 			{node.name}
 		</span>
 		{#if node.type === 'file' && node.language}
-			<span class="text-muted small ms-1">({node.language})</span>
+			<span class="text-body-secondary small ms-1">({node.language})</span>
 		{/if}
 </div>
 

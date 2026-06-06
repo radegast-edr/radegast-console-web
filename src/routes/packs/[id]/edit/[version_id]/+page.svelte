@@ -87,7 +87,7 @@
 			for (const [filename, file] of Object.entries(zip.files)) {
 				if (!file.dir) {
 					try {
-						const content = await file.async('text');
+						const content = await file.asyncText();
 						files[filename] = content;
 					} catch (e) {
 						console.error(`Error reading file ${filename}:`, e);

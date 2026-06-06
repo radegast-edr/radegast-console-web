@@ -43,5 +43,7 @@
 	.file-tree {
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 		font-size: 0.9rem;
+		color: var(--bs-body-color);
+		background: var(--bs-body-bg);
 	}
 </style>

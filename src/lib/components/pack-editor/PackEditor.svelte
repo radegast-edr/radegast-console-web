@@ -445,9 +445,10 @@
 		if (initialVersion) {
 			state.newVersion = suggestVersionBump();
 		}
-		if (Object.keys(filesProp).length > 0 && !state.filesInitialized) {
-			state.filesInitialized = true;
+		// Always update files when filesProp changes
+		if (Object.keys(filesProp).length > 0) {
 			setFiles(filesProp);
+			state.filesInitialized = true;
 		}
 	});
 </script>
@@ -500,12 +501,12 @@
 								<div class="d-flex align-items-center gap-2">
 									<span class="file-icon">{getFileIcon(state.currentFile.name, state.currentFile.type)}</span>
 									<span class="fw-semibold small">{state.currentFile.name}</span>
-									<span class="badge bg-light text-dark small">{state.currentFile.language}</span>
+									<span class="badge bg-body-secondary text-body small">{state.currentFile.language}</span>
 								</div>
 							</div>
 							<div class="editor-content flex-grow-1 overflow-auto p-3">
 								<CodeEditor 
-									value={state.currentContent}
+									bind:value={state.currentContent}
 									language={state.currentFile.language}
 									onChange={updateContent}
 								/>
@@ -596,28 +597,33 @@
 
 <style>
 	.pack-editor-container {
-		background: #f8f9fa;
+		background: var(--bs-body-bg);
 		border-radius: 8px;
-		border: 1px solid #dee2e6;
+		border: 1px solid var(--bs-border-color);
 		min-height: 600px;
+		color: var(--bs-body-color);
 	}
 	
 	.file-tree-sidebar {
-		background: #f8f9fa;
+		background: var(--bs-body-bg);
 		max-height: calc(100vh - 200px);
+		color: var(--bs-body-color);
 	}
 	
 	.editor-area {
-		background: #ffffff;
+		background: var(--bs-body-bg);
+		color: var(--bs-body-color);
 	}
 	
 	.editor-header {
-		background: #f8f9fa;
-		border-bottom: 1px solid #dee2e6;
+		background: var(--bs-body-tertiary-bg);
+		border-bottom: 1px solid var(--bs-border-color);
+		color: var(--bs-body-color);
 	}
 	
 	.save-bar {
-		background: #f8f9fa;
+		background: var(--bs-body-tertiary-bg);
+		color: var(--bs-body-color);
 	}
 	
 	.file-icon {
