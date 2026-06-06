@@ -28,7 +28,7 @@ describe('AgentSetupInstructions Component', () => {
 		render(AgentSetupInstructions, { props: { token: 'my_test_token' } });
 
 		// Default should be Linux
-		expect(screen.getByText(/curl -sSL "http:\/\/localhost:8000\/device\/install\?os=linux"/)).toBeInTheDocument();
+		expect(screen.getByText(/curl -sSL "http:\/\/localhost:8000\/api\/v1\/device\/install\?os=linux"/)).toBeInTheDocument();
 		expect(screen.queryByText(/install\.bat/)).toBeNull();
 
 		// Click Windows
