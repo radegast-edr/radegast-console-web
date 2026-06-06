@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { api, type Pack, type Team, type PackVersion } from '$lib/api';
 	import { user, showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
@@ -8,6 +10,182 @@
 	let packs = $state<Pack[]>([]);
 	let teams = $state<Team[]>([]);
 	let showCreate = $state(false);
+
+	// Filter state
+	let searchQuery = $state('');
+	let statusFilters = $state<string[]>([]);
+	let osFilters = $state<string[]>([]);
+	let fpFilters = $state<string[]>([]);
+
+	// Available filter options (extracted from packs data)
+	let allStatuses = $state<string[]>([]);
+	let allOS = $state<string[]>([]);
+	let allFPLevels = $state<string[]>([]);
+
+	// Track if filters are open
+	let showStatusDropdown = $state(false);
+	let showOSDropdown = $state(false);
+	let showFPDropdown = $state(false);
+
+	// Derived: filtered packs
+	let filteredPacks = $derived(
+		packs.filter((pack) => {
+			// Full-text search (match all if empty)
+			const searchLower = searchQuery.toLowerCase();
+			const matchesSearch = !searchLower ||
+				pack.name.toLowerCase().includes(searchLower) ||
+				(pack.description?.toLowerCase().includes(searchLower) ?? false) ||
+				(pack.latest?.meta?.description?.toString().toLowerCase().includes(searchLower) ?? false);
+
+			// Status filter (match all if no filters)
+			const packStatus = pack.latest?.meta?.status?.toString().toLowerCase();
+			const matchesStatus = statusFilters.length === 0 || (packStatus && statusFilters.some((f) => f.toLowerCase() === packStatus));
+
+			// OS filter (match all if no filters)
+			const packOS = pack.latest?.meta?.os?.toString().toLowerCase();
+			const matchesOS = osFilters.length === 0 || (packOS && osFilters.some((f) => f.toLowerCase() === packOS));
+
+			// False Positive filter (match all if no filters)
+			const packFP = pack.latest?.meta?.expected_false_positive_level?.toString().toLowerCase();
+			const matchesFP = fpFilters.length === 0 || (packFP && fpFilters.some((f) => f.toLowerCase() === packFP));
+
+			return matchesSearch && matchesStatus && matchesOS && matchesFP;
+		})
+	);
+
+	// Sync filters with URL params
+	function syncFiltersToUrl(): void {
+		const params = new URLSearchParams();
+		if (searchQuery) params.set('search', searchQuery);
+		if (statusFilters.length > 0) params.set('status', statusFilters.join(','));
+		if (osFilters.length > 0) params.set('os', osFilters.join(','));
+		if (fpFilters.length > 0) params.set('fp', fpFilters.join(','));
+		goto(`${base}/packs?${params.toString()}`, { replaceState: true, keepFocus: true });
+	}
+
+	function parseArrayParam(param: string | null): string[] {
+		if (!param) return [];
+		return param.split(',').filter((s) => s);
+	}
+
+	function loadFiltersFromUrl(): void {
+		const urlParams = $page.url.searchParams;
+		searchQuery = urlParams.get('search') || '';
+		statusFilters = parseArrayParam(urlParams.get('status'));
+		osFilters = parseArrayParam(urlParams.get('os'));
+		fpFilters = parseArrayParam(urlParams.get('fp'));
+	}
+
+	// Extract unique filter options from packs
+	function extractFilterOptions(packsList: Pack[]): void {
+		const statuses = new Set<string>();
+		const osSet = new Set<string>();
+		const fpSet = new Set<string>();
+
+		for (const pack of packsList) {
+			if (pack.latest?.meta?.status) {
+				const status = String(pack.latest.meta.status);
+				if (status) statuses.add(status);
+			}
+			if (pack.latest?.meta?.os) {
+				const os = String(pack.latest.meta.os);
+				if (os) osSet.add(os);
+			}
+			if (pack.latest?.meta?.expected_false_positive_level) {
+				const fp = String(pack.latest.meta.expected_false_positive_level);
+				if (fp) fpSet.add(fp);
+			}
+		}
+
+		allStatuses = Array.from(statuses).sort();
+		allOS = Array.from(osSet).sort();
+		allFPLevels = Array.from(fpSet).sort();
+	}
+
+	// Toggle filter selections
+	function toggleStatus(status: string): void {
+		statusFilters = statusFilters.includes(status)
+			? statusFilters.filter((s) => s !== status)
+			: [...statusFilters, status];
+		syncFiltersToUrl();
+	}
+
+	function toggleOS(os: string): void {
+		osFilters = osFilters.includes(os)
+			? osFilters.filter((o) => o !== os)
+			: [...osFilters, os];
+		syncFiltersToUrl();
+	}
+
+	function toggleFP(fp: string): void {
+		fpFilters = fpFilters.includes(fp)
+			? fpFilters.filter((f) => f !== fp)
+			: [...fpFilters, fp];
+		syncFiltersToUrl();
+	}
+
+	function clearFilters(): void {
+		searchQuery = '';
+		statusFilters = [];
+		osFilters = [];
+		fpFilters = [];
+		syncFiltersToUrl();
+	}
+
+	function handleSearchKeyDown(e: KeyboardEvent): void {
+		if (e.key === 'Enter') {
+			syncFiltersToUrl();
+		}
+	}
+
+	// Close dropdowns when clicking outside or when URL changes
+	function closeAllDropdowns(): void {
+		showStatusDropdown = false;
+		showOSDropdown = false;
+		showFPDropdown = false;
+	}
+
+	// Close dropdowns when URL changes (filters applied)
+	$effect(() => {
+		$page.url;
+		closeAllDropdowns();
+	});
+
+	// Handle click outside to close dropdowns
+	// Using a flag to prevent immediate closure on dropdown button click
+	let ignoreNextClick = false;
+	
+	$effect(() => {
+		const handleClick = (event: MouseEvent) => {
+			if (ignoreNextClick) {
+				ignoreNextClick = false;
+				return;
+			}
+			const target = event.target as HTMLElement;
+			const isDropdownClick = target.closest('.dropdown');
+			if (isDropdownClick) {
+				// Let the dropdown button handler handle it
+				return;
+			}
+			closeAllDropdowns();
+		};
+		// Add capture phase listener to handle clicks before they bubble
+		window.addEventListener('click', handleClick, true);
+		return () => window.removeEventListener('click', handleClick, true);
+	});
+
+	function toggleDropdown(dropdown: 'status' | 'os' | 'fp'): void {
+		const wasOpen = dropdown === 'status' ? showStatusDropdown :
+			               dropdown === 'os' ? showOSDropdown : showFPDropdown;
+		closeAllDropdowns();
+		if (!wasOpen) {
+			if (dropdown === 'status') showStatusDropdown = true;
+			if (dropdown === 'os') showOSDropdown = true;
+			if (dropdown === 'fp') showFPDropdown = true;
+		}
+		ignoreNextClick = true;
+	}
+
 	let newPackName = $state('');
 	let newPackDesc = $state('');
 	let newPackTeamIds = $state<number[]>([]);
@@ -40,14 +218,16 @@
 	);
 
 	onMount(async () => {
+		loadFiltersFromUrl();
 		await Promise.all([loadPacks(), loadTeams()]);
+		extractFilterOptions(packs);
 	});
 
 	async function loadPacks(): Promise<void> {
 		try {
 			packs = await api.listPacks();
 		} catch (e) {
-			showError((e as Error).message);
+			showError(e instanceof Error ? e.message : String(e));
 		}
 	}
 
@@ -83,7 +263,7 @@
 			await loadPacks();
 			showFlash('Pack created');
 		} catch (e) {
-			showError((e as Error).message);
+			showError(e instanceof Error ? e.message : String(e));
 		}
 	}
 
@@ -107,7 +287,7 @@
 			await loadPacks();
 			showFlash('Pack updated');
 		} catch (e) {
-			showError((e as Error).message);
+			showError(e instanceof Error ? e.message : String(e));
 		}
 	}
 
@@ -120,7 +300,7 @@
 		try {
 			packVersions = await api.listVersions(pack.id);
 		} catch (e) {
-			showError((e as Error).message);
+			showError(e instanceof Error ? e.message : String(e));
 		} finally {
 			loadingVersions = false;
 		}
@@ -145,10 +325,12 @@
 			showFlash('Version uploaded');
 			await loadPacks();
 		} catch (e) {
-			showError((e as Error).message);
+			showError(e instanceof Error ? e.message : String(e));
 		}
 	}
 </script>
+
+<svelte:window onclick={(e) => { const target = e.target as HTMLElement; if (!target.closest('.dropdown')) closeAllDropdowns(); }} />
 
 <svelte:head>
 	<title>Packs - Radegast</title>
@@ -161,8 +343,147 @@
 	{/if}
 </div>
 
+<!-- Filter Bar -->
+<div class="card mb-4 shadow-sm">
+	<div class="card-body">
+		<div class="row g-3">
+			<div class="col-12">
+				<label for="searchInput" class="form-label fw-semibold small">Search</label>
+				<div class="input-group">
+					<input
+						type="text"
+						class="form-control"
+						id="searchInput"
+						bind:value={searchQuery}
+						oninput={syncFiltersToUrl}
+						onkeydown={handleSearchKeyDown}
+						placeholder="Search packs by name or description..."
+					/>
+					{#if searchQuery}
+						<button class="btn btn-outline-secondary" type="button" onclick={() => { searchQuery = ''; syncFiltersToUrl(); }}>
+							×
+						</button>
+					{/if}
+				</div>
+			</div>
+			<div class="col-12 d-flex gap-3 flex-wrap">
+				<!-- Status Dropdown -->
+				<div class="dropdown" style="min-width: 140px;">
+					<span class="form-label fw-semibold small d-block">Status</span>
+					<button
+						class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-between dropdown-toggle {showStatusDropdown ? 'show' : ''}"
+						onclick={(e) => { e.stopPropagation(); toggleDropdown('status'); }}
+						aria-expanded={showStatusDropdown}
+					>
+						<span>
+							{#if statusFilters.length > 0}
+								{statusFilters.join(', ')}
+							{:else}
+								All Statuses
+							{/if}
+						</span>
+					</button>
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+					<div class="dropdown-menu w-100 pack-tags {showStatusDropdown ? 'show' : ''}" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
+						{#each allStatuses as status}
+							<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
+								<input
+									type="checkbox"
+									checked={statusFilters.includes(status)}
+									onchange={() => toggleStatus(status)}
+								/>
+								<span class="badge rounded-pill bg-secondary status-{status.toLowerCase()}">
+									{status}
+								</span>
+							</label>
+						{/each}
+					</div>
+				</div>
+
+				<!-- OS Dropdown -->
+				<div class="dropdown" style="min-width: 120px;">
+					<span class="form-label fw-semibold small d-block">OS</span>
+					<button
+						class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-between dropdown-toggle {showOSDropdown ? 'show' : ''}"
+						onclick={(e) => { e.stopPropagation(); toggleDropdown('os'); }}
+						aria-expanded={showOSDropdown}
+					>
+						<span>
+							{#if osFilters.length > 0}
+								{osFilters.join(', ')}
+							{:else}
+								All OS
+							{/if}
+						</span>
+					</button>
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+					<div class="dropdown-menu w-100 pack-tags {showOSDropdown ? 'show' : ''}" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
+						{#each allOS as os}
+							<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
+								<input
+									type="checkbox"
+									checked={osFilters.includes(os)}
+									onchange={() => toggleOS(os)}
+								/>
+								<span class="badge rounded-pill bg-secondary os-{os.toLowerCase()}">
+									{os}
+								</span>
+							</label>
+						{/each}
+					</div>
+				</div>
+
+				<!-- False Positive Dropdown -->
+				<div class="dropdown" style="min-width: 150px;">
+					<span class="form-label fw-semibold small d-block">False Positive Rate</span>
+					<button
+						class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-between dropdown-toggle {showFPDropdown ? 'show' : ''}"
+						onclick={(e) => { e.stopPropagation(); toggleDropdown('fp'); }}
+						aria-expanded={showFPDropdown}
+					>
+						<span>
+							{#if fpFilters.length > 0}
+								{fpFilters.join(', ')}
+							{:else}
+								All FP Rates
+							{/if}
+						</span>
+					</button>
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+					<div class="dropdown-menu w-100 pack-tags {showFPDropdown ? 'show' : ''}" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
+						{#each allFPLevels as fp}
+							<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
+								<input
+									type="checkbox"
+									checked={fpFilters.includes(fp)}
+									onchange={() => toggleFP(fp)}
+								/>
+								<span class="badge rounded-pill bg-secondary fp-{fp.toLowerCase()}">
+									{fp}
+								</span>
+							</label>
+						{/each}
+					</div>
+				</div>
+
+				<!-- Clear Filters Button -->
+				{#if searchQuery || statusFilters.length > 0 || osFilters.length > 0 || fpFilters.length > 0}
+					<div class="d-flex align-items-end mt-2">
+						<button class="btn btn-outline-danger" onclick={clearFilters}>
+							Clear Filters
+						</button>
+					</div>
+				{/if}
+			</div>
+		</div>
+	</div>
+</div>
+
 <div class="row">
-	{#each packs as pack}
+	{#each filteredPacks as pack}
 		<div class="col-md-6 col-lg-4 mb-3">
 			<div class="card h-100 shadow-sm">
 				<div class="card-body d-flex flex-column">
