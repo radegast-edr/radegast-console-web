@@ -91,6 +91,7 @@
 
 <AgentSetupInstructions
 	token={newDeviceToken}
+	deviceName={newDeviceName}
 	onDismiss={() => (newDeviceToken = '')}
 />
 

@@ -135,6 +135,7 @@
 
 	<AgentSetupInstructions
 		token={newDeviceToken}
+		deviceName={device.name}
 		isReinstall={true}
 		onDismiss={() => (newDeviceToken = '')}
 	/>

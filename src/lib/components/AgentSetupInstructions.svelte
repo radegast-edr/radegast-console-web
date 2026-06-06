@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { api } from '$lib/api';
 
-	let { token = '', isReinstall = false, onDismiss = () => {} } = $props<{
+	let { token = '', deviceName = 'windows', isReinstall = false, onDismiss = () => {} } = $props<{
+		deviceName?: string;
 		token?: string;
 		isReinstall?: boolean;
 		onDismiss?: () => void;
@@ -9,6 +10,20 @@
 
 	let selectedOS = $state<'linux' | 'windows' | 'macos'>('linux');
 	const backendUrl = api.getBackendUrl().replace(/\/$/, '');
+
+	async function downloadInstallBat() {
+		const url = `${backendUrl}/api/v1/device/install?os=windows`;
+		let installScript = await (await fetch(url)).text();
+		installScript = `@echo off\nSET "RADEGAST_TOKEN=${token}"\n@echo on\n${installScript}`;
+		const blob = new Blob([installScript], { type: 'application/x.bat' });
+
+		const link = document.createElement('a');
+		link.href = URL.createObjectURL(blob);
+		link.download = `radegast-agent-install-${deviceName}.bat`;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	}
 </script>
 
 {#if token}
@@ -60,7 +75,7 @@
 				</div>
 			{:else if selectedOS === 'windows'}
 				<div class="mb-3">
-					<label for="win-install-cmd" class="form-label fw-semibold">2. Run this command on your Windows device in an Administrator PowerShell prompt:</label>
+					<label for="win-install-cmd" class="form-label fw-semibold">2a. Run this command on your Windows device in an Administrator PowerShell prompt:</label>
 					<div class="input-group">
 						<code id="win-install-cmd" class="form-control bg-dark text-light p-2 font-monospace" style="user-select: all;">
 							$env:RADEGAST_TOKEN="{token}"; iwr -useb "{backendUrl}/api/v1/device/install?os=windows" -OutFile install.bat; .\install.bat
@@ -69,6 +84,7 @@
 					<small class="form-text text-muted">
 						This will download portable Python, install <code>uv</code> and <code>radegast-agent</code>, download <code>rustinel</code>, and register background Scheduled Tasks.
 					</small>
+					<p class="form-label fw-semibold mt-2">2b. Or you can download the install script directly by clicking on <a href="#install-radegast-{deviceName}.bat" onclick={downloadInstallBat}>this link</a>.</p>
 				</div>
 			{:else if selectedOS === 'macos'}
 				<div class="mb-3">
