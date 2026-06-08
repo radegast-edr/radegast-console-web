@@ -58,7 +58,6 @@ describe('Dashboard Component', () => {
 			{ id: 10, name: 'Server-01', last_seen: '2026-06-04T04:28:00Z' },
 			{ id: 11, name: 'Server-02', last_seen: '2026-06-04T04:28:00Z' }
 		] as any);
-		vi.mocked(api.getUnreadLogsCount).mockResolvedValue({ unread_count: 5 });
 		vi.mocked(api.listTeamDevices).mockResolvedValue([
 			{ id: 10 }
 		] as any);

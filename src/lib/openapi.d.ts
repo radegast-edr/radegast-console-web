@@ -1112,23 +1112,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/logs/unread-count": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Unread Logs Count */
-        get: operations["get_unread_logs_count_api_v1_logs_unread_count_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/logs/seen/all": {
         parameters: {
             query?: never;
@@ -1834,8 +1817,7 @@ export interface components {
             content: string;
             /** Signature */
             signature?: string | null;
-            /** Severity */
-            severity?: ("informational" | "low" | "medium" | "high" | "critical") | null;
+            severity?: components["schemas"]["LogSeverity"] | null;
         };
         /** LogResolveRequest */
         LogResolveRequest: {
@@ -1864,13 +1846,17 @@ export interface components {
              * @default false
              */
             seen: boolean;
-            /** Severity */
-            severity?: ("informational" | "low" | "medium" | "high" | "critical") | null;
+            severity?: components["schemas"]["LogSeverity"] | null;
             /** Alert Resolution */
             alert_resolution?: string | null;
             /** Triage Note */
             triage_note?: string | null;
         };
+        /**
+         * LogSeverity
+         * @enum {string}
+         */
+        LogSeverity: "informational" | "low" | "medium" | "high" | "critical";
         /** MessageResponse */
         MessageResponse: {
             /** Message */
@@ -1974,12 +1960,8 @@ export interface components {
              * @default true
              */
             notify_api_key_modification: boolean;
-            /**
-             * Notification Level
-             * @default medium
-             * @enum {string}
-             */
-            notification_level: "informational" | "low" | "medium" | "high" | "critical";
+            /** @default medium */
+            notification_level: components["schemas"]["LogSeverity"];
         };
         /** PackCreate */
         PackCreate: {
@@ -4638,6 +4620,7 @@ export interface operations {
                 device_id?: number | null;
                 from_time?: string | null;
                 to_time?: string | null;
+                min_level?: components["schemas"]["LogSeverity"] | null;
                 page?: number;
                 limit?: number;
             };
@@ -4700,26 +4683,6 @@ export interface operations {
             };
         };
     };
-    get_unread_logs_count_api_v1_logs_unread_count_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
     mark_all_logs_seen_api_v1_logs_seen_all_post: {
         parameters: {
             query?: never;
@@ -4777,6 +4740,8 @@ export interface operations {
                 device_id?: number | null;
                 from_time?: string | null;
                 to_time?: string | null;
+                min_level?: components["schemas"]["LogSeverity"] | null;
+                unread_only?: boolean;
             };
             header?: never;
             path?: never;

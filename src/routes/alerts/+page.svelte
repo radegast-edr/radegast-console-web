@@ -299,7 +299,7 @@
 							type="datetime-local" 
 							class="form-control form-control-sm" 
 							bind:value={fromTime}
-							onchange={() => logManager?.performSearch(fromTime, toTime, 1)}
+							onchange={() => logManager?.performSearch(fromTime, toTime, null, 1)}
 						/>
 					</div>
 					<div class="col-6">
@@ -309,7 +309,7 @@
 							type="datetime-local" 
 							class="form-control form-control-sm" 
 							bind:value={toTime}
-							onchange={() => logManager?.performSearch(fromTime, toTime, 1)}
+							onchange={() => logManager?.performSearch(fromTime, toTime, null, 1)}
 						/>
 					</div>
 				</div>
@@ -362,7 +362,7 @@
 				<button 
 					class="btn btn-outline-secondary btn-sm fw-bold" 
 					disabled={logManager.currentPage <= 1 || logManager.loading}
-					onclick={() => logManager?.performSearch(fromTime, toTime, logManager.currentPage - 1)}
+					onclick={() => logManager?.performSearch(fromTime, toTime, null, logManager.currentPage - 1)}
 				>
 					&laquo; Prev
 				</button>
@@ -372,7 +372,7 @@
 				<button 
 					class="btn btn-outline-secondary btn-sm fw-bold" 
 					disabled={logManager.currentPage >= logManager.totalPages || logManager.loading}
-					onclick={() => logManager?.performSearch(fromTime, toTime, logManager.currentPage + 1)}
+					onclick={() => logManager?.performSearch(fromTime, toTime, null, logManager.currentPage + 1)}
 				>
 					Next &raquo;
 				</button>
@@ -414,7 +414,7 @@
 									id="triageNote" 
 									class="form-control" 
 									rows="3" 
-									placeholder="Analyst reviewed the process. Expected IT behavior. Marking as false positive."
+									placeholder="No note so far."
 									bind:value={triageNote}
 								></textarea>
 							</div>

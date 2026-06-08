@@ -1,4 +1,4 @@
-import { api, type Log, type Device } from '$lib/api';
+import {api, type Log, type Device, type LogSeverity} from '$lib/api';
 import { decrypt } from '$lib/crypto';
 import { isDeviceActive, formatFullDateTime, preprocessQuery, matchesJsonata, mapSeverityToNumber } from '$lib/utils';
 import jsonata from 'jsonata';
@@ -127,7 +127,7 @@ export class LogManager {
 		this.filteredLogs = this.logs.filter((_, idx) => matches[idx]);
 	}
 
-	async performSearch(fromTime: string | null, toTime: string | null, page = 1) {
+	async performSearch(fromTime: string | null, toTime: string | null, min_level: LogSeverity | null = null, page = 1) {
 		this.isSearching = true;
 		this.loading = true;
 		this.currentPage = page;
@@ -136,7 +136,7 @@ export class LogManager {
 		const toUtc = toTime ? new Date(toTime).toISOString() : null;
 
 		try {
-			const countRes = await api.getLogsCount(null, fromUtc, toUtc).catch(() => ({ total_count: 0 }));
+			const countRes = await api.getLogsCount(null, fromUtc, toUtc, min_level).catch(() => ({ total_count: 0 }));
 			this.totalLogs = countRes.total_count;
 			this.totalPages = Math.max(1, Math.ceil(this.totalLogs / this.limit));
 
@@ -144,7 +144,7 @@ export class LogManager {
 				this.currentPage = this.totalPages;
 			}
 
-			const logsData = await api.listLogs(this.currentPage, this.limit, null, fromUtc, toUtc);
+			const logsData = await api.listLogs(this.currentPage, this.limit, null, fromUtc, toUtc, min_level);
 
 			if (!this.isInitialLoad) {
 				for (const log of logsData) {

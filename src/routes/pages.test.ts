@@ -180,7 +180,6 @@ describe('Route Pages Load Verification', () => {
 		vi.mocked(api.listTeams).mockResolvedValue([{ id: 1, name: 'Team A' }] as any);
 		vi.mocked(api.listGroups).mockResolvedValue([{ id: 1, name: 'Group A' }] as any);
 		vi.mocked(api.listDevices).mockResolvedValue([{ id: 1, name: 'Device A', last_seen: '2026-06-04T05:00:00Z' }] as any);
-		vi.mocked(api.getUnreadLogsCount).mockResolvedValue({ unread_count: 3 });
 		vi.mocked(api.listTeamDevices).mockResolvedValue([{ id: 1 }] as any);
 		vi.mocked(api.getGroup).mockResolvedValue({ id: 1, name: 'Group A', devices: [{ id: 1 }] } as any);
 		vi.mocked(api.listLogs).mockResolvedValue([{ id: 1, time: '2026-06-04T05:00:00Z', device_id: 1, content: 'encrypted', severity: 'high' }] as any);

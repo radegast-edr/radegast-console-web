@@ -140,6 +140,7 @@ export type MfaOtpSetupResponse = components['schemas']['MfaOtpSetupResponse'];
 export type APIKeyScopes = components['schemas']['APIKeyScopes'];
 export type APIKeyResponse = components['schemas']['APIKeyResponse'];
 export type APIKeyCreatedResponse = components['schemas']['APIKeyCreatedResponse'];
+export type LogSeverity = components["schemas"]["LogSeverity"];
 
 
 // ---------------------------------------------------------------------------
@@ -341,7 +342,8 @@ export const api = {
 		limit = 100,
 		device_id: number | null = null,
 		from_time: string | null = null,
-		to_time: string | null = null
+		to_time: string | null = null,
+		min_level: LogSeverity | null = null,
 	) =>
 		call(
 			callOp('list_logs_api_v1_logs__get', {
@@ -351,7 +353,8 @@ export const api = {
 						limit,
 						...(device_id ? { device_id } : {}),
 						...(from_time ? { from_time } : {}),
-						...(to_time ? { to_time } : {})
+						...(to_time ? { to_time } : {}),
+						...(min_level ? { min_level } : {})
 					}
 				}
 			})
@@ -360,7 +363,8 @@ export const api = {
 	getLogsCount: (
 		device_id: number | null = null,
 		from_time: string | null = null,
-		to_time: string | null = null
+		to_time: string | null = null,
+		min_level: LogSeverity | null = null,
 	) =>
 		call(
 			callOp('get_logs_count_api_v1_logs_count_get', {
@@ -368,15 +372,12 @@ export const api = {
 					query: {
 						...(device_id ? { device_id } : {}),
 						...(from_time ? { from_time } : {}),
-						...(to_time ? { to_time } : {})
+						...(to_time ? { to_time } : {}),
+						...(min_level ? {min_level}: {})
 					}
 				}
 			})
 		),
-
-
-	getUnreadLogsCount: () =>
-		call(callOp('get_unread_logs_count_api_v1_logs_unread_count_get', {})),
 
 	markLogSeen: (log_id: number) =>
 		call(callOp('mark_log_seen_api_v1_logs__log_id__seen_post', { params: { path: { log_id } } })),

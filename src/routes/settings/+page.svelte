@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api, type NotificationSettings, type UserKey, type MfaSettings, type MfaOtpSetupResponse } from '$lib/api';
+	import {
+		api,
+		type NotificationSettings,
+		type UserKey,
+		type MfaSettings,
+		type MfaOtpSetupResponse,
+	} from '$lib/api';
 	import { showFlash, showError, user } from '$lib/store';
 	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt, getStoredPublicKey } from '$lib/crypto';
 
@@ -529,8 +535,23 @@
 						/>
 						<label class="form-check-label" for="notifyApiKeyModification">API key modification</label>
 					</div>
-					<div class="mb-3">
-						<label for="notificationLevel" class="form-label fw-semibold">Notification Severity Threshold</label>
+					<button class="btn btn-primary" onclick={saveNotifications} disabled={notifSaving}>
+						{notifSaving ? 'Saving…' : 'Save Preferences'}
+					</button>
+				{/if}
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="row g-4 mt-2">
+	<!-- Device Alert Settings -->
+	<div class="col-12">
+		<div class="card">
+			<div class="card-header"><h5 class="mb-0">Device Alert Settings</h5></div>
+				{#if notifications}
+					<div class="m-3">
+						<label for="notificationLevel" class="form-label fw-semibold">Minimal alert severity</label>
 						<select
 							id="notificationLevel"
 							class="form-select form-select-sm"
@@ -543,17 +564,16 @@
 							<option value="critical">Critical</option>
 						</select>
 						<div class="form-text text-muted small">
-							Notifications are only sent for alerts meeting or exceeding this severity level.
+							All alerts with severity lower than this are hidden and marked as read.
 						</div>
+						<button class="btn btn-primary btn-sm mt-2" onclick={saveNotifications} disabled={notifSaving}>
+							{notifSaving ? 'Saving…' : 'Save'}
+						</button>
 					</div>
-					<button class="btn btn-primary" onclick={saveNotifications} disabled={notifSaving}>
-						{notifSaving ? 'Saving…' : 'Save Preferences'}
-					</button>
 				{/if}
 			</div>
 		</div>
 	</div>
-</div>
 
 <div class="row g-4 mt-2">
 	<!-- Encryption Keys Card -->
