@@ -2,16 +2,24 @@
 	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import { api, type Group, type Team, type Device, type EnabledPack, type Pack, type PackVersion } from '$lib/api';
-	import { showFlash, showError } from '$lib/store';
+	import { api, type GroupDetail, type Team, type Device, type EnabledPack, type Pack, type PackVersion, type Exclusion, type ExclusionCreate } from '$lib/api';
+	import { showFlash, showError, user } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
+	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
 	import { isDeviceActive } from '$lib/utils';
 
-	let group = $state<(Group & { devices: Device[]; teams: Team[] }) | null>(null);
+	let group = $state<(GroupDetail & { devices: Device[]; teams: Team[]; exclusions: Exclusion[] }) | null>(null);
 	let allTeams = $state<Team[]>([]);
 	let allDevices = $state<Device[]>([]);
 	let addTeamId = $state('');
 	let addDeviceId = $state('');
+
+	// Exclusion Management State
+	let showExclusionModal = $state(false);
+	let exclusionName = $state('');
+	let exclusionQuery = $state('');
+	let exclusionDescription = $state('');
+	let editingExclusion = $state<Exclusion | null>(null);
 
 	// User teams and Pack Write Permissions
 	let userTeams = $state<Team[]>([]);
@@ -193,6 +201,73 @@
 			showError((e as Error).message);
 		}
 	}
+
+	// Exclusion Management Functions
+	async function openCreateExclusion(exclusion: Exclusion | null = null): Promise<void> {
+		editingExclusion = exclusion;
+		if (exclusion) {
+			exclusionName = exclusion.name;
+			exclusionQuery = exclusion.jsonata_query;
+			exclusionDescription = exclusion.description || '';
+		} else {
+			exclusionName = '';
+			exclusionQuery = '';
+			exclusionDescription = '';
+		}
+		showExclusionModal = true;
+	}
+
+	async function saveExclusion(): Promise<void> {
+		if (!group || !exclusionName.trim() || !exclusionQuery.trim()) {
+			showError('Name and JSONata query are required');
+			return;
+		}
+		try {
+			const data: ExclusionCreate = {
+				name: exclusionName.trim(),
+				jsonata_query: exclusionQuery.trim(),
+				description: exclusionDescription.trim() || null
+			};
+			
+			if (editingExclusion) {
+				// For now, delete and recreate since we don't have update endpoint
+				await api.deleteExclusion(editingExclusion.id);
+			}
+			
+			const newExclusion = await api.createExclusion(Number(group.id), data);
+			showExclusionModal = false;
+			showFlash('Exclusion saved');
+			
+			// Refresh the group to get updated exclusions
+			const g = await api.getGroup(Number(group.id));
+			group = g;
+			
+			// Clear form
+			exclusionName = '';
+			exclusionQuery = '';
+			exclusionDescription = '';
+			editingExclusion = null;
+		} catch (e) {
+			showError((e as Error).message);
+		}
+	}
+
+	async function deleteExclusionHandler(exclusionId: number, e: MouseEvent): Promise<void> {
+		e.stopPropagation();
+		if (!await askConfirm('Are you sure you want to delete this exclusion?')) return;
+		try {
+			await api.deleteExclusion(exclusionId);
+			showFlash('Exclusion deleted');
+			
+			// Refresh the group to get updated exclusions
+			if (group) {
+				const g = await api.getGroup(Number(group.id));
+				group = g;
+			}
+		} catch (e) {
+			showError((e as Error).message);
+		}
+	}
 </script>
 
 <svelte:head>
@@ -242,8 +317,7 @@
 											class="btn btn-sm btn-outline-danger"
 											onclick={() => unlinkTeam(team.id)}
 											disabled={isLast}
-											style={isLast ? 'pointer-events:none' : ''}>Unlink</button
-										>
+											style={isLast ? 'pointer-events:none' : ''}>Unlink</button>
 									</span>
 								</td>
 							</tr>
@@ -296,8 +370,7 @@
 								<td>
 									<button
 										class="btn btn-sm btn-outline-danger"
-										onclick={() => removeDevice(device.id)}>Remove</button
-									>
+										onclick={() => removeDevice(device.id)}>Remove</button>
 								</td>
 							</tr>
 						{/each}
@@ -317,6 +390,56 @@
 					<span class="text-muted small">All your devices are already in this group.</span>
 				{/if}
 			</div>
+		</div>
+	</div>
+
+	<!-- Exclusions section -->
+	<div class="card mb-4">
+		<div class="card-header d-flex justify-content-between align-items-center">
+			<h5 class="mb-0">Detection Exclusions</h5>
+			{#if hasPackWrite}
+				<button class="btn btn-sm btn-primary" onclick={() => openCreateExclusion(null)}>Create Exclusion</button>
+			{/if}
+		</div>
+		<div class="card-body">
+			{#if (group.exclusions ?? []).length === 0}
+				<p class="text-muted">No exclusions configured for this group. Exclusions use JSONata queries to filter out false positives from alerts.</p>
+			{:else}
+				<table class="table table-sm mb-3">
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>JSONata Query</th>
+							<th>Description</th>
+							{#if hasPackWrite}
+								<th></th>
+							{/if}
+						</tr>
+					</thead>
+					<tbody>
+						{#each group.exclusions as exclusion}
+							<tr>
+								<td><strong>{exclusion.name}</strong></td>
+								<td><code class="small">{exclusion.jsonata_query}</code></td>
+								<td>{exclusion.description || '-'}</td>
+								{#if hasPackWrite}
+									<td>
+										<button class="btn btn-sm btn-outline-secondary me-2" onclick={() => openCreateExclusion(exclusion)} title="Edit">✎</button>
+										<button class="btn btn-sm btn-outline-danger" onclick={(e) => deleteExclusionHandler(exclusion.id, e)} title="Delete">×</button>
+									</td>
+								{/if}
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			{/if}
+
+			{#if hasPackWrite}
+				<p class="text-muted small mb-0">
+					Exclusions are JSONata queries that match against alert data. 
+					When an alert matches any exclusion in its device group, it will be excluded from detection.
+				</p>
+			{/if}
 		</div>
 	</div>
 
@@ -359,8 +482,7 @@
 									<td>
 										<button
 											class="btn btn-sm btn-outline-danger"
-											onclick={() => disablePack(pe.id)}>Disable</button
-										>
+											onclick={() => disablePack(pe.id)}>Disable</button>
 									</td>
 								{/if}
 							</tr>
@@ -370,6 +492,18 @@
 			{/if}
 		</div>
 	</div>
+
+	<!-- Create/Edit Exclusion Modal -->
+	<ExclusionModal
+		bind:show={showExclusionModal}
+		bind:name={exclusionName}
+		bind:query={exclusionQuery}
+		bind:description={exclusionDescription}
+		title={editingExclusion ? 'Edit Exclusion' : 'Create Exclusion'}
+		isEditMode={!!editingExclusion}
+		onClose={() => { showExclusionModal = false; editingExclusion = null; }}
+		onSave={saveExclusion}
+	/>
 
 	<!-- Enable Pack Modal -->
 	<Modal show={showEnablePackModal} title="Enable Pack for Group" onClose={() => (showEnablePackModal = false)}>

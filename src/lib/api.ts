@@ -123,6 +123,7 @@ export type UserInfo = components['schemas']['UserResponse'];
 export type Team = components['schemas']['TeamResponse'];
 export type TeamMember = components['schemas']['TeamMemberResponse'];
 export type Group = components['schemas']['DeviceGroupResponse'];
+export type GroupDetail = components['schemas']['DeviceGroupDetail'];
 export type Device = components['schemas']['DeviceResponse'];
 export type DeviceDetail = components['schemas']['DeviceDetailResponse'];
 export type DeviceCreateResponse = components['schemas']['DeviceCreateResponse'];
@@ -140,6 +141,8 @@ export type MfaOtpSetupResponse = components['schemas']['MfaOtpSetupResponse'];
 export type APIKeyScopes = components['schemas']['APIKeyScopes'];
 export type APIKeyResponse = components['schemas']['APIKeyResponse'];
 export type APIKeyCreatedResponse = components['schemas']['APIKeyCreatedResponse'];
+export type Exclusion = components['schemas']['ExclusionResponse'];
+export type ExclusionCreate = components['schemas']['ExclusionCreate'];
 export type LogSeverity = components["schemas"]["LogSeverity"];
 
 
@@ -275,6 +278,19 @@ export const api = {
 
 	removeDeviceFromGroupViaGroup: (group_id: number, device_id: number) =>
 		call(callOp('remove_device_from_group_api_v1_groups__group_id__devices__device_id__delete', { params: { path: { group_id, device_id } } })),
+
+	// Exclusions
+	listExclusionsForGroup: (group_id: number) =>
+		call(callOp('list_group_exclusions_api_v1_exclusions_groups__group_id__get', { params: { path: { group_id } } })),
+
+	createExclusion: (group_id: number, data: ExclusionCreate) =>
+		call(callOp('create_exclusion_api_v1_exclusions_groups__group_id__post', { params: { path: { group_id } }, body: data })),
+
+	deleteExclusion: (exclusion_id: number) =>
+		call(callOp('delete_exclusion_api_v1_exclusions__exclusion_id__delete', { params: { path: { exclusion_id } } })),
+
+	getExclusion: (exclusion_id: number) =>
+		call(callOp('get_exclusion_api_v1_exclusions__exclusion_id__get', { params: { path: { exclusion_id } } })),
 
 	// Packs
 	listPacks: () =>

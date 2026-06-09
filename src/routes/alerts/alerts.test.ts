@@ -37,6 +37,8 @@ vi.mock('$lib/api', () => ({
 	api: {
 		me: vi.fn(),
 		listDevices: vi.fn(),
+		listTeams: vi.fn(),
+		listGroups: vi.fn(),
 		listLogs: vi.fn(),
 		getLogsCount: vi.fn(),
 		markLogSeen: vi.fn(),
@@ -78,6 +80,10 @@ describe('Alerts Page', () => {
 		vi.mocked(api.me).mockResolvedValue(mockUser as any);
 		vi.mocked(api.listDevices).mockResolvedValue([
 			{ id: 1, name: 'Test Device', last_seen: '2026-06-04T05:00:00Z' }
+		] as any);
+		vi.mocked(api.listTeams).mockResolvedValue([] as any);
+		vi.mocked(api.listGroups).mockResolvedValue([
+			{ id: 1, name: 'Test Group' }
 		] as any);
 		vi.mocked(api.listLogs).mockResolvedValue([]);
 		vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 0 });

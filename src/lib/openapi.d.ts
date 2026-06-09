@@ -902,6 +902,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/exclusions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List All Exclusions
+         * @description List all exclusions visible to the current user.
+         */
+        get: operations["list_all_exclusions_api_v1_exclusions__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exclusions/groups/{group_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Group Exclusions
+         * @description List all exclusions for a specific device group.
+         */
+        get: operations["list_group_exclusions_api_v1_exclusions_groups__group_id__get"];
+        put?: never;
+        /**
+         * Create Exclusion
+         * @description Create a new exclusion for a device group.
+         */
+        post: operations["create_exclusion_api_v1_exclusions_groups__group_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exclusions/device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Device Exclusions
+         * @description Device endpoint: Returns all exclusions (JSONata queries) for the groups this device belongs to.
+         *     The agent will use these to filter out false positives from alerts.
+         */
+        get: operations["get_device_exclusions_api_v1_exclusions_device_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exclusions/{exclusion_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Exclusion
+         * @description Get a specific exclusion by ID.
+         */
+        get: operations["get_exclusion_api_v1_exclusions__exclusion_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Exclusion
+         * @description Delete an exclusion.
+         */
+        delete: operations["delete_exclusion_api_v1_exclusions__exclusion_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/packs/": {
         parameters: {
             query?: never;
@@ -1689,6 +1778,8 @@ export interface components {
             teams: components["schemas"]["TeamResponse"][];
             /** Devices */
             devices: components["schemas"]["DeviceResponse"][];
+            /** Exclusions */
+            exclusions: components["schemas"]["ExclusionResponse"][];
         };
         /** DeviceGroupResponse */
         DeviceGroupResponse: {
@@ -1726,6 +1817,51 @@ export interface components {
         DeviceSetSigningKey: {
             /** Signature Public Key */
             signature_public_key: string;
+        };
+        /** ExclusionCreate */
+        ExclusionCreate: {
+            /** Name */
+            name: string;
+            /** Jsonata Query */
+            jsonata_query: string;
+            /** Description */
+            description?: string | null;
+        };
+        /** ExclusionListResponse */
+        ExclusionListResponse: {
+            /** Id */
+            id: number;
+            /** Device Group Id */
+            device_group_id: number;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string | null;
+            /** Jsonata Query */
+            jsonata_query: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ExclusionResponse */
+        ExclusionResponse: {
+            /** Id */
+            id: number;
+            /** Device Group Id */
+            device_group_id: number;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string | null;
+            /** Jsonata Query */
+            jsonata_query: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** ExtendedEdrSettings */
         ExtendedEdrSettings: {
@@ -4095,6 +4231,174 @@ export interface operations {
             path: {
                 group_id: number;
                 device_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_all_exclusions_api_v1_exclusions__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExclusionListResponse"][];
+                };
+            };
+        };
+    };
+    list_group_exclusions_api_v1_exclusions_groups__group_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExclusionResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_exclusion_api_v1_exclusions_groups__group_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExclusionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExclusionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_device_exclusions_api_v1_exclusions_device_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_exclusion_api_v1_exclusions__exclusion_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exclusion_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExclusionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_exclusion_api_v1_exclusions__exclusion_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exclusion_id: number;
             };
             cookie?: never;
         };

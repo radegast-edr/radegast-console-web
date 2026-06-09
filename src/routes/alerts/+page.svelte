@@ -2,11 +2,12 @@
 	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
 	import { onMount, onDestroy } from 'svelte';
-	import { api, type Log, type Device } from '$lib/api';
+	import { api, type Log, type Device, type Group, type Team, type ExclusionCreate } from '$lib/api';
 	import { showError, showFlash, user } from '$lib/store';
 	import { initAgeWasm, getStoredPrivateKey, aesEncrypt, decrypt, encrypt } from '$lib/crypto';
 	import { LogManager } from '$lib/logManager.svelte';
 	import { isDeviceActive, formatFullDateTime, mapSeverityToNumber } from '$lib/utils';
+	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
 
 	let logManager: LogManager | null = $state(null);
 	let privateKey = $state<string | null>(null);
@@ -21,6 +22,21 @@
 
 	let fromTime = $state<string | null>(null);
 	let toTime = $state<string | null>(null);
+
+	// Exclusion creation from alert
+	let showExclusionModal = $state(false);
+	let exclusionName = $state('');
+	let exclusionQuery = $state('');
+	let exclusionDescription = $state('');
+	let userGroups = $state<Group[]>([]);
+	let selectedGroupId = $state<number | null>(null);
+	let userTeamsForPermission = $state<Team[]>([]);
+	let currentAlertObj = $state<Record<string, unknown> | null>(null);
+
+	let hasAnyPackWritePermission = $derived(
+		!!$user &&
+		userTeamsForPermission.some((t: { permission_pack?: string | null }) => t.permission_pack === 'write')
+	);
 
 	function showBrowserNotification(log: Log, devObj: Device | undefined) {
 		if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -44,6 +60,10 @@
 			logManager = new LogManager(privateKey, showBrowserNotification);
 			const devicesData = await api.listDevices();
 			logManager.setDevices(devicesData);
+
+			// Load user teams and groups for exclusion creation
+			userTeamsForPermission = await api.listTeams();
+			userGroups = await api.listGroups();
 
 			// Setup defaults
 			const now = new Date();
@@ -246,6 +266,70 @@
 		}
 	}
 
+	// Exclusion creation functions
+	async function openCreateExclusionFromAlert(): Promise<void> {
+		if (!selectedLog || !logManager) return;
+
+		const alertObj = logManager.getAlertObject(selectedLog);
+		// Store a plain snapshot — the flat alert data (keys like "rule.name") is passed directly to JSONata
+		currentAlertObj = typeof alertObj.alert === 'object' && alertObj.alert !== null
+			? (alertObj.alert as Record<string, unknown>)
+			: null;
+
+		// Generate a suggested JSONata query. The alert is a flat object with dotted keys,
+		// so use backtick notation (`rule.name`) to reference them in JSONata.
+		const ruleName = currentAlertObj?.['rule.name'] as string | undefined;
+		let suggestedQuery = '';
+
+		if (ruleName) {
+			suggestedQuery = `\`rule.name\` = '${ruleName.replace(/'/g, "\\'")}'`;
+		} else if (currentAlertObj) {
+			const firstKey = Object.keys(currentAlertObj)[0];
+			if (firstKey) {
+				const firstValue = currentAlertObj[firstKey];
+				suggestedQuery = typeof firstValue === 'string'
+					? `\`${firstKey}\` = '${firstValue.replace(/'/g, "\\'")}'`
+					: `$exists(\`${firstKey}\`)`;
+			}
+		}
+
+		exclusionName = `Exclude ${ruleName || 'alert'}`;
+		exclusionQuery = suggestedQuery;
+		exclusionDescription = `Created from alert on ${new Date(selectedLog.time).toLocaleString()}`;
+
+		if (userGroups.length > 0) {
+			selectedGroupId = userGroups[0].id;
+		}
+
+		showExclusionModal = true;
+	}
+
+	async function saveExclusionFromAlert(): Promise<void> {
+		if (!selectedGroupId || !exclusionName.trim() || !exclusionQuery.trim()) {
+			showError('Group, name, and JSONata query are required');
+			return;
+		}
+
+		try {
+			const data: ExclusionCreate = {
+				name: exclusionName.trim(),
+				jsonata_query: exclusionQuery.trim(),
+				description: exclusionDescription.trim() || null
+			};
+
+			await api.createExclusion(selectedGroupId, data);
+			showExclusionModal = false;
+			showFlash('Exclusion created from alert');
+
+			exclusionName = '';
+			exclusionQuery = '';
+			exclusionDescription = '';
+			selectedGroupId = null;
+		} catch (e) {
+			showError('Failed to create exclusion: ' + (e as Error).message);
+		}
+	}
+
 </script>
 
 <svelte:head>
@@ -397,6 +481,13 @@
 					<div class="card-body">
 						<h6 class="fw-bold mb-2">RAW TELEMETRY (Decrypted locally):</h6>
 						<pre class="p-3 rounded mb-0 font-monospace" style="background-color: #282a36 !important; color: #f8f8f2 !important; white-space: pre-wrap; word-break: break-all; font-size: 0.85rem; border: 1px solid #44475a;">{@html syntaxHighlightJson(JSON.stringify(alertObj.alert, null, 2))}</pre>
+						{#if $user && hasAnyPackWritePermission && !$user.extended_edr_enabled}
+							<div class="d-flex justify-content-end mt-2">
+								<button class="btn btn-sm btn-outline-secondary" onclick={openCreateExclusionFromAlert} title="Create exclusion from this alert">
+									Create Exclusion
+								</button>
+							</div>
+						{/if}
 					</div>
 				</div>
 
@@ -433,6 +524,13 @@
 									{savingResolution ? 'Saving...' : 'Save Triage'}
 								</button>
 							</div>
+							{#if hasAnyPackWritePermission && resolution === 'false_positive'}
+								<div class="d-flex justify-content-end mt-3">
+									<button class="btn btn-sm btn-outline-secondary" onclick={openCreateExclusionFromAlert} title="Create exclusion from this alert">
+										Create Exclusion
+									</button>
+								</div>
+							{/if}
 						</div>
 					</div>
 				{/if}
@@ -443,6 +541,22 @@
 			{/if}
 		</div>
 	</div>
+	
+	<!-- Create Exclusion Modal -->
+	{#if $user}
+		<ExclusionModal
+			bind:show={showExclusionModal}
+			bind:name={exclusionName}
+			bind:query={exclusionQuery}
+			bind:description={exclusionDescription}
+			bind:selectedGroupId={selectedGroupId}
+			title="Create Exclusion from Alert"
+			groups={userGroups}
+			alertObj={currentAlertObj}
+			onClose={() => { showExclusionModal = false; }}
+			onSave={saveExclusionFromAlert}
+		/>
+	{/if}
 {/if}
 </div>
 
