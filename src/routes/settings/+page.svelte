@@ -4,6 +4,8 @@
 	import KeyIcon from '~icons/lucide/key';
 	import SendIcon from '~icons/lucide/send';
 	import DownloadIcon from '~icons/lucide/download';
+	import AlertTriangleIcon from '~icons/lucide/alert-triangle';
+	import CheckIcon from '~icons/lucide/check';
 	import {
 		api,
 		type NotificationSettings,
@@ -694,7 +696,7 @@
 					</div>
 				{:else if addKeyStep === 'show_recovery'}
 					<div class="alert alert-danger mb-0">
-						<h5 class="alert-heading fw-bold">⚠️ Save Your New Recovery Key Now</h5>
+						<h5 class="alert-heading fw-bold"><AlertTriangleIcon style="width: 16px; height: 16px;" /> Save Your New Recovery Key Now</h5>
 						<p class="small mb-3">
 							This recovery key is a random AES key generated in your browser.
 							It has been used to encrypt your backup private key, and the server only holds the encrypted version.
@@ -774,7 +776,7 @@
 										<span class="text-muted small">Authenticator app active</span>
 									</div>
 									{#if (['otp', 'hardware_token', 'token'].includes(mfaSettings.required_level) && mfaSettings.hardware_tokens.length === 0)}
-										<p class="text-muted small mb-0">⚠️ Cannot disable — OTP is required for your role and you have no hardware token registered.</p>
+										<p class="text-muted small mb-0"><AlertTriangleIcon style="width: 16px; height: 16px;" /> Cannot disable — OTP is required for your role and you have no hardware token registered.</p>
 									{:else}
 										<button class="btn btn-outline-danger btn-sm" onclick={disableOtp}>
 											Disable OTP
@@ -919,7 +921,7 @@
 		<div class="modal-dialog modal-dialog-centered">
 			<div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
 				<div class="modal-header bg-warning text-dark border-0 py-3">
-					<h5 class="modal-title fw-bold mb-0">⚠️ {modalTitle}</h5>
+					<h5 class="modal-title fw-bold mb-0"><AlertTriangleIcon style="width: 16px; height: 16px;" /> {modalTitle}</h5>
 					<button type="button" class="btn-close" onclick={() => showConfirmModal = false} aria-label="Close"></button>
 				</div>
 				<div class="modal-body p-4">

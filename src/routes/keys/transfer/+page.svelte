@@ -5,6 +5,8 @@
 	import { api } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
 	import { initAgeWasm, generateKeypair, encrypt, decrypt, getStoredPrivateKey, storePrivateKey, aesEncrypt } from '$lib/crypto';
+	import AlertTriangleIcon from '~icons/lucide/alert-triangle';
+	import CheckIcon from '~icons/lucide/check';
 
 	let wasmReady = $state(false);
 	let hasKey = $state(false);
@@ -187,7 +189,10 @@
 
 <div class="row justify-content-center">
 	<div class="col-md-7">
-		<h2 class="mb-4">Key Transfer</h2>
+		<div class="d-flex align-items-center justify-content-between mb-4">
+			<h2 class="mb-0">Key Transfer</h2>
+		</div>
+		<p class="text-muted mb-4">Send your encryption keys to another browser or receive keys from another device.</p>
 
 		{#if !wasmReady}
 			<div class="d-flex align-items-center gap-2">
@@ -277,7 +282,7 @@
 						</div>
 						{#if !genAsSecondary && hasKeysOnServer}
 							<div class="alert alert-warning py-2 mb-3">
-								⚠️ This will delete your existing keys. Any data encrypted with the old key
+								<AlertTriangleIcon style="width: 16px; height: 16px;" /> This will delete your existing keys. Any data encrypted with the old key
 								will no longer be accessible.
 							</div>
 						{/if}
@@ -293,7 +298,7 @@
 
 					{:else if genStep === 'show_recovery'}
 						<div class="alert alert-danger">
-							<h6>⚠️ Save Your Recovery Key Now</h6>
+							<h6><AlertTriangleIcon style="width: 16px; height: 16px;" /> Save Your Recovery Key Now</h6>
 							<p class="mb-2">
 								This is the <strong>only time</strong> you'll see this key. Store it in a
 								password manager or write it down.

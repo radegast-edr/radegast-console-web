@@ -20,6 +20,8 @@
 	import CollapseLeft from '~icons/pajamas/collapse-left';
 	import CollapseRight from '~icons/pajamas/collapse-right';
 	import KeyIcon from '~icons/lucide/key';
+	import AlertTriangleIcon from '~icons/lucide/alert-triangle';
+	import CheckIcon from '~icons/lucide/check';
 
 	async function logout(): Promise<void> {
 		await api.logout();
@@ -270,9 +272,9 @@
 			<div class="d-flex">
 				<div class="toast-body fw-semibold py-3 ps-3 pe-2">
 					{#if $flash.type === 'danger'}
-						<span class="me-2">⚠️</span>
+						<span class="me-2"><AlertTriangleIcon style="width: 16px; height: 16px;" /></span>
 					{:else if $flash.type === 'success'}
-						<span class="me-2">✓</span>
+						<span class="me-2"><CheckIcon style="width: 16px; height: 16px;" /></span>
 					{/if}
 					{$flash.message}
 				</div>

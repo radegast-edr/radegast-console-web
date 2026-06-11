@@ -378,7 +378,7 @@ describe('Alerts Page', () => {
 			const button = screen.getByText('Resolve All as Read');
 			await fireEvent.click(button);
 
-			expect(askConfirm).toHaveBeenCalledWith("Are you sure you want to resolve all 1 currently shown alerts as 'read'?");
+			expect(askConfirm).toHaveBeenCalledWith("Are you sure you want to resolve all 1 currently shown unresolved alerts as 'read'?");
 			expect(api.client.PATCH).toHaveBeenCalledWith('/api/v1/logs/{log_id}/resolve', {
 				params: { path: { log_id: 102 } },
 				body: { alert_resolution: 'read', triage_note: null }
