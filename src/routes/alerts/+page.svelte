@@ -217,16 +217,18 @@
 
 		const isEdr = $user?.extended_edr_enabled;
 		if (isEdr) {
-			const count = logManager.filteredLogs.length;
+			// Only mark alerts that don't yet have a resolution
+			const unresolvedLogs = logManager.filteredLogs.filter(log => !log.alert_resolution || log.alert_resolution === "none");
+			const count = unresolvedLogs.length;
 			if (count === 0) return;
 
-			const confirmed = await askConfirm(`Are you sure you want to resolve all ${count} currently shown alerts as 'read'?`);
+			const confirmed = await askConfirm(`Are you sure you want to resolve all ${count} currently shown unresolved alerts as 'read'?`);
 			if (!confirmed) return;
 
 			try {
 				logManager.loading = true;
 				await Promise.all(
-					logManager.filteredLogs.map(async (log) => {
+					unresolvedLogs.map(async (log) => {
 						const res = await api.client.PATCH('/api/v1/logs/{log_id}/resolve', {
 							params: { path: { log_id: log.id } },
 							body: { alert_resolution: 'read', triage_note: null }

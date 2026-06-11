@@ -195,7 +195,7 @@
 				<span>Loading crypto library…</span>
 			</div>
 
-		{:else if hasKey}
+		{:else}
 			<!-- Sender: this browser has the key -->
 			<div class="card mb-4">
 				<div class="card-body">
@@ -224,8 +224,7 @@
 				</div>
 			</div>
 
-		{:else}
-			<!-- Receiver: this browser has no key -->
+			<!-- Receiver: this browser can also receive keys -->
 			<div class="card mb-4">
 				<div class="card-body">
 					<h5 class="card-title">Receive Key from Another Browser</h5>

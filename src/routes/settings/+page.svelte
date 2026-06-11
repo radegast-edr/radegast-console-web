@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
+	import KeyIcon from '~icons/lucide/key';
+	import SendIcon from '~icons/lucide/send';
+	import DownloadIcon from '~icons/lucide/download';
 	import {
 		api,
 		type NotificationSettings,
@@ -455,7 +458,7 @@
 							autocomplete="new-password"
 						/>
 					</div>
-					<button type="submit" class="btn btn-primary" disabled={pwSaving}>
+					<button type="submit" class="btn btn-primary d-flex align-items-center gap-2" disabled={pwSaving}>
 						{pwSaving ? 'Saving…' : 'Change Password'}
 					</button>
 				</form>
@@ -535,7 +538,7 @@
 						/>
 						<label class="form-check-label" for="notifyApiKeyModification">API key modification</label>
 					</div>
-					<button class="btn btn-primary" onclick={saveNotifications} disabled={notifSaving}>
+					<button class="btn btn-primary d-flex align-items-center gap-2" onclick={saveNotifications} disabled={notifSaving}>
 						{notifSaving ? 'Saving…' : 'Save Preferences'}
 					</button>
 				{/if}
@@ -712,6 +715,30 @@
 						</button>
 					</div>
 				{/if}
+			</div>
+		</div>
+	</div>
+</div>
+<div class="row g-4 mt-2">
+	<!-- Key Transfer Section -->
+	<div class="col-12">
+		<div class="card">
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<h5 class="mb-0">Key Transfer & Management</h5>
+				<span class="badge bg-info">Browser Key Management</span>
+			</div>
+			<div class="card-body">
+				<p class="text-muted small">
+					Manage your private encryption keys across different browsers and devices. Transfer keys securely or generate new ones.
+				</p>
+				<div class="d-flex gap-3">
+					<a href="{base}/keys/transfer" class="btn btn-primary d-flex align-items-center gap-2">
+						<KeyIcon style="width: 18px; height: 18px;"/> Transfer Keys Between Browsers
+					</a>
+					<a href="{base}/keys/recovery" class="btn btn-outline-secondary d-flex align-items-center gap-2">
+						<DownloadIcon style="width: 18px; height: 18px;"/> Recover Using Recovery Key
+					</a>
+				</div>
 			</div>
 		</div>
 	</div>
