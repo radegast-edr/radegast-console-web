@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import { api } from '$lib/api';
 import { user } from '$lib/store';
@@ -473,6 +473,66 @@ describe('Alerts Page', () => {
 			expect(window.open).toHaveBeenCalled();
 			await waitFor(() => {
 				expect(screen.queryByText('Confirm AI Analysis')).toBeNull();
+			});
+		});
+	});
+
+	describe('URL Hash Shareable State', () => {
+		let originalHash: string;
+		let replaceStateSpy: any;
+
+		beforeEach(() => {
+			originalHash = window.location.hash;
+			window.location.hash = '#q=url_hash_query&from=2026-06-04T05%3A00&to=2026-06-05T05%3A00';
+			replaceStateSpy = vi.spyOn(window.history, 'replaceState').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			window.location.hash = originalHash;
+			replaceStateSpy.mockRestore();
+		});
+
+		it('loads search query and date times from URL hash on mount', async () => {
+			const log = makeLog({ id: 99, seen: false });
+			vi.mocked(api.listLogs).mockResolvedValue([log] as any);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			render(Alerts);
+
+			await waitFor(() => {
+				const queryInput = screen.getByPlaceholderText('Filter alerts (JSONata)...') as HTMLInputElement;
+				expect(queryInput.value).toBe('url_hash_query');
+				
+				const fromInput = screen.getByLabelText('From') as HTMLInputElement;
+				expect(fromInput.value).toBe('2026-06-04T05:00');
+
+				const toInput = screen.getByLabelText('To') as HTMLInputElement;
+				expect(toInput.value).toBe('2026-06-05T05:00');
+			});
+		});
+
+		it('updates URL hash when inputs change', async () => {
+			window.location.hash = '';
+
+			const log = makeLog({ id: 99, seen: false });
+			vi.mocked(api.listLogs).mockResolvedValue([log] as any);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			render(Alerts);
+
+			await waitFor(() => {
+				expect(screen.getByPlaceholderText('Filter alerts (JSONata)...')).toBeInTheDocument();
+			});
+
+			const queryInput = screen.getByPlaceholderText('Filter alerts (JSONata)...');
+			await fireEvent.input(queryInput, { target: { value: 'new_filter_query' } });
+
+			await waitFor(() => {
+				expect(replaceStateSpy).toHaveBeenCalledWith(
+					null,
+					'',
+					expect.stringContaining('q=new_filter_query')
+				);
 			});
 		});
 	});

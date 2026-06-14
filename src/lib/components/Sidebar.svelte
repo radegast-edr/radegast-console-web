@@ -24,7 +24,11 @@
 	import CheckIcon from '~icons/lucide/check';
 
 	async function logout(): Promise<void> {
-		await api.logout();
+		try {
+			await api.logout();
+		} catch (e) {
+			console.warn('Logout request failed or user already logged out:', e);
+		}
 		$user = null;
 		goto(`${base}/login`);
 	}

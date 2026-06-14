@@ -7,12 +7,34 @@
 	import { initAgeWasm, getStoredPrivateKey } from '$lib/crypto';
 	import { LogManager } from '$lib/logManager.svelte';
 
+	// Parse URL hash synchronously before Svelte state initialization
+	const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
+	const hashParams = new URLSearchParams(initialHash.slice(1));
+	const initialQ = hashParams.get('q');
+	const initialFrom = hashParams.get('from');
+	const initialTo = hashParams.get('to');
+	const hasHashParams = !!(initialQ || initialFrom || initialTo);
+
+	const getDefaultFromTime = () => {
+		const now = new Date();
+		const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+		const pad = (num: number) => String(num).padStart(2, '0');
+		return `${yesterday.getFullYear()}-${pad(yesterday.getMonth()+1)}-${pad(yesterday.getDate())}T${pad(yesterday.getHours())}:${pad(yesterday.getMinutes())}`;
+	};
+
+	const getDefaultToTime = () => {
+		const now = new Date();
+		const pad = (num: number) => String(num).padStart(2, '0');
+		return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+	};
+
+	let initialized = $state(false);
 	let logManager = $state<LogManager | null>(null);
 	let privateKey = $state<string | null>(null);
 
-	let searchQuery = $state('');
-	let fromTime = $state<string | null>(null);
-	let toTime = $state<string | null>(null);
+	let searchQuery = $state(initialQ || '');
+	let fromTime = $state<string | null>(initialFrom || (hasHashParams ? null : getDefaultFromTime()));
+	let toTime = $state<string | null>(initialTo || (hasHashParams ? null : getDefaultToTime()));
 
 	onMount(async () => {
 		try {
@@ -29,16 +51,8 @@
 			const devicesData = await api.listDevices();
 			logManager.setDevices(devicesData);
 			
-			// 1 day default search for hunt
-			const now = new Date();
-			const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-			const pad = (num: number) => String(num).padStart(2, '0');
-			const formatLocal = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-			
-			fromTime = formatLocal(yesterday);
-			toTime = formatLocal(now);
-
 			await performHunt();
+			initialized = true;
 		} catch (e) {
 			showError('Failed to initialize Hunt Mode: ' + (e as Error).message);
 		}
@@ -58,6 +72,21 @@
 		if (logManager) {
 			const _ = logManager.logs;
 			logManager.runFilter(searchQuery);
+		}
+	});
+
+	// Reactively update the URL hash when search inputs change
+	$effect(() => {
+		if (!initialized || typeof window === 'undefined') return;
+		const params = new URLSearchParams();
+		if (searchQuery) params.set('q', searchQuery);
+		if (fromTime) params.set('from', fromTime);
+		if (toTime) params.set('to', toTime);
+		
+		const hash = params.toString();
+		const newHash = hash ? `#${hash}` : '';
+		if (window.location.hash !== newHash) {
+			window.history.replaceState(null, '', window.location.pathname + window.location.search + newHash);
 		}
 	});
 

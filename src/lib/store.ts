@@ -21,5 +21,8 @@ export function showFlash(message: string, type: string = 'success'): void {
 }
 
 export function showError(message: string): void {
+	if (message && (message.includes('Not authenticated') || message.includes('not authenticated'))) {
+		return;
+	}
 	showFlash(message, 'danger');
 }

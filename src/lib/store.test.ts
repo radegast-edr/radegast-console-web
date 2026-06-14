@@ -60,4 +60,12 @@ describe('store', () => {
 		vi.advanceTimersByTime(5000);
 		expect(get(flash)).toBeNull();
 	});
+
+	it('ignores "Not authenticated" error messages', () => {
+		showError('Failed to initialize: Not authenticated');
+		expect(get(flash)).toBeNull();
+
+		showError('not authenticated');
+		expect(get(flash)).toBeNull();
+	});
 });
