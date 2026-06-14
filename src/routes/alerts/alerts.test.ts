@@ -385,4 +385,95 @@ describe('Alerts Page', () => {
 			});
 		});
 	});
+
+	describe('AI Analysis', () => {
+		beforeEach(() => {
+			localStorage.clear();
+			vi.spyOn(window, 'open').mockImplementation(() => null);
+		});
+
+		it('shows the AI Consent Modal when no consent exists', async () => {
+			const log = makeLog({ id: 99, seen: false });
+			vi.mocked(api.listLogs).mockResolvedValue([log] as any);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			render(Alerts);
+
+			// Click on the alert to select it
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule')).toBeInTheDocument();
+			});
+			await fireEvent.click(screen.getByText('Test Rule'));
+
+			// Wait for telemetry card and AI Analysis button to be visible
+			await waitFor(() => {
+				expect(screen.getByText('AI Analysis')).toBeInTheDocument();
+			});
+
+			// Click AI Analysis button
+			await fireEvent.click(screen.getByText('AI Analysis'));
+
+			// Confirm consent modal is shown
+			await waitFor(() => {
+				expect(screen.getByText('Confirm AI Analysis')).toBeInTheDocument();
+				expect(screen.getByText(/Are you OK with sending your alert data/)).toBeInTheDocument();
+			});
+		});
+
+		it('skips the modal and opens Lumo directly if consent is already saved', async () => {
+			localStorage.setItem('radegast_proton_lumo_consent', 'true');
+			const log = makeLog({ id: 99, seen: false });
+			vi.mocked(api.listLogs).mockResolvedValue([log] as any);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			render(Alerts);
+
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule')).toBeInTheDocument();
+			});
+			await fireEvent.click(screen.getByText('Test Rule'));
+
+			await waitFor(() => {
+				expect(screen.getByText('AI Analysis')).toBeInTheDocument();
+			});
+
+			await fireEvent.click(screen.getByText('AI Analysis'));
+
+			// Check that window.open was called and modal is NOT shown
+			expect(window.open).toHaveBeenCalled();
+			expect(screen.queryByText('Confirm AI Analysis')).toBeNull();
+		});
+
+		it('saves consent to localStorage and opens Lumo when user clicks Yes, Proceed', async () => {
+			const log = makeLog({ id: 99, seen: false });
+			vi.mocked(api.listLogs).mockResolvedValue([log] as any);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			render(Alerts);
+
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule')).toBeInTheDocument();
+			});
+			await fireEvent.click(screen.getByText('Test Rule'));
+
+			await waitFor(() => {
+				expect(screen.getByText('AI Analysis')).toBeInTheDocument();
+			});
+
+			await fireEvent.click(screen.getByText('AI Analysis'));
+
+			await waitFor(() => {
+				expect(screen.getByText('Yes, Proceed')).toBeInTheDocument();
+			});
+
+			await fireEvent.click(screen.getByText('Yes, Proceed'));
+
+			// Check that consent was saved, modal was closed, and window.open was called
+			expect(localStorage.getItem('radegast_proton_lumo_consent')).toBe('true');
+			expect(window.open).toHaveBeenCalled();
+			await waitFor(() => {
+				expect(screen.queryByText('Confirm AI Analysis')).toBeNull();
+			});
+		});
+	});
 });

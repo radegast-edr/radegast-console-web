@@ -8,6 +8,7 @@
 	import { LogManager } from '$lib/logManager.svelte';
 	import { isDeviceActive, formatFullDateTime, mapSeverityToNumber } from '$lib/utils';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
+	import Modal from '$lib/components/Modal.svelte';
 
 	let logManager: LogManager | null = $state(null);
 	let privateKey = $state<string | null>(null);
@@ -332,6 +333,37 @@
 		}
 	}
 
+	let showAiConsentModal = $state(false);
+
+	function runAiAnalysis() {
+		if (!selectedLog || !logManager) return;
+		
+		const consent = typeof window !== 'undefined' && localStorage.getItem('radegast_proton_lumo_consent') === 'true';
+		if (consent) {
+			openLumoLink();
+		} else {
+			showAiConsentModal = true;
+		}
+	}
+
+	function openLumoLink() {
+		if (!selectedLog || !logManager) return;
+		const alertObj = logManager.getAlertObject(selectedLog);
+		const telemetry = JSON.stringify(alertObj.alert);
+		const promptText = `Analyze if this alert is a true or false positive in plain non-technical language:\n${telemetry}`;
+		
+		const url = `https://lumo.proton.me/guest?q=${encodeURIComponent(promptText)}`;
+		window.open(url, '_blank');
+	}
+
+	function handleConsentYes() {
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('radegast_proton_lumo_consent', 'true');
+		}
+		showAiConsentModal = false;
+		openLumoLink();
+	}
+
 </script>
 
 <svelte:head>
@@ -483,13 +515,16 @@
 					<div class="card-body">
 						<h6 class="fw-bold mb-2">RAW TELEMETRY (Decrypted locally):</h6>
 						<pre class="p-3 rounded mb-0 font-monospace" style="background-color: #282a36 !important; color: #f8f8f2 !important; white-space: pre-wrap; word-break: break-all; font-size: 0.85rem; border: 1px solid #44475a;">{@html syntaxHighlightJson(JSON.stringify(alertObj.alert, null, 2))}</pre>
-						{#if $user && hasAnyPackWritePermission && !$user.extended_edr_enabled}
-							<div class="d-flex justify-content-end mt-2">
+						<div class="d-flex justify-content-end gap-2 mt-3">
+							<button class="btn btn-sm btn-outline-info" onclick={runAiAnalysis} title="Analyze this alert with AI">
+								AI Analysis
+							</button>
+							{#if $user && hasAnyPackWritePermission && !$user.extended_edr_enabled}
 								<button class="btn btn-sm btn-outline-secondary" onclick={openCreateExclusionFromAlert} title="Create exclusion from this alert">
 									Create Exclusion
 								</button>
-							</div>
-						{/if}
+							{/if}
+						</div>
 					</div>
 				</div>
 
@@ -559,6 +594,31 @@
 			onSave={saveExclusionFromAlert}
 		/>
 	{/if}
+
+	<!-- AI Consent Modal -->
+	<Modal
+		show={showAiConsentModal}
+		title="Confirm AI Analysis"
+		onClose={() => { showAiConsentModal = false; }}
+	>
+		<p class="text-body mb-3">
+			You are about to send this alert's decrypted raw telemetry to <strong>Proton Lumo</strong> (lumo.proton.me) for AI analysis. Proton Lumo is a privacy-focused AI assistant.
+		</p>
+		<p class="text-body mb-3">
+			Please note that Lumo's output should be taken only as advice, as the AI model does not have full context of your specific infrastructure.
+		</p>
+		<p class="text-body mb-4">
+			Are you OK with sending your alert data to Proton Lumo?
+		</p>
+		<div class="d-flex justify-content-end gap-2">
+			<button class="btn btn-outline-secondary" onclick={() => { showAiConsentModal = false; }}>
+				No, Cancel
+			</button>
+			<button class="btn btn-primary" onclick={handleConsentYes}>
+				Yes, Proceed
+			</button>
+		</div>
+	</Modal>
 {/if}
 </div>
 
