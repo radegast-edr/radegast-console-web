@@ -163,43 +163,43 @@ export const api = {
 		call(callOp('logout_api_v1_auth_logout_post', {})),
 
 	me: () =>
-		call(callOp('me_api_v1_auth_me_get', {})),
+		call(callOp('me_api_v1_user_me_get', {})),
 
 	verify: (token: string) =>
 		call(callOp('verify_email_api_v1_auth_verify_get', { params: { query: { token } } })),
 
 	setupKeys: (body: components['schemas']['KeySetupRequest']) =>
-		call(callOp('setup_keys_api_v1_auth_keys_setup_post', { body })),
+		call(callOp('setup_keys_api_v1_user_keys_setup_post', { body })),
 
 	setupSecondaryKey: (body: components['schemas']['KeySecondarySetupRequest']) =>
-		call(callOp('setup_secondary_key_api_v1_auth_keys_secondary_post', { body })),
+		call(callOp('setup_secondary_key_api_v1_user_keys_secondary_post', { body })),
 
 	deleteKeys: () =>
-		call(callOp('delete_all_keys_api_v1_auth_keys_delete', {})),
+		call(callOp('delete_all_keys_api_v1_user_keys_delete', {})),
 
 	recoverKeys: () =>
-		call(callOp('recover_keys_api_v1_auth_keys_recover_get', {})),
+		call(callOp('recover_keys_api_v1_user_keys_recover_get', {})),
 
 	listKeys: () =>
-		call(callOp('list_user_keys_api_v1_auth_keys_get', {})),
+		call(callOp('list_user_keys_api_v1_user_keys_get', {})),
 
 	addKey: (body: components['schemas']['PublicKeyAddRequest']) =>
-		call(callOp('add_user_key_api_v1_auth_keys_post', { body })),
+		call(callOp('add_user_key_api_v1_user_keys_post', { body })),
 
 	deleteKey: (key_id: number) =>
-		call(callOp('delete_user_key_api_v1_auth_keys__key_id__delete', { params: { path: { key_id } } })),
+		call(callOp('delete_user_key_api_v1_user_keys__key_id__delete', { params: { path: { key_id } } })),
 
 	deviceLogin: (token: string) =>
 		call(callOp('device_login_api_v1_auth_device_login_post', { body: { token } })),
 
 	changePassword: (old_password: string, new_password: string) =>
-		call(callOp('change_password_api_v1_auth_change_password_post', { body: { old_password, new_password } })),
+		call(callOp('change_password_api_v1_user_change_password_post', { body: { old_password, new_password } })),
 
 	getNotifications: () =>
-		call(callOp('get_notifications_api_v1_auth_notifications_get', {})),
+		call(callOp('get_notifications_api_v1_user_notifications_get', {})),
 
 	updateNotifications: (body: NotificationSettings) =>
-		call(callOp('update_notifications_api_v1_auth_notifications_put', { body })),
+		call(callOp('update_notifications_api_v1_user_notifications_put', { body })),
 
 	// Teams
 	listTeams: () =>
@@ -341,13 +341,13 @@ export const api = {
 
 	// Key transfer
 	transferInitiate: (receiver_age_public_key: string) =>
-		call(callOp('initiate_key_transfer_api_v1_auth_keys_transfer_initiate_post', { body: { receiver_age_public_key } })),
+		call(callOp('initiate_key_transfer_api_v1_user_keys_transfer_initiate_post', { body: { receiver_age_public_key } })),
 
 	transferGet: (transfer_id: string) =>
-		call(callOp('get_key_transfer_api_v1_auth_keys_transfer__transfer_id__get', { params: { path: { transfer_id } } })),
+		call(callOp('get_key_transfer_api_v1_user_keys_transfer__transfer_id__get', { params: { path: { transfer_id } } })),
 
 	transferComplete: (transfer_id: string, encrypted_private_key: string) =>
-		call(callOp('complete_key_transfer_api_v1_auth_keys_transfer__transfer_id__complete_post', {
+		call(callOp('complete_key_transfer_api_v1_user_keys_transfer__transfer_id__complete_post', {
 			params: { path: { transfer_id } },
 			body: { encrypted_private_key }
 		})),
@@ -428,34 +428,37 @@ export const api = {
 		return `${BACKEND_URL}${path}`;
 	},
 
-	// Auth — email verification / unsubscribe
+	// Auth — email verification / unsubscribe / accept invite
 	verifyEmail: (token: string) =>
 		call(callOp('verify_email_api_v1_auth_verify_get', { params: { query: { token } } })),
 
+	acceptInvite: (token: string) =>
+		call(callOp('accept_invite_api_v1_auth_invite_accept_get', { params: { query: { token } } })),
+
 	unsubscribe: (token: string) =>
-		call(callOp('unsubscribe_api_v1_auth_unsubscribe_post', { body: { token } } as any)),
+		call(callOp('unsubscribe_api_v1_user_unsubscribe_post', { body: { token } } as any)),
 
 	// MFA
 	getMfaSettings: () =>
-		call(callOp('get_mfa_settings_api_v1_auth_mfa_settings_get', {})),
+		call(callOp('get_mfa_settings_api_v1_user_mfa_settings_get', {})),
 
 	setupMfaOtp: () =>
-		call(callOp('mfa_otp_setup_api_v1_auth_mfa_otp_setup_post', {})),
+		call(callOp('mfa_otp_setup_api_v1_user_mfa_otp_setup_post', {})),
 
 	verifyMfaOtp: (code: string) =>
-		call(callOp('mfa_otp_verify_api_v1_auth_mfa_otp_verify_post', { body: { code } })),
+		call(callOp('mfa_otp_verify_api_v1_user_mfa_otp_verify_post', { body: { code } })),
 
 	disableMfaOtp: () =>
-		call(callOp('mfa_otp_disable_api_v1_auth_mfa_otp_disable_post', {})),
+		call(callOp('mfa_otp_disable_api_v1_user_mfa_otp_disable_post', {})),
 
 	setupMfaHardwareToken: () =>
-		call(callOp('mfa_hardware_token_setup_api_v1_auth_mfa_hardware_token_setup_post', {})),
+		call(callOp('mfa_hardware_token_setup_api_v1_user_mfa_hardware_token_setup_post', {})),
 
 	verifyMfaHardwareToken: (registration_token: string, credential_response: Record<string, unknown>, name: string | null = null) =>
-		call(callOp('mfa_hardware_token_verify_api_v1_auth_mfa_hardware_token_verify_post', { body: { registration_token, credential_response, name } })),
+		call(callOp('mfa_hardware_token_verify_api_v1_user_mfa_hardware_token_verify_post', { body: { registration_token, credential_response, name } })),
 
 	deleteMfaHardwareToken: (hardware_token_id: number) =>
-		call(callOp('delete_hardware_token_api_v1_auth_mfa_hardware_token__token_id__delete', { params: { path: { token_id: hardware_token_id } } })),
+		call(callOp('delete_hardware_token_api_v1_user_mfa_hardware_token__token_id__delete', { params: { path: { token_id: hardware_token_id } } })),
 
 	getMfaHardwareTokenAssertionOptions: (mfa_token: string) =>
 		call(callOp('mfa_hardware_token_assertion_options_api_v1_auth_mfa_hardware_token_assertion_options_post', { body: { mfa_token } })),
@@ -485,12 +488,39 @@ export const api = {
 	adminDeletePack: (pack_id: number) =>
 		call(callOp('admin_delete_pack_api_v1_admin_packs__pack_id__delete', { params: { path: { pack_id } } })),
 
+	getDashboardData: () =>
+		call(callOp('get_dashboard_data_api_v1_dashboard__get', {})),
+
+	adminGetAlertStats: (from_time?: string | null, to_time?: string | null) =>
+		call(
+			callOp('get_admin_alert_stats_api_v1_admin_stats_alerts_get', {
+				params: {
+					query: {
+						...(from_time ? { from_time } : {}),
+						...(to_time ? { to_time } : {})
+					}
+				}
+			})
+		),
+
+	adminGetDeviceStats: (exclude_offline = false, exclude_no_version = false) =>
+		call(
+			callOp('get_admin_device_stats_api_v1_admin_stats_devices_get', {
+				params: {
+					query: {
+						exclude_offline,
+						exclude_no_version
+					}
+				}
+			})
+		),
+
 	getAuthConfig: () =>
 		call(callOp('get_auth_config_api_v1_auth_config_get', {})),
 
 	// API Keys Support
 	updateApiKeysEnabled: (api_keys_enabled: boolean) =>
-		call(callOp('update_api_keys_enabled_api_v1_auth_api_keys_enabled_put', { body: { api_keys_enabled } })),
+		call(callOp('update_api_keys_enabled_api_v1_user_api_keys_enabled_put', { body: { api_keys_enabled } })),
 
 	listApiKeys: () =>
 		call(callOp('list_api_keys_api_v1_apikeys__get', {})),

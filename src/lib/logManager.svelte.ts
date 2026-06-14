@@ -14,7 +14,7 @@ export class LogManager {
 	decryptionState = $state<Record<string | number, DecryptionResult>>({});
 	filteredLogs = $state<Log[]>([]);
 	searchError = $state('');
-	loading = $state(false);
+	loading = $state(true);
 	isSearching = $state(false);
 	knownLogIds = new Set<number>();
 	isInitialLoad = true;

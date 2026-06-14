@@ -4,6 +4,7 @@
 	import { user, showError } from '$lib/store';
 	import { goto } from '$app/navigation';
 	import { getPublicKeyForLogin } from '$lib/crypto';
+	import { page } from '$app/stores';
 
 	let email = $state('');
 	let password = $state('');
@@ -45,7 +46,12 @@
 		if (me && me.id) {
 			localStorage.setItem(`uid_${email.toLowerCase().trim()}`, String(me.id));
 		}
-		goto(`${base}/`);
+		const next = $page.url.searchParams.get('next');
+		if (next) {
+			goto(`${base}${decodeURIComponent(next)}`);
+		} else {
+			goto(`${base}/`);
+		}
 	}
 
 	async function handleOtpAuth(): Promise<void> {

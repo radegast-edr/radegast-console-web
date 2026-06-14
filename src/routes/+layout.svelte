@@ -66,7 +66,10 @@
 			const me = await api.me();
 			$user = me;
 		} catch {
-			goto(`${base}/login`);
+			const nextPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+			const search = $page.url.search;
+			const target = encodeURIComponent(`${nextPath}${search}`);
+			goto(`${base}/login?next=${target}`);
 		}
 	});
 

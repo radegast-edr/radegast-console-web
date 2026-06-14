@@ -8,7 +8,7 @@
     "build": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "generate": "openapi-typescript http://localhost:8000/openapi.json -o src/lib/openapi.d.ts"
+    "generate": "openapi-typescript src/lib/openapi.json -o src/lib/openapi.d.ts"
   },
   "devDependencies": {
     "@iconify-json/boxicons": "^1.2.0",

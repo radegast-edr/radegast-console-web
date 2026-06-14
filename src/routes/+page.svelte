@@ -25,48 +25,19 @@
  			try {
  				const me = await api.me();
  				$user = me;
- 				const [teamsRes, groupsRes, devicesRes, logsRes] = await Promise.all([
- 					api.listTeams(),
- 					api.listGroups(),
- 					api.listDevices(),
- 					api.listLogs(1, 1000).catch(() => [])
- 				]);
- 				const [teamDevicesRes, groupDevicesRes] = await Promise.all([
- 					Promise.all(teamsRes.map(t => api.listTeamDevices(t.id).catch(() => []))),
- 					Promise.all(groupsRes.map(g => api.getGroup(g.id).catch(() => null)))
- 				]);
- 
- 				const tCounts: Record<number, number> = {};
- 				teamsRes.forEach((t, i) => { tCounts[t.id] = teamDevicesRes[i].length; });
- 				teamCounts = tCounts;
- 
- 				const gCounts: Record<number, number> = {};
- 				groupsRes.forEach((g, i) => { gCounts[g.id] = groupDevicesRes[i] ? groupDevicesRes[i].devices.length : 0; });
- 				groupCounts = gCounts;
- 
- 				const deviceToGroups: Record<number, string[]> = {};
- 				const deviceToTeams: Record<number, string[]> = {};
- 
- 				groupsRes.forEach((g, idx) => {
- 					const gData = groupDevicesRes[idx];
- 					if (gData && gData.devices) {
- 						gData.devices.forEach((d: any) => {
- 							if (!deviceToGroups[d.id]) deviceToGroups[d.id] = [];
- 							deviceToGroups[d.id].push(g.name);
- 						});
- 					}
- 				});
- 
- 				teamsRes.forEach((t, idx) => {
- 					const tDevs = teamDevicesRes[idx];
- 					if (tDevs) {
- 						tDevs.forEach((d: any) => {
- 							if (!deviceToTeams[d.id]) deviceToTeams[d.id] = [];
- 							deviceToTeams[d.id].push(t.name);
- 						});
- 					}
- 				});
- 
+ 				const data = await api.getDashboardData();
+
+ 				const teamsRes = data.teams;
+ 				const groupsRes = data.groups;
+ 				const devicesRes = data.devices;
+ 				const logsRes = data.logs;
+
+ 				teamCounts = data.team_device_counts;
+ 				groupCounts = data.group_device_counts;
+
+ 				const deviceToGroups = data.device_groups_map;
+ 				const deviceToTeams = data.device_teams_map;
+
  				const sevCounts: Record<string, number> = {
  					critical: 0,
  					high: 0,

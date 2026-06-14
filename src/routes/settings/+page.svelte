@@ -238,7 +238,7 @@
 	async function saveExtendedEdr(): Promise<void> {
 		if (!$user) return;
 		try {
-			await api.client.PUT('/api/v1/auth/extended-edr', {
+			await api.client.PUT('/api/v1/user/extended-edr', {
 				body: { extended_edr_enabled: extendedEdrEnabled }
 			});
 			$user.extended_edr_enabled = extendedEdrEnabled;
@@ -522,6 +522,15 @@
 						/>
 						<label class="form-check-label" for="notifyDeviceLog">New alert notification</label>
 					</div>
+					<div class="form-check form-switch mb-3">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="notifyApiKeyModification"
+							bind:checked={notifications.notify_api_key_modification}
+						/>
+						<label class="form-check-label" for="notifyApiKeyModification">API key modification</label>
+					</div>
 					<div class="form-check form-switch mb-2">
 						<input
 							class="form-check-input"
@@ -535,10 +544,10 @@
 						<input
 							class="form-check-input"
 							type="checkbox"
-							id="notifyApiKeyModification"
-							bind:checked={notifications.notify_api_key_modification}
+							id="notifyNewsUpdates"
+							bind:checked={notifications.notify_news_updates}
 						/>
-						<label class="form-check-label" for="notifyApiKeyModification">API key modification</label>
+						<label class="form-check-label" for="notifyNewsUpdates">Platform news and updates</label>
 					</div>
 					<button class="btn btn-primary d-flex align-items-center gap-2" onclick={saveNotifications} disabled={notifSaving}>
 						{notifSaving ? 'Saving…' : 'Save Preferences'}

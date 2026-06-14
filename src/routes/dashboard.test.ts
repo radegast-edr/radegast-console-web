@@ -22,7 +22,8 @@ vi.mock('$lib/api', () => ({
 		getUnreadLogsCount: vi.fn(),
 		listTeamDevices: vi.fn(),
 		getGroup: vi.fn(),
-		listLogs: vi.fn()
+		listLogs: vi.fn(),
+		getDashboardData: vi.fn()
 	}
 }));
 
@@ -48,31 +49,26 @@ describe('Dashboard Component', () => {
 			verified: true,
 			extended_edr_enabled: false
 		} as any);
-		vi.mocked(api.listTeams).mockResolvedValue([
-			{ id: 1, name: 'Team Alpha' }
-		] as any);
-		vi.mocked(api.listGroups).mockResolvedValue([
-			{ id: 1, name: 'Servers' }
-		] as any);
-		vi.mocked(api.listDevices).mockResolvedValue([
-			{ id: 10, name: 'Server-01', last_seen: '2026-06-04T04:28:00Z' },
-			{ id: 11, name: 'Server-02', last_seen: '2026-06-04T04:28:00Z' }
-		] as any);
-		vi.mocked(api.listTeamDevices).mockResolvedValue([
-			{ id: 10 }
-		] as any);
-		vi.mocked(api.getGroup).mockResolvedValue({
-			id: 1,
-			name: 'Servers',
-			devices: [{ id: 10 }, { id: 11 }]
+		vi.mocked(api.listLogs).mockResolvedValue([] as any);
+		vi.mocked(api.getDashboardData).mockResolvedValue({
+			teams: [{ id: 1, name: 'Team Alpha' }],
+			groups: [{ id: 1, name: 'Servers' }],
+			devices: [
+				{ id: 10, name: 'Server-01', last_seen: '2026-06-04T04:28:00Z' },
+				{ id: 11, name: 'Server-02', last_seen: '2026-06-04T04:28:00Z' }
+			],
+			logs: [
+				{ id: 1, severity: 'critical', alert_resolution: null, seen: false, device_id: 10 },
+				{ id: 2, severity: 'high', alert_resolution: null, seen: false, device_id: 10 },
+				{ id: 3, severity: 'medium', alert_resolution: 'true_positive', seen: true, device_id: 10 },
+				{ id: 4, severity: 'low', alert_resolution: 'false_positive', seen: true, device_id: 11 },
+				{ id: 5, severity: 'informational', alert_resolution: null, seen: false, device_id: 11 }
+			],
+			team_device_counts: { 1: 1 },
+			group_device_counts: { 1: 2 },
+			device_groups_map: { 10: ['Servers'], 11: ['Servers'] },
+			device_teams_map: { 10: ['Team Alpha'], 11: ['Team Alpha'] }
 		} as any);
-		vi.mocked(api.listLogs).mockResolvedValue([
-			{ id: 1, severity: 'critical', alert_resolution: null, seen: false, device_id: 10 },
-			{ id: 2, severity: 'high', alert_resolution: null, seen: false, device_id: 10 },
-			{ id: 3, severity: 'medium', alert_resolution: 'true_positive', seen: true, device_id: 10 },
-			{ id: 4, severity: 'low', alert_resolution: 'false_positive', seen: true, device_id: 11 },
-			{ id: 5, severity: 'informational', alert_resolution: null, seen: false, device_id: 11 }
-		] as any);
 		vi.mocked(getStoredPrivateKey).mockResolvedValue('fake_private_key');
 	});
 

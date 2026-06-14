@@ -50,6 +50,57 @@
 			const matchesFP = fpFilters.length === 0 || (packFP && fpFilters.some((f) => f.toLowerCase() === packFP));
 
 			return matchesSearch && matchesStatus && matchesOS && matchesFP;
+		}).sort((a, b) => {
+			const isPrivateA = a.team_ids && a.team_ids.length > 0;
+			const isPrivateB = b.team_ids && b.team_ids.length > 0;
+			if (isPrivateA !== isPrivateB) {
+				return isPrivateA ? -1 : 1;
+			}
+
+			const getNameOrder = (name: string) => {
+				if (name.toLowerCase().startsWith('radegast')) {
+					return 1;
+				}
+				if (name.toLowerCase().startsWith('rustinel')) {
+					return 2;
+				}
+				return 3;
+			}
+			const nameOrderA = getNameOrder(a.name);
+			const nameOrderB = getNameOrder(b.name);
+			if (nameOrderA != nameOrderB) {
+				return nameOrderA - nameOrderB;
+			}
+
+			const getStatusOrder = (status: any) => {
+				if (!status) return 4;
+				const s = String(status).toLowerCase();
+				if (s === 'stable') return 1;
+				if (s === 'testing') return 2;
+				if (s === 'experimental') return 3;
+				return 4;
+			};
+			const statusOrderA = getStatusOrder(a.latest?.meta?.status);
+			const statusOrderB = getStatusOrder(b.latest?.meta?.status);
+			if (statusOrderA !== statusOrderB) {
+				return statusOrderA - statusOrderB;
+			}
+
+			const getFpOrder = (fp: any) => {
+				if (!fp) return 4;
+				const f = String(fp).toLowerCase();
+				if (f === 'low') return 1;
+				if (f === 'medium') return 2;
+				if (f === 'high') return 3;
+				return 4;
+			};
+			const fpOrderA = getFpOrder(a.latest?.meta?.expected_false_positive_level);
+			const fpOrderB = getFpOrder(b.latest?.meta?.expected_false_positive_level);
+			if (fpOrderA !== fpOrderB) {
+				return fpOrderA - fpOrderB;
+			}
+
+			return a.name.localeCompare(b.name);
 		})
 	);
 
