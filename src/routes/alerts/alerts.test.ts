@@ -43,6 +43,9 @@ vi.mock('$lib/api', () => ({
 		getLogsCount: vi.fn(),
 		markLogSeen: vi.fn(),
 		markAllLogsSeen: vi.fn(),
+		getDevice: vi.fn(),
+		getGroup: vi.fn(),
+		createExclusion: vi.fn(),
 		client: {
 			GET: vi.fn(),
 			PATCH: vi.fn()
@@ -88,6 +91,17 @@ describe('Alerts Page', () => {
 		vi.mocked(api.listLogs).mockResolvedValue([]);
 		vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 0 });
 		vi.mocked(api.markLogSeen).mockResolvedValue({ message: 'ok' } as any);
+		vi.mocked(api.getDevice).mockResolvedValue({
+			id: 1,
+			name: 'Test Device',
+			groups: [{ id: 1, name: 'Test Group' }]
+		} as any);
+		vi.mocked(api.getGroup).mockResolvedValue({
+			id: 1,
+			name: 'Test Group',
+			teams: [{ id: 10, name: 'Test Team', permission_pack: 'write' }]
+		} as any);
+		vi.mocked(api.createExclusion).mockResolvedValue({ id: 100 } as any);
 		vi.mocked(api.client.GET).mockResolvedValue({
 			data: [
 				{ user_id: 1, public_key: 'age1abc...', key_type: 'regular' },
@@ -596,6 +610,101 @@ describe('Alerts Page', () => {
 
 			await waitFor(() => {
 				expect(screen.queryByText('Export JSONL')).toBeNull();
+			});
+		});
+	});
+
+	describe('Exclusion creation with group and permission restrictions', () => {
+		it('allows creating exclusion only for groups the device belongs to and where user has write permission', async () => {
+			const { showError } = await import('$lib/store');
+			vi.mocked(api.listTeams).mockResolvedValue([
+				{ id: 10, name: 'Team A', permission_pack: 'write' }
+			] as any);
+			
+			const log = makeLog({ id: 99, device_id: 1 });
+			vi.mocked(api.listLogs).mockResolvedValue([log] as any);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			vi.mocked(api.getDevice).mockResolvedValue({
+				id: 1,
+				name: 'Test Device',
+				groups: [{ id: 1, name: 'Group A' }]
+			} as any);
+
+			vi.mocked(api.getGroup).mockResolvedValue({
+				id: 1,
+				name: 'Group A',
+				teams: [{ id: 10, name: 'Team A', permission_pack: 'write' }]
+			} as any);
+
+			render(Alerts);
+
+			// Wait for alert to render and select it
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule')).toBeInTheDocument();
+			});
+			await fireEvent.click(screen.getByText('Test Rule'));
+
+			// Click Create Exclusion
+			await waitFor(() => {
+				expect(screen.getByText('Create Exclusion')).toBeInTheDocument();
+			});
+			await fireEvent.click(screen.getByText('Create Exclusion'));
+
+			// Verify API calls
+			await waitFor(() => {
+				expect(api.getDevice).toHaveBeenCalledWith(1);
+				expect(api.getGroup).toHaveBeenCalledWith(1);
+			});
+
+			// Verify the modal is shown and shows Group A
+			await waitFor(() => {
+				expect(screen.getByText('Create Exclusion from Alert')).toBeInTheDocument();
+				expect(screen.getByText('Group A')).toBeInTheDocument();
+			});
+		});
+
+		it('shows an error if user does not have pack write permission on any group the device belongs to', async () => {
+			const { showError } = await import('$lib/store');
+			vi.mocked(api.listTeams).mockResolvedValue([
+				{ id: 10, name: 'Team A', permission_pack: 'write' }
+			] as any);
+			
+			const log = makeLog({ id: 99, device_id: 1 });
+			vi.mocked(api.listLogs).mockResolvedValue([log] as any);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			vi.mocked(api.getDevice).mockResolvedValue({
+				id: 1,
+				name: 'Test Device',
+				groups: [{ id: 2, name: 'Group B' }]
+			} as any);
+
+			vi.mocked(api.getGroup).mockResolvedValue({
+				id: 2,
+				name: 'Group B',
+				teams: [{ id: 20, name: 'Team B', permission_pack: 'read' }] // user not in Team B, and Team B has only read permission
+			} as any);
+
+			render(Alerts);
+
+			// Wait for alert to render and select it
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule')).toBeInTheDocument();
+			});
+			await fireEvent.click(screen.getByText('Test Rule'));
+
+			// Click Create Exclusion
+			await waitFor(() => {
+				expect(screen.getByText('Create Exclusion')).toBeInTheDocument();
+			});
+			await fireEvent.click(screen.getByText('Create Exclusion'));
+
+			// Verify API calls and error message
+			await waitFor(() => {
+				expect(api.getDevice).toHaveBeenCalledWith(1);
+				expect(api.getGroup).toHaveBeenCalledWith(2);
+				expect(showError).toHaveBeenCalledWith('You do not have pack write permissions on any group this device belongs to.');
 			});
 		});
 	});

@@ -302,6 +302,40 @@
 	async function openCreateExclusionFromAlert(): Promise<void> {
 		if (!selectedLog || !logManager) return;
 
+		try {
+			// Fetch device to get its groups
+			const deviceDetail = await api.getDevice(selectedLog.device_id);
+			if (!deviceDetail.groups || deviceDetail.groups.length === 0) {
+				showError('This device does not belong to any groups.');
+				return;
+			}
+
+			// Fetch details for all groups the device is part of
+			const groupDetails = await Promise.all(
+				deviceDetail.groups.map((g) => api.getGroup(g.id))
+			);
+
+			// Filter to groups where the user has pack write permissions (matched by team membership)
+			const permittedGroups = groupDetails.filter((g) => {
+				return (g.teams ?? []).some((teamInGroup) => {
+					return (
+						teamInGroup.permission_pack === 'write' &&
+						userTeamsForPermission.some((userTeam) => userTeam.id === teamInGroup.id)
+					);
+				});
+			});
+
+			if (permittedGroups.length === 0) {
+				showError('You do not have pack write permissions on any group this device belongs to.');
+				return;
+			}
+
+			userGroups = permittedGroups;
+		} catch (e) {
+			showError('Failed to verify permissions: ' + (e as Error).message);
+			return;
+		}
+
 		const alertObj = logManager.getAlertObject(selectedLog);
 		// Store a plain snapshot — the flat alert data (keys like "rule.name") is passed directly to JSONata
 		currentAlertObj = typeof alertObj.alert === 'object' && alertObj.alert !== null
@@ -331,6 +365,8 @@
 
 		if (userGroups.length > 0) {
 			selectedGroupId = userGroups[0].id;
+		} else {
+			selectedGroupId = null;
 		}
 
 		showExclusionModal = true;
