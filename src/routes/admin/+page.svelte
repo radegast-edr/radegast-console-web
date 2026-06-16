@@ -5,11 +5,12 @@
 	import { api, type UserInfo, type Device, type Pack } from '$lib/api';
 	import { user, showFlash, showError } from '$lib/store';
 	import { goto } from '$app/navigation';
+	import WysiwygEditor from '$lib/components/WysiwygEditor.svelte';
 
 	let users = $state<UserInfo[]>([]);
 	let devices = $state<Device[]>([]);
 	let packs = $state<Pack[]>([]);
-	let activeTab = $state<'users' | 'devices' | 'packs' | 'stats'>('users');
+	let activeTab = $state<'users' | 'devices' | 'packs' | 'stats' | 'broadcast'>('users');
 	let resetPasswordResult = $state<{ email: string } | null>(null);
 
 	// Stats tab state
@@ -124,6 +125,43 @@
 			showError((e as Error).message);
 		}
 	}
+
+	let newSubject = $state('');
+	let newEmailType = $state<'downtime_maintenance' | 'news_updates'>('downtime_maintenance');
+	let newHtmlBody = $state('');
+	let isSubmittingBroadcast = $state(false);
+
+	async function submitBroadcast(e: Event) {
+		e.preventDefault();
+		if (!newSubject.trim()) {
+			showError('Subject is required');
+			return;
+		}
+		if (!newHtmlBody.trim() || newHtmlBody.trim() === '<p><br></p>') {
+			showError('Email body is required');
+			return;
+		}
+
+		if (!await askConfirm(`Send this email to all users subscribed to ${newEmailType === 'downtime_maintenance' ? 'Platform downtime and maintenance' : 'Platform news and updates'}?`)) {
+			return;
+		}
+
+		isSubmittingBroadcast = true;
+		try {
+			const res = await api.adminSendBroadcast({
+				subject: newSubject,
+				html_body: newHtmlBody,
+				email_type: newEmailType
+			}) as { message?: string };
+			showFlash(res.message || 'Broadcast scheduled successfully in waves');
+			newSubject = '';
+			newHtmlBody = '';
+		} catch (e) {
+			showError((e as Error).message);
+		} finally {
+			isSubmittingBroadcast = false;
+		}
+	}
 </script>
 
 <h2>Admin Panel</h2>
@@ -159,6 +197,15 @@
 			onclick={selectStatsTab}
 		>
 			Stats
+		</button>
+	</li>
+	<li class="nav-item">
+		<button
+			class="nav-link"
+			class:active={activeTab === 'broadcast'}
+			onclick={() => (activeTab = 'broadcast')}
+		>
+			Broadcast
 		</button>
 	</li>
 </ul>
@@ -447,5 +494,46 @@
 				</div>
 			</div>
 		</div>
+	</div>
+{:else if activeTab === 'broadcast'}
+	<div class="card border-0 shadow-sm bg-body-tertiary p-4" style="border-radius: 3px;">
+		<h5 class="fw-bold mb-4">Send HTML Email Broadcast</h5>
+		<form onsubmit={submitBroadcast}>
+			<div class="mb-3">
+				<label for="broadcast-subject" class="form-label fw-bold small">Subject</label>
+				<input
+					id="broadcast-subject"
+					type="text"
+					class="form-control"
+					bind:value={newSubject}
+					placeholder="e.g. Scheduled System Upgrade"
+					required
+				/>
+			</div>
+
+			<div class="mb-3">
+				<label for="broadcast-type" class="form-label fw-bold small">Email Category</label>
+				<select id="broadcast-type" class="form-select" bind:value={newEmailType}>
+					<option value="downtime_maintenance">Maintenance Notification (Important)</option>
+					<option value="news_updates">Platform News / Updates</option>
+				</select>
+				<div class="form-text text-muted">
+					Users who have unsubscribed from the selected category will not receive this email.
+				</div>
+			</div>
+
+			<div class="mb-4">
+				<span class="form-label d-block fw-bold small mb-2">Email Content (HTML)</span>
+				<WysiwygEditor bind:value={newHtmlBody} />
+			</div>
+
+			<button type="submit" class="btn btn-primary" disabled={isSubmittingBroadcast} style="border-radius: 3px;">
+				{#if isSubmittingBroadcast}
+					<span class="spinner-border spinner-border-sm me-2"></span> Sending...
+				{:else}
+					Queue Broadcast to All Subscribed Users
+				{/if}
+			</button>
+		</form>
 	</div>
 {/if}

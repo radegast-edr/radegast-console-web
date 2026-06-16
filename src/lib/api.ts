@@ -488,6 +488,9 @@ export const api = {
 	adminDeletePack: (pack_id: number) =>
 		call(callOp('admin_delete_pack_api_v1_admin_packs__pack_id__delete', { params: { path: { pack_id } } })),
 
+	adminSendBroadcast: (body: components['schemas']['AdminBroadcastRequest']) =>
+		call(callOp('send_admin_broadcast_api_v1_admin_broadcast_post', { body })),
+
 	getDashboardData: () =>
 		call(callOp('get_dashboard_data_api_v1_dashboard__get', {})),
 

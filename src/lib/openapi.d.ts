@@ -1485,6 +1485,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/broadcast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send Admin Broadcast */
+        post: operations["send_admin_broadcast_api_v1_admin_broadcast_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/releases/": {
         parameters: {
             query?: never;
@@ -1737,6 +1754,18 @@ export interface components {
             rule_distribution: {
                 [key: string]: number;
             };
+        };
+        /** AdminBroadcastRequest */
+        AdminBroadcastRequest: {
+            /** Subject */
+            subject: string;
+            /** Html Body */
+            html_body: string;
+            /**
+             * Email Type
+             * @enum {string}
+             */
+            email_type: "downtime_maintenance" | "news_updates";
         };
         /** AdminDeviceStatsResponse */
         AdminDeviceStatsResponse: {
@@ -5534,6 +5563,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminDeviceStatsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_admin_broadcast_api_v1_admin_broadcast_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminBroadcastRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
