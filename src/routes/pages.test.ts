@@ -414,6 +414,45 @@ describe('Route Pages Load Verification', () => {
 		});
 	});
 
+	it('renders Packs page, shows level tags, and checks Level filter options', async () => {
+		const mockPacks = [
+			{
+				id: 1,
+				name: 'Pack Essential',
+				description: 'Desc 1',
+				latest: {
+					id: 10,
+					pack_id: 1,
+					version: '1.0.0',
+					released: '2026-06-04T05:00:00Z',
+					meta: { level: 'essential', os: 'any', expected_false_positive_level: 'low' }
+				}
+			},
+			{
+				id: 2,
+				name: 'Pack Hunting',
+				description: 'Desc 2',
+				latest: {
+					id: 20,
+					pack_id: 2,
+					version: '1.0.0',
+					released: '2026-06-04T05:00:00Z',
+					meta: { level: 'hunting', os: 'windows' }
+				}
+			}
+		];
+		vi.mocked(api.listPacks).mockResolvedValue(mockPacks as any);
+
+		render(Packs);
+		await waitFor(() => {
+			expect(screen.getByText('Packs')).toBeInTheDocument();
+			expect(screen.getByText(/Level:\s*essential/i)).toBeInTheDocument();
+		});
+
+		const levelDropdownBtn = screen.getByRole('button', { name: 'essential' });
+		expect(levelDropdownBtn).toBeInTheDocument();
+	});
+
 	it('renders PackDetail page', async () => {
 		render(PackDetail);
 		await waitFor(() => {

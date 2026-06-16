@@ -15,17 +15,20 @@
 	let searchQuery = $state('');
 	let statusFilters = $state<string[]>([]);
 	let osFilters = $state<string[]>([]);
-	let fpFilters = $state<string[]>([]);
+	let fpFilters = $state<string[]>(['low']);
+	let levelFilters = $state<string[]>(['essential']);
 
 	// Available filter options (extracted from packs data)
 	let allStatuses = $state<string[]>([]);
 	let allOS = $state<string[]>([]);
 	let allFPLevels = $state<string[]>([]);
+	let allLevels = $state<string[]>([]);
 
 	// Track if filters are open
 	let showStatusDropdown = $state(false);
 	let showOSDropdown = $state(false);
 	let showFPDropdown = $state(false);
+	let showLevelDropdown = $state(false);
 
 	// Derived: filtered packs
 	let filteredPacks = $derived(
@@ -49,7 +52,11 @@
 			const packFP = pack.latest?.meta?.expected_false_positive_level?.toString().toLowerCase();
 			const matchesFP = fpFilters.length === 0 || (packFP && fpFilters.some((f) => f.toLowerCase() === packFP));
 
-			return matchesSearch && matchesStatus && matchesOS && matchesFP;
+			// Level filter (match all if no filters)
+			const packLevel = pack.latest?.meta?.level?.toString().toLowerCase();
+			const matchesLevel = levelFilters.length === 0 || (packLevel && levelFilters.some((f) => f.toLowerCase() === packLevel));
+
+			return matchesSearch && matchesStatus && matchesOS && matchesFP && matchesLevel;
 		}).sort((a, b) => {
 			const isPrivateA = a.team_ids && a.team_ids.length > 0;
 			const isPrivateB = b.team_ids && b.team_ids.length > 0;
@@ -72,13 +79,28 @@
 				return nameOrderA - nameOrderB;
 			}
 
+			const getLevelOrder = (level: any) => {
+				if (!level) return 4;
+				const l = String(level).toLowerCase();
+				if (l === 'essential') return 1;
+				if (l === 'advanced') return 2;
+				if (l === 'hunting') return 3;
+				return 4;
+			};
+			const levelOrderA = getLevelOrder(a.latest?.meta?.level);
+			const levelOrderB = getLevelOrder(b.latest?.meta?.level);
+			if (levelOrderA !== levelOrderB) {
+				return levelOrderA - levelOrderB;
+			}
+
 			const getStatusOrder = (status: any) => {
-				if (!status) return 4;
+				if (!status) return 5;
 				const s = String(status).toLowerCase();
 				if (s === 'stable') return 1;
-				if (s === 'testing') return 2;
-				if (s === 'experimental') return 3;
-				return 4;
+				if (s === 'beta') return 2;
+				if (s === 'testing') return 3;
+				if (s === 'experimental') return 4;
+				return 5;
 			};
 			const statusOrderA = getStatusOrder(a.latest?.meta?.status);
 			const statusOrderB = getStatusOrder(b.latest?.meta?.status);
@@ -104,13 +126,25 @@
 		})
 	);
 
-	// Sync filters with URL params
+	// Sync filters with URL params and localStorage
 	function syncFiltersToUrl(): void {
 		const params = new URLSearchParams();
 		if (searchQuery) params.set('search', searchQuery);
 		if (statusFilters.length > 0) params.set('status', statusFilters.join(','));
 		if (osFilters.length > 0) params.set('os', osFilters.join(','));
 		if (fpFilters.length > 0) params.set('fp', fpFilters.join(','));
+		if (levelFilters.length > 0) params.set('level', levelFilters.join(','));
+
+		if (typeof localStorage !== 'undefined') {
+			localStorage.setItem('pack_filters', JSON.stringify({
+				search: searchQuery,
+				status: statusFilters,
+				os: osFilters,
+				fp: fpFilters,
+				level: levelFilters
+			}));
+		}
+
 		goto(`${base}/packs?${params.toString()}`, { replaceState: true, keepFocus: true });
 	}
 
@@ -121,10 +155,44 @@
 
 	function loadFiltersFromUrl(): void {
 		const urlParams = $page.url.searchParams;
-		searchQuery = urlParams.get('search') || '';
-		statusFilters = parseArrayParam(urlParams.get('status'));
-		osFilters = parseArrayParam(urlParams.get('os'));
-		fpFilters = parseArrayParam(urlParams.get('fp'));
+
+		let savedFilters: any = {};
+		if (typeof localStorage !== 'undefined') {
+			const saved = localStorage.getItem('pack_filters');
+			if (saved) {
+				try {
+					savedFilters = JSON.parse(saved) || {};
+				} catch (e) {
+					savedFilters = {};
+				}
+			}
+		}
+
+		const getArrayVal = (paramName: string, savedVal: any, defaultValue: string[]): string[] => {
+			if (urlParams.has(paramName)) {
+				return parseArrayParam(urlParams.get(paramName));
+			}
+			return Array.isArray(savedVal) ? savedVal : defaultValue;
+		};
+
+		// 1. Search Query
+		if (urlParams.has('search')) {
+			searchQuery = urlParams.get('search') || '';
+		} else {
+			searchQuery = typeof savedFilters.search === 'string' ? savedFilters.search : '';
+		}
+
+		// 2. Status Filters
+		statusFilters = getArrayVal('status', savedFilters.status, []);
+
+		// 3. OS Filters
+		osFilters = getArrayVal('os', savedFilters.os, []);
+
+		// 4. FP Filters
+		fpFilters = getArrayVal('fp', savedFilters.fp, ['low']);
+
+		// 5. Level Filters
+		levelFilters = getArrayVal('level', savedFilters.level, ['essential']);
 	}
 
 	// Extract unique filter options from packs
@@ -132,6 +200,7 @@
 		const statuses = new Set<string>();
 		const osSet = new Set<string>();
 		const fpSet = new Set<string>();
+		const levelSet = new Set<string>();
 
 		for (const pack of packsList) {
 			if (pack.latest?.meta?.status) {
@@ -146,11 +215,16 @@
 				const fp = String(pack.latest.meta.expected_false_positive_level);
 				if (fp) fpSet.add(fp);
 			}
+			if (pack.latest?.meta?.level) {
+				const lvl = String(pack.latest.meta.level);
+				if (lvl) levelSet.add(lvl);
+			}
 		}
 
 		allStatuses = Array.from(statuses).sort();
 		allOS = Array.from(osSet).sort();
 		allFPLevels = Array.from(fpSet).sort();
+		allLevels = Array.from(levelSet).sort();
 	}
 
 	// Toggle filter selections
@@ -175,11 +249,19 @@
 		syncFiltersToUrl();
 	}
 
+	function toggleLevel(level: string): void {
+		levelFilters = levelFilters.includes(level)
+			? levelFilters.filter((l) => l !== level)
+			: [...levelFilters, level];
+		syncFiltersToUrl();
+	}
+
 	function clearFilters(): void {
 		searchQuery = '';
 		statusFilters = [];
 		osFilters = [];
 		fpFilters = [];
+		levelFilters = [];
 		syncFiltersToUrl();
 	}
 
@@ -194,6 +276,7 @@
 		showStatusDropdown = false;
 		showOSDropdown = false;
 		showFPDropdown = false;
+		showLevelDropdown = false;
 	}
 
 	// Close dropdowns when URL changes (filters applied)
@@ -225,14 +308,16 @@
 		return () => window.removeEventListener('click', handleClick, true);
 	});
 
-	function toggleDropdown(dropdown: 'status' | 'os' | 'fp'): void {
+	function toggleDropdown(dropdown: 'status' | 'os' | 'fp' | 'level'): void {
 		const wasOpen = dropdown === 'status' ? showStatusDropdown :
-			               dropdown === 'os' ? showOSDropdown : showFPDropdown;
+			               dropdown === 'os' ? showOSDropdown :
+			               dropdown === 'fp' ? showFPDropdown : showLevelDropdown;
 		closeAllDropdowns();
 		if (!wasOpen) {
 			if (dropdown === 'status') showStatusDropdown = true;
 			if (dropdown === 'os') showOSDropdown = true;
 			if (dropdown === 'fp') showFPDropdown = true;
+			if (dropdown === 'level') showLevelDropdown = true;
 		}
 		ignoreNextClick = true;
 	}
@@ -520,8 +605,42 @@
 					</div>
 				</div>
 
+				<!-- Level Dropdown -->
+				<div class="dropdown" style="min-width: 140px;">
+					<span class="form-label fw-semibold small d-block">Level</span>
+					<button
+						class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-between dropdown-toggle {showLevelDropdown ? 'show' : ''}"
+						onclick={(e) => { e.stopPropagation(); toggleDropdown('level'); }}
+						aria-expanded={showLevelDropdown}
+					>
+						<span>
+							{#if levelFilters.length > 0}
+								{levelFilters.join(', ')}
+							{:else}
+								All Levels
+							{/if}
+						</span>
+					</button>
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+					<div class="dropdown-menu w-100 pack-tags {showLevelDropdown ? 'show' : ''}" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
+						{#each allLevels as level}
+							<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
+								<input
+									type="checkbox"
+									checked={levelFilters.includes(level)}
+									onchange={() => toggleLevel(level)}
+								/>
+								<span class="badge rounded-pill bg-secondary level-{level.toLowerCase()}">
+									{level}
+								</span>
+							</label>
+						{/each}
+					</div>
+				</div>
+
 				<!-- Clear Filters Button -->
-				{#if searchQuery || statusFilters.length > 0 || osFilters.length > 0 || fpFilters.length > 0}
+				{#if searchQuery || statusFilters.length > 0 || osFilters.length > 0 || fpFilters.length > 0 || levelFilters.length > 0}
 					<div class="d-flex align-items-end mt-2">
 						<button class="btn btn-outline-danger" onclick={clearFilters}>
 							Clear Filters
@@ -548,19 +667,24 @@
 					</h5>
 					<div class="mt-2 mb-2 d-flex gap-2 flex-wrap pack-tags">
 						{#if pack.latest?.meta?.os}
-							<span class="badge rounded-pill bg-secondary os-{pack.latest.meta.os}"
+							<span class="badge rounded-pill bg-secondary os-{pack.latest.meta.os.toString().toLowerCase()}"
 							>
 								OS: {pack.latest.meta.os}
 							</span>
 						{/if}
 						{#if pack.latest?.meta?.status}
-							<span class="badge rounded-pill bg-secondary status-{pack.latest.meta.status}">
+							<span class="badge rounded-pill bg-secondary status-{pack.latest.meta.status.toString().toLowerCase()}">
 								Status: {pack.latest.meta.status}
 							</span>
 						{/if}
 						{#if pack.latest?.meta?.expected_false_positive_level}
-							<span class="badge rounded-pill bg-secondary fp-{pack.latest.meta.expected_false_positive_level}">
+							<span class="badge rounded-pill bg-secondary fp-{pack.latest.meta.expected_false_positive_level.toString().toLowerCase()}">
 								FP: {pack.latest.meta.expected_false_positive_level}
+							</span>
+						{/if}
+						{#if pack.latest?.meta?.level}
+							<span class="badge rounded-pill bg-secondary level-{pack.latest.meta.level.toString().toLowerCase()}">
+								Level: {pack.latest.meta.level}
 							</span>
 						{/if}
 					</div>
@@ -814,11 +938,20 @@
 		.os-macos {
 			background: #f44336 !important;
 		}
+		.os-any {
+			background: var(--bs-success) !important;
+		}
 		.status-experimental {
 			background: var(--bs-danger) !important;
 		}
 		.status-stable {
 			background: var(--bs-success) !important;
+		}
+		.status-beta {
+			background: var(--bs-info) !important;
+		}
+		.status-testing {
+			background: var(--bs-info) !important;
 		}
 		.fp-low {
 			background: var(--bs-success) !important;
@@ -827,6 +960,15 @@
 			background: var(--bs-warning) !important;
 		}
 		.fp-high {
+			background: var(--bs-danger) !important;
+		}
+		.level-essential {
+			background: var(--bs-primary) !important;
+		}
+		.level-advanced {
+			background: var(--bs-warning) !important;
+		}
+		.level-hunting {
 			background: var(--bs-danger) !important;
 		}
 	}
