@@ -125,4 +125,64 @@ describe('Hunt URL Hash Shareable State', () => {
 			);
 		});
 	});
+
+	it('displays the full JSON including the meta fields', async () => {
+		window.location.hash = '';
+		const log = makeLog({ id: 99, device_id: 101 });
+		vi.mocked(api.listLogs).mockResolvedValue([log] as any);
+		vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+		vi.mocked(api.listDevices).mockResolvedValue([
+			{ id: 101, name: 'Target Laptop', last_seen: new Date().toISOString() }
+		] as any);
+
+		render(Hunt);
+
+		await waitFor(() => {
+			const pre = document.querySelector('pre');
+			expect(pre).toBeInTheDocument();
+			const content = pre?.textContent || '';
+			expect(content).toContain('"alert_id": 99');
+			expect(content).toContain('"device": "Target Laptop"');
+			expect(content).toContain('"name": "Test Rule"');
+		});
+	});
+
+	it('exports logs to JSONL when clicking Export JSONL', async () => {
+		window.location.hash = '';
+		const log = makeLog({ id: 99, device_id: 101 });
+		vi.mocked(api.listLogs).mockResolvedValue([log] as any);
+		vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+		vi.mocked(api.listDevices).mockResolvedValue([
+			{ id: 101, name: 'Target Laptop', last_seen: new Date().toISOString() }
+		] as any);
+
+		const createObjectURLMock = vi.fn().mockReturnValue('blob:mock-url');
+		const revokeObjectURLMock = vi.fn();
+		global.URL.createObjectURL = createObjectURLMock;
+		global.URL.revokeObjectURL = revokeObjectURLMock;
+
+		const clickMock = vi.fn();
+		const originalCreateElement = document.createElement.bind(document);
+		const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName) => {
+			const el = originalCreateElement(tagName);
+			if (tagName.toLowerCase() === 'a') {
+				el.click = clickMock;
+			}
+			return el;
+		});
+
+		render(Hunt);
+
+		await waitFor(() => {
+			expect(screen.getByText('Export JSONL')).toBeInTheDocument();
+		});
+
+		await fireEvent.click(screen.getByText('Export JSONL'));
+		expect(createObjectURLMock).toHaveBeenCalled();
+		expect(clickMock).toHaveBeenCalled();
+
+		createElementSpy.mockRestore();
+	});
 });
+
+

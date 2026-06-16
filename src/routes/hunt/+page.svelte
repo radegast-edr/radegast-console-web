@@ -111,6 +111,23 @@
 			}
 		);
 	}
+	function exportToJsonl() {
+		const lm = logManager;
+		if (!lm) return;
+		const lines = lm.filteredLogs.map(log => {
+			const alertObj = lm.getAlertObject(log);
+			return JSON.stringify(alertObj);
+		});
+		const blob = new Blob([lines.join('\n')], { type: 'application/x-jsonlines' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `hunt_export_${new Date().toISOString().slice(0, 10)}.jsonl`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
 </script>
 
 <svelte:head>
@@ -166,6 +183,11 @@
 		<div class="text-muted small fw-semibold">
 			Found {logManager.filteredLogs.length} matching event{logManager.filteredLogs.length === 1 ? '' : 's'}
 		</div>
+		{#if logManager.filteredLogs.length > 0}
+			<button class="btn btn-sm btn-outline-secondary fw-bold" onclick={exportToJsonl}>
+				Export JSONL
+			</button>
+		{/if}
 	</div>
 
 	<div class="row g-2">
@@ -178,7 +200,7 @@
 							<span class="text-info fw-bold">{new Date(log.time).toLocaleString()}</span>
 							<span class="text-warning fw-bold">Device ID: {log.device_id} | Device: {alertObj.meta.device}</span>
 						</div>
-						<pre class="m-0" style="white-space: pre-wrap; word-break: break-all;">{@html syntaxHighlightJson(JSON.stringify(alertObj.alert, null, 2))}</pre>
+						<pre class="m-0" style="white-space: pre-wrap; word-break: break-all;">{@html syntaxHighlightJson(JSON.stringify(alertObj, null, 2))}</pre>
 					</div>
 				</div>
 			</div>

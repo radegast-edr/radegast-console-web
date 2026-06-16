@@ -393,6 +393,24 @@
 		openLumoLink();
 	}
 
+	function exportToJsonl() {
+		const lm = logManager;
+		if (!lm) return;
+		const lines = lm.filteredLogs.map(log => {
+			const alertObj = lm.getAlertObject(log);
+			return JSON.stringify(alertObj);
+		});
+		const blob = new Blob([lines.join('\n')], { type: 'application/x-jsonlines' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `alerts_export_${new Date().toISOString().slice(0, 10)}.jsonl`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
+
 </script>
 
 <svelte:head>
@@ -404,13 +422,23 @@
 		<h2 class="mb-0 fw-bold">Threat Triage</h2>
 		{#if $user}
 			{#if $user.extended_edr_enabled}
-				<button 
-					class="btn btn-outline-primary btn-sm fw-bold" 
-					onclick={markAllSeen}
-					disabled={!logManager || logManager.loading || logManager.filteredLogs.length === 0}
-				>
-					Resolve All as Read
-				</button>
+				<div class="d-flex gap-2">
+					{#if logManager && logManager.filteredLogs.length > 0}
+						<button 
+							class="btn btn-outline-secondary btn-sm fw-bold" 
+							onclick={exportToJsonl}
+						>
+							Export JSONL
+						</button>
+					{/if}
+					<button 
+						class="btn btn-outline-primary btn-sm fw-bold" 
+						onclick={markAllSeen}
+						disabled={!logManager || logManager.loading || logManager.filteredLogs.length === 0}
+					>
+						Resolve All as Read
+					</button>
+				</div>
 			{:else}
 				<button 
 					class="btn btn-outline-primary btn-sm fw-bold" 

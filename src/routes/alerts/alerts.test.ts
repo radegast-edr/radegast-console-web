@@ -536,4 +536,68 @@ describe('Alerts Page', () => {
 			});
 		});
 	});
+
+	describe('Export JSONL in Extended EDR mode', () => {
+		let createObjectURLMock: any;
+		let revokeObjectURLMock: any;
+		let clickMock: any;
+		let originalCreateElement: any;
+
+		beforeEach(() => {
+			createObjectURLMock = vi.fn().mockReturnValue('blob:mock-url');
+			revokeObjectURLMock = vi.fn();
+			global.URL.createObjectURL = createObjectURLMock;
+			global.URL.revokeObjectURL = revokeObjectURLMock;
+
+			clickMock = vi.fn();
+			originalCreateElement = document.createElement.bind(document);
+			vi.spyOn(document, 'createElement').mockImplementation((tagName) => {
+				const el = originalCreateElement(tagName);
+				if (tagName.toLowerCase() === 'a') {
+					el.click = clickMock;
+				}
+				return el;
+			});
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it('shows the Export JSONL button only when extended_edr_enabled=true', async () => {
+			window.location.hash = '';
+			const log = makeLog({ id: 99, seen: false });
+			vi.mocked(api.listLogs).mockResolvedValue([log] as any);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			// 1. Extended EDR mode enabled
+			const edrUser = { ...mockUser, extended_edr_enabled: true };
+			vi.mocked(api.me).mockResolvedValue(edrUser as any);
+			user.set(edrUser as any);
+
+			const { rerender } = render(Alerts);
+
+			await waitFor(() => {
+				expect(screen.getByText('Export JSONL')).toBeInTheDocument();
+			});
+
+			// 2. Click it and verify download
+			await fireEvent.click(screen.getByText('Export JSONL'));
+			expect(createObjectURLMock).toHaveBeenCalled();
+			expect(clickMock).toHaveBeenCalled();
+
+			// 3. Basic mode (extended_edr_enabled=false)
+			const basicUser = { ...mockUser, extended_edr_enabled: false };
+			vi.mocked(api.me).mockResolvedValue(basicUser as any);
+			user.set(basicUser as any);
+
+			// rerender the component to apply the new user settings
+			rerender({});
+
+			await waitFor(() => {
+				expect(screen.queryByText('Export JSONL')).toBeNull();
+			});
+		});
+	});
 });
+
