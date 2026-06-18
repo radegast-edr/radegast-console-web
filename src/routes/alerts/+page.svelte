@@ -423,7 +423,10 @@
 		if (!selectedLog || !logManager) return;
 		const alertObj = logManager.getAlertObject(selectedLog);
 		const telemetry = JSON.stringify(alertObj.alert);
-		const promptText = `Analyze if this alert is a true or false positive in plain non-technical language:\n${telemetry}`;
+		const promptText = `Analyze if this alert is a true or false positive in plain non-technical language.
+							If you deem this alert to be a false positive, propose a JSONata query that could be used to exclude this alert in the future, and explain your reasoning for the proposed query. The query should depend on rule ID or rule name if available and should be a flat expression (e.g. \`rule.name\` = 'Disable Or Stop Services' and $contains(\`process.parent.command_line\`, "/usr/lib/snapd/snapd"). DO NOT FORGET THE BACKTICKS AROUND FIELD NAMES. If unsure, check the JSONata syntax at https://docs.jsonata.org/)
+							The exclusion should match the alert (exclusions are always matching) and should be generic enough to cover similar use cases but not too generic to avoid over-permissive detections. If you cannot determine a good exclusion query, say "No good exclusion query can be determined".
+							\n\n${telemetry}`;
 		
 		const url = `https://lumo.proton.me/guest?q=${encodeURIComponent(promptText)}`;
 		window.open(url, '_blank');
