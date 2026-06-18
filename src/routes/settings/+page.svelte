@@ -15,6 +15,7 @@
 	} from '$lib/api';
 	import { showFlash, showError, user } from '$lib/store';
 	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt, getStoredPublicKey } from '$lib/crypto';
+	import Modal from '$lib/components/Modal.svelte';
 
 	// Password change
 	let oldPassword = $state('');
@@ -44,6 +45,15 @@
 	$effect(() => {
 		if ($user) {
 			apiKeysEnabled = $user.api_keys_enabled;
+		}
+	});
+
+	let aiAnalysisTool = $state('lumo-guest');
+	let previousAiAnalysisTool = 'lumo-guest';
+	$effect(() => {
+		if ($user) {
+			aiAnalysisTool = $user.ai_analysis_tool || 'lumo-guest';
+			previousAiAnalysisTool = $user.ai_analysis_tool || 'lumo-guest';
 		}
 	});
 
@@ -256,6 +266,41 @@
 			showFlash('API keys preference saved.');
 		} catch (e: unknown) {
 			showError((e as Error).message);
+		}
+	}
+
+	async function saveAiAnalysisTool(newTool: string): Promise<void> {
+		if (!$user) return;
+		try {
+			await api.client.PUT('/api/v1/user/ai-analysis-tool', {
+				body: { ai_analysis_tool: newTool }
+			});
+			$user.ai_analysis_tool = newTool;
+			showFlash('AI analysis tool preference saved.');
+		} catch (e: unknown) {
+			showError((e as Error).message);
+		}
+	}
+
+	function handleAiToolChange(event: Event) {
+		const selectEl = event.target as HTMLSelectElement;
+		const targetValue = selectEl.value;
+		
+		if (typeof window !== 'undefined' && !localStorage.getItem('radegast_ai_tool_first_change')) {
+			openConfirmModal(
+				'Confirm AI Provider Change',
+				'Lumo in guest mode was selected because they claim not to log any your queries, but before using the AI analysis you must trust the AI provider to not misuse your data. Do you want to proceed with this change?',
+				() => {
+					localStorage.setItem('radegast_ai_tool_first_change', 'true');
+					aiAnalysisTool = targetValue;
+					saveAiAnalysisTool(targetValue);
+				}
+			);
+			// Revert select input visually
+			selectEl.value = previousAiAnalysisTool;
+		} else {
+			aiAnalysisTool = targetValue;
+			saveAiAnalysisTool(targetValue);
 		}
 	}
 
@@ -910,6 +955,35 @@
 		</div>
 	</div>
 
+	<!-- AI Analysis Preferences Card -->
+	<div class="col-12">
+		<div class="card">
+			<div class="card-header"><h5 class="mb-0">AI Analysis Preferences</h5></div>
+			<div class="card-body">
+				<div class="mb-3">
+					<label class="form-label fw-bold" for="aiAnalysisTool">AI Analysis Tool Helper</label>
+					<select
+						class="form-select"
+						id="aiAnalysisTool"
+						value={aiAnalysisTool}
+						onchange={handleAiToolChange}
+					>
+						<option value="lumo-guest">Lumo in Guest mode</option>
+						<option value="lumo-member">Lumo in logged-in mode</option>
+						<option value="mistral">Mistral</option>
+						<option value="claude">Claude</option>
+						<option value="chatgpt">ChatGPT</option>
+						<option value="duckduckgo">DuckDuckGo</option>
+						<option value="kagi">Kagi</option>
+					</select>
+				</div>
+				<p class="text-muted small mb-0">
+					Select the AI tool helper to guide where the alert AI analysis will lead to.
+				</p>
+			</div>
+		</div>
+	</div>
+
 	<!-- Legal & Policies Card -->
 	<div class="col-12 mb-4">
 		<div class="card">
@@ -925,26 +999,18 @@
 	</div>
 </div>
 
-{#if showConfirmModal}
-	<div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1050;">
-		<div class="modal-dialog modal-dialog-centered">
-			<div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
-				<div class="modal-header bg-warning text-dark border-0 py-3">
-					<h5 class="modal-title fw-bold mb-0"><AlertTriangleIcon style="width: 16px; height: 16px;" /> {modalTitle}</h5>
-					<button type="button" class="btn-close" onclick={() => showConfirmModal = false} aria-label="Close"></button>
-				</div>
-				<div class="modal-body p-4">
-					<p class="mb-0 fs-6 text-muted">{modalMessage}</p>
-				</div>
-				<div class="modal-footer border-0 bg-light py-3">
-					<button type="button" class="btn btn-outline-secondary px-4 fw-semibold" style="border-radius: 6px;" onclick={() => showConfirmModal = false}>
-						No
-					</button>
-					<button type="button" class="btn btn-warning px-4 fw-semibold text-dark" style="border-radius: 6px;" onclick={confirmCallback}>
-						Yes
-					</button>
-				</div>
-			</div>
-		</div>
+<Modal
+	show={showConfirmModal}
+	title={modalTitle}
+	onClose={() => { showConfirmModal = false; }}
+>
+	<p class="mb-4 text-body">{modalMessage}</p>
+	<div class="d-flex justify-content-end gap-2">
+		<button type="button" class="btn btn-outline-secondary px-4 fw-semibold" onclick={() => { showConfirmModal = false; }}>
+			No
+		</button>
+		<button type="button" class="btn btn-warning px-4 fw-semibold text-dark" onclick={confirmCallback}>
+			Yes
+		</button>
 	</div>
-{/if}
+</Modal>

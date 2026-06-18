@@ -32,7 +32,8 @@ describe('store', () => {
 			mfa_configured_level: 'none',
 			extended_edr_enabled: false,
 			api_keys_enabled: false,
-			notification_level: 'medium'
+			notification_level: 'medium',
+			ai_analysis_tool: 'lumo-guest'
 		});
 		expect(get(user)).toEqual(expect.objectContaining({ id: 1, email: 'test@example.com' }));
 

@@ -408,18 +408,57 @@
 
 	let showAiConsentModal = $state(false);
 
+	function getAiToolDetails(tool: string) {
+		const map: Record<string, { name: string; domain: string }> = {
+			'lumo-guest': { name: 'Proton Lumo (Guest mode)', domain: 'lumo.proton.me' },
+			'lumo-member': { name: 'Proton Lumo (Logged-in mode)', domain: 'lumo.proton.me' },
+			'mistral': { name: 'Mistral AI', domain: 'chat.mistral.ai' },
+			'claude': { name: 'Anthropic Claude', domain: 'claude.ai' },
+			'chatgpt': { name: 'OpenAI ChatGPT', domain: 'chatgpt.com' },
+			'duckduckgo': { name: 'DuckDuckGo AI Chat', domain: 'duck.ai/chat' },
+			'kagi': { name: 'Kagi Assistant', domain: 'kagi.com/assistant' }
+		};
+		return map[tool] ?? map['lumo-guest'];
+	}
+
+	function getAiAnalysisUrl(tool: string, promptText: string): string {
+		switch (tool) {
+			case 'lumo-guest':
+				return `https://lumo.proton.me/guest?q=${encodeURIComponent(promptText)}`;
+			case 'lumo-member':
+				return `https://lumo.proton.me/?q=${encodeURIComponent(promptText)}`;
+			case 'mistral':
+				return `https://chat.mistral.ai/chat?q=${encodeURIComponent(promptText)}`;
+			case 'claude':
+				return `https://claude.ai/new?q=${encodeURIComponent(promptText)}`;
+			case 'chatgpt':
+				return `https://chatgpt.com/?q=${encodeURIComponent(promptText)}`;
+			case 'duckduckgo':
+				return `https://duck.ai/chat?q=${encodeURIComponent(promptText)}`;
+			case 'kagi':
+				return `https://kagi.com/assistant?q=${encodeURIComponent(promptText)}`;
+			default:
+				return `https://lumo.proton.me/guest?q=${encodeURIComponent(promptText)}`;
+		}
+	}
+
 	function runAiAnalysis() {
 		if (!selectedLog || !logManager) return;
 		
-		const consent = typeof window !== 'undefined' && localStorage.getItem('radegast_proton_lumo_consent') === 'true';
-		if (consent) {
-			openLumoLink();
+		const tool = $user?.ai_analysis_tool || 'lumo-guest';
+		const consentKey = `radegast_ai_consent_${tool}`;
+		const hasConsent = typeof window !== 'undefined' && 
+			(localStorage.getItem(consentKey) === 'true' || 
+			 (tool.startsWith('lumo') && localStorage.getItem('radegast_proton_lumo_consent') === 'true'));
+			 
+		if (hasConsent) {
+			openAiAnalysisLink();
 		} else {
 			showAiConsentModal = true;
 		}
 	}
 
-	function openLumoLink() {
+	function openAiAnalysisLink() {
 		if (!selectedLog || !logManager) return;
 		const alertObj = logManager.getAlertObject(selectedLog);
 		const telemetry = JSON.stringify(alertObj.alert);
@@ -428,16 +467,27 @@
 							The exclusion should match the alert (exclusions are always matching) and should be generic enough to cover similar use cases but not too generic to avoid over-permissive detections. If you cannot determine a good exclusion query, say "No good exclusion query can be determined".
 							\n\n${telemetry}`;
 		
-		const url = `https://lumo.proton.me/guest?q=${encodeURIComponent(promptText)}`;
+		const tool = $user?.ai_analysis_tool || 'lumo-guest';
+		
+		if (typeof navigator !== 'undefined' && navigator.clipboard) {
+			navigator.clipboard.writeText(promptText).catch(() => {});
+		}
+		
+		const url = getAiAnalysisUrl(tool, promptText);
 		window.open(url, '_blank');
 	}
 
 	function handleConsentYes() {
+		const tool = $user?.ai_analysis_tool || 'lumo-guest';
+		const consentKey = `radegast_ai_consent_${tool}`;
 		if (typeof window !== 'undefined') {
-			localStorage.setItem('radegast_proton_lumo_consent', 'true');
+			localStorage.setItem(consentKey, 'true');
+			if (tool.startsWith('lumo')) {
+				localStorage.setItem('radegast_proton_lumo_consent', 'true');
+			}
 		}
 		showAiConsentModal = false;
-		openLumoLink();
+		openAiAnalysisLink();
 	}
 
 	function exportToJsonl() {
@@ -686,14 +736,16 @@
 		title="Confirm AI Analysis"
 		onClose={() => { showAiConsentModal = false; }}
 	>
+		{@const tool = $user?.ai_analysis_tool || 'lumo-guest'}
+		{@const details = getAiToolDetails(tool)}
 		<p class="text-body mb-3">
-			You are about to send this alert's decrypted raw telemetry to <strong>Proton Lumo</strong> (lumo.proton.me) for AI analysis. Proton Lumo is a privacy-focused AI assistant.
+			You are about to send this alert's decrypted raw telemetry to <strong>{details.name}</strong> ({details.domain}) for AI analysis.
 		</p>
 		<p class="text-body mb-3">
-			Please note that Lumo's output should be taken only as advice, as the AI model does not have full context of your specific infrastructure.
+			Please note that the AI's output should be taken only as advice, as the AI model does not have full context of your specific infrastructure.
 		</p>
 		<p class="text-body mb-4">
-			Are you OK with sending your alert data to Proton Lumo?
+			Are you OK with sending your alert data to {details.name}?
 		</p>
 		<div class="d-flex justify-content-end gap-2">
 			<button class="btn btn-outline-secondary" onclick={() => { showAiConsentModal = false; }}>
