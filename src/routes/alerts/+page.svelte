@@ -8,6 +8,7 @@
 	import { LogManager } from '$lib/logManager.svelte';
 	import { isDeviceActive, formatFullDateTime, mapSeverityToNumber } from '$lib/utils';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
+	import AlertDetail from '$lib/components/AlertDetail.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 
 	// Parse URL hash synchronously before Svelte state initialization
@@ -601,79 +602,39 @@
 		<div class="right-pane">
 			{#if selectedLog}
 				{@const alertObj = logManager.getAlertObject(selectedLog)}
-				{@const ruleName = alertObj.alert?.['rule.name'] || alertObj.alert?.rule?.name || `An alert on ${alertObj.meta.device || 'Unknown Device'}`}
-				
-				<div class="card border-0 shadow-sm mb-3" style="border-radius: 12px; background: var(--bs-body-bg);">
-					<div class="card-header bg-transparent border-bottom-0 pt-4 pb-0">
-						<h4 class="fw-bold mb-1">{ruleName}</h4>
-						<div class="d-flex gap-3 text-muted small">
-							<span><strong>Device:</strong> {alertObj.meta.device}</span>
-							<span><strong>Time:</strong> {new Date(selectedLog.time).toLocaleString()}</span>
-							<span><strong>Severity:</strong> {selectedLog.severity ? selectedLog.severity.toUpperCase() : 'N/A'}</span>
-						</div>
-					</div>
-					<div class="card-body">
-						<h6 class="fw-bold mb-2">RAW TELEMETRY (Decrypted locally):</h6>
-						<pre class="p-3 rounded mb-0 font-monospace" style="background-color: #282a36 !important; color: #f8f8f2 !important; white-space: pre-wrap; word-break: break-all; font-size: 0.85rem; border: 1px solid #44475a;">{@html syntaxHighlightJson(JSON.stringify(alertObj.alert, null, 2))}</pre>
-						<div class="d-flex justify-content-end gap-2 mt-3">
-							{#if selectedLog.triggered_rule}
-								<button class="btn btn-sm btn-outline-warning" onclick={openTriggeredRule} title="View the rule that triggered this alert">
-									<span class="text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.04em;">{selectedLog.triggered_rule.rule_type}</span>
-									View Rule
-								</button>
-							{/if}
-							<button class="btn btn-sm btn-outline-info" onclick={runAiAnalysis} title="Analyze this alert with AI">
-								AI Analysis
-							</button>
-							{#if $user && hasAnyPackWritePermission && !$user.extended_edr_enabled}
-								<button class="btn btn-sm btn-outline-secondary" onclick={openCreateExclusionFromAlert} title="Create exclusion from this alert">
-									Create Exclusion
-								</button>
-							{/if}
-						</div>
-					</div>
-				</div>
+				{@const alertData = typeof alertObj.alert === 'object' && alertObj.alert !== null ? alertObj.alert : null}
 
-				{#if $user && $user.extended_edr_enabled}
-					<div class="card border-0 shadow-sm" style="border-radius: 12px; background: var(--bs-body-bg);">
+				{#if alertData}
+					<AlertDetail
+						alert={alertData}
+						meta={alertObj.meta}
+						log={selectedLog}
+						triggeredRule={selectedLog.triggered_rule}
+						hasPackWritePermission={hasAnyPackWritePermission}
+						extendedEdrEnabled={$user?.extended_edr_enabled ?? false}
+						{resolution}
+						{triageNote}
+						{savingResolution}
+						onViewRule={openTriggeredRule}
+						onAiAnalysis={runAiAnalysis}
+						onCreateExclusion={openCreateExclusionFromAlert}
+						onSaveResolution={saveResolution}
+						onResolutionChange={(v) => { resolution = v; }}
+						onTriageNoteChange={(v) => { triageNote = v; }}
+					/>
+				{:else}
+					<!-- Fallback for non-object alert (encrypted/decryption failed) -->
+					<div class="card border-0 shadow-sm mb-3" style="background: var(--bs-body-bg);">
+						<div class="card-header bg-transparent border-bottom-0 pt-4 pb-0">
+							<h4 class="fw-bold mb-1">Alert #{selectedLog.id}</h4>
+							<div class="d-flex gap-3 text-muted small">
+								<span><strong>Device:</strong> {alertObj.meta.device}</span>
+								<span><strong>Time:</strong> {new Date(selectedLog.time).toLocaleString()}</span>
+								<span><strong>Severity:</strong> {selectedLog.severity ? selectedLog.severity.toUpperCase() : 'N/A'}</span>
+							</div>
+						</div>
 						<div class="card-body">
-							<div class="d-flex justify-content-between align-items-center mb-3">
-								<h6 class="fw-bold mb-0 text-primary">Extended EDR Triage</h6>
-								<span class="badge bg-primary">Enabled</span>
-							</div>
-							
-							<div class="mb-3">
-								<label for="triageNote" class="form-label fw-bold small">TRIAGE NOTES (E2EE):</label>
-								<textarea 
-									id="triageNote" 
-									class="form-control" 
-									rows="3" 
-									placeholder="No note so far."
-									bind:value={triageNote}
-								></textarea>
-							</div>
-
-							<div class="d-flex align-items-end gap-3">
-								<div class="flex-grow-1">
-									<label for="resolution" class="form-label fw-bold small">RESOLUTION:</label>
-									<select id="resolution" class="form-select fw-bold" bind:value={resolution}>
-										<option value="none">None</option>
-										<option value="read">Read (Acknowledge)</option>
-										<option value="true_positive">True Positive</option>
-										<option value="false_positive">False Positive</option>
-									</select>
-								</div>
-								<button class="btn btn-primary fw-bold" onclick={saveResolution} disabled={savingResolution}>
-									{savingResolution ? 'Saving...' : 'Save Triage'}
-								</button>
-							</div>
-							{#if hasAnyPackWritePermission && resolution === 'false_positive'}
-								<div class="d-flex justify-content-end mt-3">
-									<button class="btn btn-sm btn-outline-secondary" onclick={openCreateExclusionFromAlert} title="Create exclusion from this alert">
-										Create Exclusion
-									</button>
-								</div>
-							{/if}
+							<pre class="p-3 rounded mb-0 font-monospace" style="background-color: #282a36 !important; color: #f8f8f2 !important; white-space: pre-wrap; word-break: break-all; font-size: 0.85rem; border: 1px solid #44475a;">{typeof alertObj.alert === 'string' ? alertObj.alert : JSON.stringify(alertObj.alert, null, 2)}</pre>
 						</div>
 					</div>
 				{/if}
