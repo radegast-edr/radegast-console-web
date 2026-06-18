@@ -2085,6 +2085,8 @@ export interface components {
             severity?: components["schemas"]["LogSeverity"] | null;
             /** Rule Id */
             rule_id?: string | null;
+            /** Rule Type */
+            rule_type?: string | null;
         };
         /** LogResolveRequest */
         LogResolveRequest: {
@@ -2120,6 +2122,9 @@ export interface components {
             triage_note?: string | null;
             /** Rule Id */
             rule_id?: string | null;
+            /** Rule Type */
+            rule_type?: string | null;
+            triggered_rule?: components["schemas"]["TriggeredRuleResponse"] | null;
         };
         /**
          * LogSeverity
@@ -2415,6 +2420,17 @@ export interface components {
             permission_logs?: string | null;
             /** Managing Team Id */
             managing_team_id?: number | null;
+        };
+        /** TriggeredRuleResponse */
+        TriggeredRuleResponse: {
+            /** Rule Id */
+            rule_id: string;
+            /** Rule Type */
+            rule_type: string;
+            /** Pack Version Id */
+            pack_version_id: number;
+            /** Rule Content */
+            rule_content: string;
         };
         /** UserLogin */
         UserLogin: {

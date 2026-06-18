@@ -398,6 +398,13 @@
 		}
 	}
 
+	let showTriggeredRuleModal = $state(false);
+
+	function openTriggeredRule() {
+		if (!selectedLog?.triggered_rule) return;
+		showTriggeredRuleModal = true;
+	}
+
 	let showAiConsentModal = $state(false);
 
 	function runAiAnalysis() {
@@ -609,6 +616,12 @@
 						<h6 class="fw-bold mb-2">RAW TELEMETRY (Decrypted locally):</h6>
 						<pre class="p-3 rounded mb-0 font-monospace" style="background-color: #282a36 !important; color: #f8f8f2 !important; white-space: pre-wrap; word-break: break-all; font-size: 0.85rem; border: 1px solid #44475a;">{@html syntaxHighlightJson(JSON.stringify(alertObj.alert, null, 2))}</pre>
 						<div class="d-flex justify-content-end gap-2 mt-3">
+							{#if selectedLog.triggered_rule}
+								<button class="btn btn-sm btn-outline-warning" onclick={openTriggeredRule} title="View the rule that triggered this alert">
+									<span class="text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.04em;">{selectedLog.triggered_rule.rule_type}</span>
+									View Rule
+								</button>
+							{/if}
 							<button class="btn btn-sm btn-outline-info" onclick={runAiAnalysis} title="Analyze this alert with AI">
 								AI Analysis
 							</button>
@@ -686,6 +699,21 @@
 			onClose={() => { showExclusionModal = false; }}
 			onSave={saveExclusionFromAlert}
 		/>
+	{/if}
+
+	<!-- Triggered Rule Modal -->
+	{#if selectedLog?.triggered_rule}
+		<Modal
+			show={showTriggeredRuleModal}
+			title="Triggered Rule"
+			onClose={() => { showTriggeredRuleModal = false; }}
+		>
+			<div class="mb-2 d-flex gap-2 align-items-center">
+				<span class="badge bg-warning text-dark text-uppercase">{selectedLog.triggered_rule.rule_type}</span>
+				<span class="fw-bold text-body font-monospace small">{selectedLog.triggered_rule.rule_id}</span>
+			</div>
+			<pre class="p-3 rounded font-monospace mb-0" style="background-color: #282a36; color: #f8f8f2; white-space: pre-wrap; word-break: break-all; font-size: 0.82rem; border: 1px solid #44475a; max-height: 60vh; overflow-y: auto;">{selectedLog.triggered_rule.rule_content}</pre>
+		</Modal>
 	{/if}
 
 	<!-- AI Consent Modal -->
