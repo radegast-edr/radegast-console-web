@@ -102,6 +102,7 @@
 			<th>Status</th>
 			<th>Agent Version</th>
 			<th>Rustinel Version</th>
+			<th>OS</th>
 			<th>Actions</th>
 		</tr>
 	</thead>
@@ -126,6 +127,7 @@
 				</td>
 				<td>{device.agent_version ?? 'N/A'}</td>
 				<td>{device.rustinel_version ?? 'N/A'}</td>
+				<td>{device.os ?? 'N/A'}</td>
 				<td>
 					<button
 						class="btn btn-sm btn-outline-danger"
@@ -134,7 +136,7 @@
 				</td>
 			</tr>
 		{:else}
-			<tr><td colspan="5" class="text-muted">No devices found</td></tr>
+			<tr><td colspan="6" class="text-muted">No devices found</td></tr>
 		{/each}
 	</tbody>
 </table>

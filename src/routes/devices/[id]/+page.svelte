@@ -130,6 +130,8 @@
 			Agent: <span class="badge bg-info text-dark">{device.agent_version ?? 'N/A'}</span>
 			<span class="mx-2">|</span>
 			Rustinel: <span class="badge bg-info text-dark">{device.rustinel_version ?? 'N/A'}</span>
+			<span class="mx-2">|</span>
+			OS: <span class="badge bg-info text-dark">{device.os ?? 'N/A'}</span>
 		</p>
 	</div>
 

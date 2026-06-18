@@ -1777,6 +1777,10 @@ export interface components {
             rustinel_distribution: {
                 [key: string]: number;
             };
+            /** Os Distribution */
+            os_distribution: {
+                [key: string]: number;
+            };
         };
         /** ApiKeysEnabledSettings */
         ApiKeysEnabledSettings: {
@@ -1889,6 +1893,8 @@ export interface components {
             agent_version?: string | null;
             /** Rustinel Version */
             rustinel_version?: string | null;
+            /** Os */
+            os?: string | null;
             /** Groups */
             groups: components["schemas"]["DeviceGroupResponse"][];
         };
@@ -1941,6 +1947,8 @@ export interface components {
             agent_version?: string | null;
             /** Rustinel Version */
             rustinel_version?: string | null;
+            /** Os */
+            os?: string | null;
         };
         /** DeviceSetSigningKey */
         DeviceSetSigningKey: {
@@ -4899,6 +4907,7 @@ export interface operations {
             query?: {
                 agent_version?: string | null;
                 rustinel_version?: string | null;
+                os?: string | null;
             };
             header?: never;
             path?: never;

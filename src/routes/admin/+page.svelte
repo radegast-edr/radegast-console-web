@@ -15,7 +15,7 @@
 
 	// Stats tab state
 	let alertStats = $state<{ severity_distribution: Record<string, number>; rule_distribution: Record<string, number> } | null>(null);
-	let deviceStats = $state<{ agent_distribution: Record<string, number>; rustinel_distribution: Record<string, number> } | null>(null);
+	let deviceStats = $state<{ agent_distribution: Record<string, number>; rustinel_distribution: Record<string, number>; os_distribution: Record<string, number> } | null>(null);
 
 	let alertFromTime = $state<string | null>(null);
 	let alertToTime = $state<string | null>(null);
@@ -481,6 +481,27 @@
 										</div>
 										<div class="progress" style="height: 6px;">
 											<div class="progress-bar bg-success" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
+						{@const totalOsDevices = Object.values(deviceStats.os_distribution).reduce((a, b) => a + b, 0)}
+						<h6 class="fw-bold mb-3 mt-4">OS Distribution</h6>
+						{#if totalOsDevices === 0}
+							<p class="text-muted small">No matching devices.</p>
+						{:else}
+							<div class="d-flex flex-column gap-3">
+								{#each Object.entries(deviceStats.os_distribution).sort((a, b) => b[1] - a[1]) as [osName, count]}
+									{@const pct = totalOsDevices > 0 ? Math.round((count / totalOsDevices) * 100) : 0}
+									<div>
+										<div class="d-flex justify-content-between mb-1">
+											<span class="fw-semibold small">{osName}</span>
+											<span class="text-muted small">{count} ({pct}%)</span>
+										</div>
+										<div class="progress" style="height: 6px;">
+											<div class="progress-bar bg-info" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
 										</div>
 									</div>
 								{/each}
