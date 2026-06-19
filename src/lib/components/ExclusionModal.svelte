@@ -105,7 +105,7 @@
 		<div class="mb-3">
 			<label for="exclusionQuery" class="form-label">JSONata Query</label>
 			<textarea
-				class="form-control font-monospace {!queryIsValid && query.trim() ? 'is-invalid' : ''}"
+				class="form-control font-monospace mb-1 {!queryIsValid && query.trim() ? 'is-invalid' : ''}"
 				id="exclusionQuery"
 				rows={3}
 				bind:value={query}
@@ -123,7 +123,8 @@
 				{/if}
 			{/if}
 			<small class="form-text text-muted">
-				JSONata expression matched against alert data. Example:
+				<a href="https://docs.jsonata.org/overview.html" target="_blank" title="JSONata documentation">JSONata</a>
+				expression matched against alert data. Example:
 				<code>`rule.name`='Test Rule'</code>
 			</small>
 		</div>

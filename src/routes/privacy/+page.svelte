@@ -44,6 +44,7 @@
 			<ul>
 				<li class="text-body"><strong>Device Identifiers:</strong> Assigned device names, group allocations, host verification tokens, and public cryptographic keys used to verify host signatures.</li>
 				<li class="text-body"><strong>Connection Metadata:</strong> The IP address and <code>last_seen</code> timestamp of host devices when they communicate with the console (e.g., requesting configuration packs or submitting telemetry).</li>
+				<li class="text-body"><strong>Device Information Displayed in Console:</strong> On the devices page, we display <strong>OS type and version</strong>, <strong>agent version</strong>, and <strong>rustinel version</strong> for each device to help you manage your fleet.</li>
 				<li class="text-body"><strong>Alert Metadata (Unencrypted):</strong> To support console dashboard metrics, log search filtering, and real-time alerts, host devices transmit the <strong>alert severity</strong> and the <strong>triggered rule ID</strong> in an unencrypted format. <em>Note: You can opt out of transmitting this metadata through the agent's local configuration settings.</em></li>
 			</ul>
 
