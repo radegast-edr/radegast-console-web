@@ -32,7 +32,9 @@ vi.mock('$lib/api', () => ({
 		me: vi.fn(),
 		listDevices: vi.fn(),
 		listLogs: vi.fn(),
-		getLogsCount: vi.fn()
+		getLogsCount: vi.fn(),
+		listTeams: vi.fn(),
+		listGroups: vi.fn()
 	}
 }));
 
@@ -67,6 +69,8 @@ describe('Hunt URL Hash Shareable State', () => {
 			has_keys: true
 		} as any);
 		vi.mocked(api.listDevices).mockResolvedValue([]);
+		vi.mocked(api.listTeams).mockResolvedValue([]);
+		vi.mocked(api.listGroups).mockResolvedValue([]);
 		
 		user.set({
 			id: 1,

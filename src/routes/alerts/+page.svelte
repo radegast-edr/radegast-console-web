@@ -10,6 +10,7 @@
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
 	import AlertDetail from '$lib/components/AlertDetail.svelte';
 	import Modal from '$lib/components/Modal.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	// Parse URL hash synchronously before Svelte state initialization
 	const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
@@ -91,6 +92,15 @@
 			userGroups = await api.listGroups();
 
 			await performSearch();
+
+			const initialFocusedAlert = hashParams.get('focused_alert');
+			if (initialFocusedAlert && logManager) {
+				const focusedId = Number(initialFocusedAlert);
+				const matchedLog = logManager.logs.find(l => l.id === focusedId);
+				if (matchedLog) {
+					selectLog(matchedLog);
+				}
+			}
 			
 			if (typeof window !== 'undefined' && 'Notification' in window) {
 				if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
@@ -123,6 +133,7 @@
 		if (searchQuery) params.set('q', searchQuery);
 		if (fromTime) params.set('from', fromTime);
 		if (toTime) params.set('to', toTime);
+		if (selectedLog) params.set('focused_alert', String(selectedLog.id));
 		
 		const hash = params.toString();
 		const newHash = hash ? `#${hash}` : '';
@@ -383,7 +394,8 @@
 			const data: ExclusionCreate = {
 				name: exclusionName.trim(),
 				jsonata_query: exclusionQuery.trim(),
-				description: exclusionDescription.trim() || null
+				description: exclusionDescription.trim() || null,
+				alert_id: selectedLog ? selectedLog.id : null
 			};
 
 			await api.createExclusion(selectedGroupId, data);
@@ -549,9 +561,7 @@
 	</div>
 
 	{#if !logManager || logManager.loading && logManager.logs.length === 0}
-		<div class="text-center p-5 text-muted">
-			<span class="spinner-border spinner-border-sm me-2"></span> Loading alerts...
-		</div>
+		<Spinner centered size="sm" color="primary" text="Loading alerts..." py={5} />
 	{:else}
 		<div class="alerts-container">
 			<!-- Left Pane: Alert List -->
@@ -604,7 +614,7 @@
 						<div class="card-body p-3">
 							<div class="d-flex justify-content-between mb-1">
 								<span class="fw-bold text-truncate" style="max-width: 70%;">{ruleName}</span>
-								<span class="small opacity-75">{new Date(log.time).toLocaleTimeString()}</span>
+								<span class="small opacity-75">{formatFullDateTime(log.time)}</span>
 							</div>
 							<div class="d-flex justify-content-between align-items-center small">
 								<span class="opacity-75">{alertObj.meta.device}</span>

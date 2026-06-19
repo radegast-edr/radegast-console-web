@@ -2,10 +2,12 @@
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { onMount, onDestroy } from 'svelte';
-	import { api } from '$lib/api';
-	import { showError } from '$lib/store';
+	import { api, type Group, type Team, type ExclusionCreate } from '$lib/api';
+	import { showError, showFlash } from '$lib/store';
 	import { initAgeWasm, getStoredPrivateKey } from '$lib/crypto';
 	import { LogManager } from '$lib/logManager.svelte';
+	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	// Parse URL hash synchronously before Svelte state initialization
 	const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
@@ -36,6 +38,18 @@
 	let fromTime = $state<string | null>(initialFrom || (hasHashParams ? null : getDefaultFromTime()));
 	let toTime = $state<string | null>(initialTo || (hasHashParams ? null : getDefaultToTime()));
 
+	// Exclusion creation from hunt
+	let showExclusionModal = $state(false);
+	let exclusionName = $state('');
+	let exclusionQuery = $state('');
+	let exclusionDescription = $state('');
+	let exclusionGroups = $state<Group[]>([]);
+	let selectedGroupId = $state<number | null>(null);
+	let userTeamsForPermission = $state<Team[]>([]);
+	let userGroups = $state<Group[]>([]);
+	let selectedLog = $state<any | null>(null);
+	let currentAlertObj = $state<Record<string, unknown> | null>(null);
+
 	onMount(async () => {
 		try {
 			await initAgeWasm();
@@ -51,6 +65,10 @@
 			const devicesData = await api.listDevices();
 			logManager.setDevices(devicesData);
 			
+			// Load user teams and groups for exclusion creation
+			userTeamsForPermission = await api.listTeams();
+			userGroups = await api.listGroups();
+			
 			await performHunt();
 			initialized = true;
 		} catch (e) {
@@ -65,6 +83,99 @@
 			await logManager.runFilter(searchQuery);
 		} catch (e) {
 			showError('Hunt search failed: ' + (e as Error).message);
+		}
+	}
+
+	async function startExclusionFromHunt(log: any, alertObj: any): Promise<void> {
+		selectedLog = log;
+		try {
+			// Fetch device to get its groups
+			const deviceDetail = await api.getDevice(log.device_id);
+			
+			const deviceGroupIds = new Set(deviceDetail.groups.map(g => g.id));
+			
+			// Fetch full group details for permission checking
+			const groupDetails = await Promise.all(
+				userGroups.filter(g => deviceGroupIds.has(g.id)).map(g => api.getGroup(g.id))
+			);
+
+			const permittedGroups = groupDetails.filter((g) => {
+				return (g.teams ?? []).some((teamInGroup) => {
+					return (
+						teamInGroup.permission_pack === 'write' &&
+						userTeamsForPermission.some((userTeam) => userTeam.id === teamInGroup.id)
+					);
+				});
+			});
+
+			if (permittedGroups.length === 0) {
+				showError('You do not have pack write permissions on any group this device belongs to.');
+				return;
+			}
+
+			exclusionGroups = permittedGroups;
+		} catch (e) {
+			showError('Failed to verify permissions: ' + (e as Error).message);
+			return;
+		}
+
+		currentAlertObj = typeof alertObj.alert === 'object' && alertObj.alert !== null
+			? (alertObj.alert as Record<string, unknown>)
+			: null;
+
+		const ruleName = currentAlertObj?.['rule.name'] as string | undefined;
+		let suggestedQuery = '';
+
+		if (ruleName) {
+			suggestedQuery = `\`rule.name\` = '${ruleName.replace(/'/g, "\\'")}'`;
+		} else if (currentAlertObj) {
+			const firstKey = Object.keys(currentAlertObj)[0];
+			if (firstKey) {
+				const firstValue = currentAlertObj[firstKey];
+				suggestedQuery = typeof firstValue === 'string'
+					? `\`${firstKey}\` = '${firstValue.replace(/'/g, "\\'")}'`
+					: `$exists(\`${firstKey}\`)`;
+			}
+		}
+
+		exclusionName = `Exclude ${ruleName || 'alert'}`;
+		exclusionQuery = suggestedQuery;
+		exclusionDescription = `Created from alert on ${new Date(log.time).toLocaleString()}`;
+
+		if (exclusionGroups.length > 0) {
+			selectedGroupId = exclusionGroups[0].id;
+		} else {
+			selectedGroupId = null;
+		}
+
+		showExclusionModal = true;
+	}
+
+	async function saveExclusionFromHunt(): Promise<void> {
+		if (!selectedGroupId || !exclusionName.trim() || !exclusionQuery.trim()) {
+			showError('Group, name, and JSONata query are required');
+			return;
+		}
+
+		try {
+			const data: ExclusionCreate = {
+				name: exclusionName.trim(),
+				jsonata_query: exclusionQuery.trim(),
+				description: exclusionDescription.trim() || null,
+				alert_id: selectedLog ? selectedLog.id : null
+			};
+
+			await api.createExclusion(selectedGroupId, data);
+			showExclusionModal = false;
+			showFlash('Exclusion created from alert');
+
+			exclusionName = '';
+			exclusionQuery = '';
+			exclusionDescription = '';
+			selectedLog = null;
+			currentAlertObj = null;
+		} catch (e) {
+			showError('Failed to create exclusion: ' + (e as Error).message);
 		}
 	}
 
@@ -169,7 +280,7 @@
 				<div class="col-md-1 d-flex align-items-end">
 					<button class="btn btn-primary w-100 fw-bold" onclick={performHunt} disabled={logManager.loading}>
 						{#if logManager.loading}
-							<span class="spinner-border spinner-border-sm"></span>
+							<Spinner inline size="sm" color="light" />
 						{:else}
 							Search
 						{/if}
@@ -198,7 +309,10 @@
 					<div class="card-body p-3 bg-dark text-light font-monospace small rounded">
 						<div class="d-flex justify-content-between mb-2">
 							<span class="text-info fw-bold">{new Date(log.time).toLocaleString()}</span>
-							<span class="text-warning fw-bold">Device ID: {log.device_id} | Device: {alertObj.meta.device}</span>
+							<span class="text-warning fw-bold">
+								Device ID: {log.device_id} | Device: {alertObj.meta.device}
+								<button class="btn btn-link btn-sm text-danger p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem;" onclick={() => startExclusionFromHunt(log, alertObj)}>[exclude]</button>
+							</span>
 						</div>
 						<pre class="m-0" style="white-space: pre-wrap; word-break: break-all;">{@html syntaxHighlightJson(JSON.stringify(alertObj, null, 2))}</pre>
 					</div>
@@ -206,12 +320,26 @@
 			</div>
 		{:else}
 			{#if logManager.loading}
-				<div class="text-center p-5 text-muted">Searching encrypted telemetry...</div>
+				<Spinner centered text="Searching encrypted telemetry..." py={5} />
 			{:else}
 				<div class="text-center p-5 text-muted">No telemetry found matching the query.</div>
 			{/if}
 		{/each}
 	</div>
+
+	<ExclusionModal
+		bind:show={showExclusionModal}
+		bind:name={exclusionName}
+		bind:query={exclusionQuery}
+		bind:description={exclusionDescription}
+		title="Create Exclusion"
+		isEditMode={false}
+		groups={exclusionGroups}
+		bind:selectedGroupId={selectedGroupId}
+		alertObj={currentAlertObj}
+		onClose={() => (showExclusionModal = false)}
+		onSave={saveExclusionFromHunt}
+	/>
 {:else}
-	<div class="text-muted">Loading crypto environment...</div>
+	<Spinner centered text="Loading crypto environment..." py={5} />
 {/if}

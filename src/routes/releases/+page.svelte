@@ -5,6 +5,7 @@
 	import { api } from '$lib/api';
 	import { user, showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	interface ReleaseArtifact {
 		version: string;
@@ -125,9 +126,7 @@
 </div>
 
 {#if loading}
-	<div class="text-center py-5">
-		<div class="spinner-border text-primary" role="status"></div>
-	</div>
+	<Spinner centered color="primary" py={5} />
 {:else if grouped.length === 0}
 	<div class="text-center py-5 text-muted">
 		<div style="font-size: 3rem;">📦</div>

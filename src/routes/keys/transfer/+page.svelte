@@ -7,6 +7,7 @@
 	import { initAgeWasm, generateKeypair, encrypt, decrypt, getStoredPrivateKey, storePrivateKey, aesEncrypt } from '$lib/crypto';
 	import AlertTriangleIcon from '~icons/lucide/alert-triangle';
 	import CheckIcon from '~icons/lucide/check';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let wasmReady = $state(false);
 	let hasKey = $state(false);
@@ -196,8 +197,7 @@
 
 		{#if !wasmReady}
 			<div class="d-flex align-items-center gap-2">
-				<div class="spinner-border spinner-border-sm" role="status"></div>
-				<span>Loading crypto library…</span>
+				<Spinner inline size="sm" text="Loading crypto library…" />
 			</div>
 
 		{:else}
@@ -247,8 +247,7 @@
 							<code class="d-block mt-1 fs-6">{transferId}</code>
 							<hr />
 							<div class="d-flex align-items-center gap-2">
-								<div class="spinner-border spinner-border-sm" role="status"></div>
-								Waiting for sender… (expires in 10 minutes)
+								<Spinner inline size="sm" text="Waiting for sender… (expires in 10 minutes)" />
 							</div>
 						</div>
 					{/if}
@@ -292,8 +291,7 @@
 
 					{:else if genStep === 'generating'}
 						<div class="d-flex align-items-center gap-2">
-							<div class="spinner-border spinner-border-sm" role="status"></div>
-							<span>Generating keys…</span>
+							<Spinner inline size="sm" text="Generating keys…" />
 						</div>
 
 					{:else if genStep === 'show_recovery'}

@@ -6,6 +6,7 @@
 	import { user, showFlash, showError } from '$lib/store';
 	import { goto } from '$app/navigation';
 	import WysiwygEditor from '$lib/components/WysiwygEditor.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let users = $state<UserInfo[]>([]);
 	let devices = $state<Device[]>([]);
@@ -403,9 +404,7 @@
 							</div>
 						{/if}
 					{:else}
-						<div class="text-center py-4">
-							<span class="spinner-border spinner-border-sm text-muted"></span> Loading alert stats...
-						</div>
+						<Spinner centered size="sm" color="muted" text="Loading alert stats..." py={4} />
 					{/if}
 				</div>
 			</div>
@@ -508,9 +507,7 @@
 							</div>
 						{/if}
 					{:else}
-						<div class="text-center py-4">
-							<span class="spinner-border spinner-border-sm text-muted"></span> Loading device stats...
-						</div>
+						<Spinner centered size="sm" color="muted" text="Loading device stats..." py={4} />
 					{/if}
 				</div>
 			</div>
@@ -550,7 +547,7 @@
 
 			<button type="submit" class="btn btn-primary" disabled={isSubmittingBroadcast} style="border-radius: 3px;">
 				{#if isSubmittingBroadcast}
-					<span class="spinner-border spinner-border-sm me-2"></span> Sending...
+					<Spinner inline size="sm" color="light" text="Sending..." />
 				{:else}
 					Queue Broadcast to All Subscribed Users
 				{/if}

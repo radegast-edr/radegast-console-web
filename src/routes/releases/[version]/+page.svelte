@@ -7,6 +7,7 @@
 	import { user, showFlash, showError } from '$lib/store';
 	import { goto } from '$app/navigation';
 	import Modal from '$lib/components/Modal.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let currentVersion = $derived(page.params.version ?? '');
 	interface ReleaseArtifact {
@@ -110,9 +111,7 @@
 </div>
 
 {#if loading}
-	<div class="text-center py-5">
-		<div class="spinner-border text-primary" role="status"></div>
-	</div>
+	<Spinner centered color="primary" py={5} />
 {:else if artifacts.length === 0}
 	<div class="alert alert-warning">
 		<h4 class="alert-heading fw-bold">Release Not Found</h4>

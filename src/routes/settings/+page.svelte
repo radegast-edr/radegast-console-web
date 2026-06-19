@@ -16,6 +16,7 @@
 	import { showFlash, showError, user } from '$lib/store';
 	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt, getStoredPublicKey } from '$lib/crypto';
 	import Modal from '$lib/components/Modal.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	// Password change
 	let oldPassword = $state('');
@@ -519,7 +520,7 @@
 			<div class="card-header"><h5 class="mb-0">Email Notifications</h5></div>
 			<div class="card-body">
 				{#if !notifications}
-					<div class="text-muted">Loading…</div>
+					<Spinner centered size="sm" color="primary" text="Loading notifications…" py={3} />
 				{:else}
 					<p class="text-muted small mb-3">Choose which events trigger email notifications.</p>
 					<div class="form-check form-switch mb-2">
@@ -649,7 +650,7 @@
 				</p>
 
 				{#if keysLoading}
-					<div class="text-muted">Loading keys…</div>
+					<Spinner centered size="sm" color="primary" text="Loading keys…" py={3} />
 				{:else}
 					<div class="table-responsive mb-4">
 						<table class="table table-hover align-middle">
@@ -745,8 +746,7 @@
 					</div>
 				{:else if addKeyStep === 'generating'}
 					<div class="d-flex align-items-center gap-2">
-						<div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-						<span>Generating fresh cryptographic keys inside browser…</span>
+						<Spinner inline size="sm" color="primary" text="Generating fresh cryptographic keys inside browser…" />
 					</div>
 				{:else if addKeyStep === 'show_recovery'}
 					<div class="alert alert-danger mb-0">
@@ -811,7 +811,7 @@
 			</div>
 			<div class="card-body">
 				{#if mfaLoading}
-					<div class="text-muted">Loading MFA preferences…</div>
+					<Spinner centered size="sm" color="primary" text="Loading MFA preferences…" py={3} />
 				{:else if mfaSettings}
 					<p class="text-muted small">
 						Configure additional security verification methods. Required MFA level for your role is <strong>{mfaSettings.required_level}</strong> (current session level: <strong>{mfaSettings.current_level}</strong>).

@@ -1349,6 +1349,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/logs/{log_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Log */
+        get: operations["get_log_api_v1_logs__log_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/users": {
         parameters: {
             query?: never;
@@ -1985,6 +2002,8 @@ export interface components {
             jsonata_query: string;
             /** Description */
             description?: string | null;
+            /** Alert Id */
+            alert_id?: number | null;
         };
         /** ExclusionListResponse */
         ExclusionListResponse: {
@@ -2003,6 +2022,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Alert Id */
+            alert_id?: number | null;
         };
         /** ExclusionResponse */
         ExclusionResponse: {
@@ -2021,6 +2042,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Alert Id */
+            alert_id?: number | null;
         };
         /** ExtendedEdrSettings */
         ExtendedEdrSettings: {
@@ -5400,6 +5423,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_log_api_v1_logs__log_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                log_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogResponse"];
                 };
             };
             /** @description Validation Error */

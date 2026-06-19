@@ -6,6 +6,7 @@
 	import { user, showFlash, showError } from '$lib/store';
 	import { goto } from '$app/navigation';
 	import Modal from '$lib/components/Modal.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	interface GroupState {
 		groupId: number;
@@ -227,7 +228,7 @@
 </div>
 
 {#if loading && !pack}
-	<div class="text-muted">Loading pack details...</div>
+	<Spinner centered text="Loading pack details..." py={5} />
 {:else if pack}
 	<div class="row g-4">
 		<!-- Left Column: Details, Editing & Versions -->
@@ -318,7 +319,9 @@
 									{#each teams.filter((t) => pack?.team_ids?.includes(t.id)) as t}
 										<span class="badge bg-body-secondary text-body border">{t.name}</span>
 									{:else}
-										<span class="text-muted small">Loading team names...</span>
+										<span class="text-muted small">
+											<Spinner inline size="sm" color="muted" text="Loading team names..." />
+										</span>
 									{/each}
 								</div>
 							</div>

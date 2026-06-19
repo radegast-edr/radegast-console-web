@@ -6,6 +6,7 @@
 	import { api, type Pack, type Team, type PackVersion } from '$lib/api';
 	import { user, showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let packs = $state<Pack[]>([]);
 	let teams = $state<Team[]>([]);
@@ -853,7 +854,7 @@
 
 <Modal show={showVersions} title="Pack Versions - {versionsPackName}" onClose={() => (showVersions = false)}>
 	{#if loadingVersions}
-		<p class="text-muted">Loading versions...</p>
+		<Spinner centered text="Loading versions..." py={4} />
 	{:else if packVersions.length === 0}
 		<p class="text-muted">No versions uploaded yet.</p>
 	{:else}

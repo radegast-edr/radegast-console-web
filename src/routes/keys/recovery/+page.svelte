@@ -4,6 +4,7 @@
 	import { api } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
 	import { initAgeWasm, storePrivateKey, aesDecrypt } from '$lib/crypto';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let recoveryKey = $state('');
 	let success = $state(false);
@@ -85,7 +86,11 @@
 					></textarea>
 				</div>
 				<button type="submit" class="btn btn-primary" disabled={!wasmReady}>
-					{wasmReady ? 'Recover Keys' : 'Loading…'}
+					{#if !wasmReady}
+						<Spinner inline size="sm" color="light" text="Loading…" />
+					{:else}
+						Recover Keys
+					{/if}
 				</button>
 			</form>
 		{/if}

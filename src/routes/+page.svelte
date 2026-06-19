@@ -6,7 +6,9 @@
 	import { getStoredPrivateKey } from '$lib/crypto';
 	import { goto } from '$app/navigation';
 	import { mapSeverityToNumber } from '$lib/utils';
+	import Spinner from '$lib/components/Spinner.svelte';
 
+	let isLoading = $state(true);
 	let teams = $state<Team[]>([]);
 	let groups = $state<Group[]>([]);
 	let devices = $state<Device[]>([]);
@@ -108,6 +110,8 @@
  				hasPrivateKey = !!(await getStoredPrivateKey(me.id));
  			} catch (e) {
  				goto(`${base}/login`);
+ 			} finally {
+ 				isLoading = false;
  			}
  		};
  		loadData();
@@ -169,26 +173,38 @@
 
 <div class="row g-4 mb-4">
 	<div class="col-md-4">
-		<div class="card h-100 border-0 shadow-sm" style="border-radius: 12px; background: var(--bs-body-bg);">
+		<div class="card h-100 border-0 shadow-sm" style="background: var(--bs-body-bg);">
 			<div class="card-body d-flex flex-column justify-content-center align-items-center py-4">
 				<h6 class="text-uppercase text-muted fw-bold mb-3" style="letter-spacing: 0.05em;">Total Devices</h6>
-				<h1 class="display-4 fw-bolder text-primary mb-0">{devices.length}</h1>
+				{#if isLoading}
+					<Spinner size="lg" color="primary" />
+				{:else}
+					<h1 class="display-4 fw-bolder text-primary mb-0">{devices.length}</h1>
+				{/if}
 			</div>
 		</div>
 	</div>
 	<div class="col-md-4">
-		<div class="card h-100 border-0 shadow-sm" style="border-radius: 12px; background: var(--bs-body-bg);">
+		<div class="card h-100 border-0 shadow-sm" style="background: var(--bs-body-bg);">
 			<div class="card-body d-flex flex-column justify-content-center align-items-center py-4">
 				<h6 class="text-uppercase text-muted fw-bold mb-3" style="letter-spacing: 0.05em;">Active Alerts</h6>
-				<h1 class="display-4 fw-bolder mb-0 {unreadCount > 0 ? 'text-danger' : 'text-success'}">{unreadCount}</h1>
+				{#if isLoading}
+					<Spinner size="lg" color="danger" />
+				{:else}
+					<h1 class="display-4 fw-bolder mb-0 {unreadCount > 0 ? 'text-danger' : 'text-success'}">{unreadCount}</h1>
+				{/if}
 			</div>
 		</div>
 	</div>
 	<div class="col-md-4">
-		<div class="card h-100 border-0 shadow-sm" style="border-radius: 12px; background: var(--bs-body-bg);">
+		<div class="card h-100 border-0 shadow-sm" style="background: var(--bs-body-bg);">
 			<div class="card-body d-flex flex-column justify-content-center align-items-center py-4">
 				<h6 class="text-uppercase text-muted fw-bold mb-3" style="letter-spacing: 0.05em;">Total Teams</h6>
-				<h1 class="display-4 fw-bolder text-info mb-0">{teams.length}</h1>
+				{#if isLoading}
+					<Spinner size="lg" color="info" />
+				{:else}
+					<h1 class="display-4 fw-bolder text-info mb-0">{teams.length}</h1>
+				{/if}
 			</div>
 		</div>
 	</div>
@@ -196,10 +212,12 @@
 
 <div class="row g-4">
 	<div class="col-md-6">
-		<div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: var(--bs-body-bg);">
+		<div class="card border-0 shadow-sm h-100" style="background: var(--bs-body-bg);">
 			<div class="card-body p-4">
 				<h5 class="card-title fw-bold mb-4">Alert Distribution by Group</h5>
-				{#if totalLogsCount === 0 || Object.keys(alertsByGroup).length === 0}
+				{#if isLoading}
+					<Spinner centered size="sm" color="primary" text="Loading..." />
+				{:else if totalLogsCount === 0 || Object.keys(alertsByGroup).length === 0}
 					<p class="text-muted">No group alerts logged.</p>
 				{:else}
 					<div class="d-flex flex-column gap-3">
@@ -222,10 +240,12 @@
 	</div>
 
 	<div class="col-md-6">
-		<div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: var(--bs-body-bg);">
+		<div class="card border-0 shadow-sm h-100" style="background: var(--bs-body-bg);">
 			<div class="card-body p-4">
 				<h5 class="card-title fw-bold mb-4">Alert Distribution by Team</h5>
-				{#if totalLogsCount === 0 || Object.keys(alertsByTeam).length === 0}
+				{#if isLoading}
+					<Spinner centered size="sm" color="info" text="Loading..." />
+				{:else if totalLogsCount === 0 || Object.keys(alertsByTeam).length === 0}
 					<p class="text-muted">No team alerts logged.</p>
 				{:else}
 					<div class="d-flex flex-column gap-3">
@@ -250,10 +270,12 @@
 
 <div class="row g-4 mt-2">
 	<div class="col-md-6">
-		<div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: var(--bs-body-bg);">
+		<div class="card border-0 shadow-sm h-100" style="background: var(--bs-body-bg);">
 			<div class="card-body p-4">
 				<h5 class="card-title fw-bold mb-4">Alert Severity Distribution</h5>
-				{#if totalLogsCount === 0}
+				{#if isLoading}
+					<Spinner centered size="sm" color="danger" text="Loading..." />
+				{:else if totalLogsCount === 0}
 					<p class="text-muted">No alerts logged.</p>
 				{:else}
 					<div class="d-flex flex-column gap-3">
@@ -279,10 +301,12 @@
 
 	{#if $user && $user.extended_edr_enabled}
 		<div class="col-md-6">
-			<div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: var(--bs-body-bg);">
+			<div class="card border-0 shadow-sm h-100" style="background: var(--bs-body-bg);">
 				<div class="card-body p-4">
 					<h5 class="card-title fw-bold mb-4">Alert Resolution Distribution</h5>
-					{#if totalLogsCount === 0}
+					{#if isLoading}
+						<Spinner centered size="sm" color="secondary" text="Loading..." />
+					{:else if totalLogsCount === 0}
 						<p class="text-muted">No resolved alerts.</p>
 					{:else}
 						<div class="d-flex flex-column gap-3">
@@ -314,10 +338,12 @@
 
 <div class="row g-4 mt-2">
 	<div class="col-md-6">
-		<div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: var(--bs-body-bg);">
+		<div class="card border-0 shadow-sm h-100" style="background: var(--bs-body-bg);">
 			<div class="card-body p-4">
 				<h5 class="card-title fw-bold mb-4">Devices by Group</h5>
-				{#if groups.length === 0}
+				{#if isLoading}
+					<Spinner centered size="sm" color="primary" text="Loading..." />
+				{:else if groups.length === 0}
 					<p class="text-muted">No groups configured.</p>
 				{:else}
 					<div class="d-flex flex-column gap-3">
@@ -341,10 +367,12 @@
 	</div>
 
 	<div class="col-md-6">
-		<div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: var(--bs-body-bg);">
+		<div class="card border-0 shadow-sm h-100" style="background: var(--bs-body-bg);">
 			<div class="card-body p-4">
 				<h5 class="card-title fw-bold mb-4">Devices by Team</h5>
-				{#if teams.length === 0}
+				{#if isLoading}
+					<Spinner centered size="sm" color="info" text="Loading..." />
+				{:else if teams.length === 0}
 					<p class="text-muted">No teams configured.</p>
 				{:else}
 					<div class="d-flex flex-column gap-3">

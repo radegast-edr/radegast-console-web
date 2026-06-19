@@ -4,6 +4,7 @@
 	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 	import { askConfirm } from '$lib/confirm';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let keys = $state<APIKeyResponse[]>([]);
 	let loading = $state(true);
@@ -160,10 +161,7 @@
 			</div>
 			<div class="card-body p-4">
 				{#if loading}
-					<div class="text-center py-5">
-						<div class="spinner-border text-primary" role="status"></div>
-						<p class="text-muted small mt-2">Loading API keys...</p>
-					</div>
+					<Spinner centered text="Loading API keys..." py={5} />
 				{:else if keys.length === 0}
 					<div class="text-center py-5 text-muted">
 						<p class="mb-0">No active API keys found.</p>

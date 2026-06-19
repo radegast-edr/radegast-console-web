@@ -5,6 +5,7 @@
 	import { api } from '$lib/api';
 	import { showError } from '$lib/store';
 	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt } from '$lib/crypto';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let step = $state<'init' | 'generating' | 'show_recovery' | 'done' | 'ready'>('init'); // 'init' | 'generating' | 'show_recovery' | 'done' | 'ready'
 	let recoveryKey = $state('');
@@ -93,11 +94,7 @@
 		{/if}
 
 		{#if step === 'init'}
-			<div class="d-flex justify-content-center">
-				<div class="spinner-border text-primary" role="status">
-					<span class="visually-hidden">Loading crypto library…</span>
-				</div>
-			</div>
+			<Spinner centered color="primary" />
 
 		{:else if step === 'ready'}
 			<div class="card">
@@ -126,12 +123,7 @@
 			</div>
 
 		{:else if step === 'generating'}
-			<div class="d-flex justify-content-center align-items-center gap-3">
-				<div class="spinner-border text-primary" role="status">
-					<span class="visually-hidden">Generating…</span>
-				</div>
-				<span>Generating keys…</span>
-			</div>
+			<Spinner centered text="Generating keys…" color="primary" />
 
 		{:else if step === 'show_recovery'}
 			<div class="alert alert-danger">

@@ -15,6 +15,7 @@
 	import { page } from '$app/stores';
 	import BoxiconsNoEntry from '~icons/boxicons/no-entry';
 	import MaterialSymbolsKey from '~icons/material-symbols/key';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let showNoKeyBanner = $state(false);
 
@@ -203,7 +204,9 @@
 
 {#if generatingKeys}
 	<div class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-white" style="z-index: 1999; opacity: 0.9;">
-		<div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+		<div class="mb-3">
+			<Spinner size="lg" color="primary" />
+		</div>
 		<h5 class="fw-bold">Securing your account…</h5>
 		<p class="text-muted small">Generating end-to-end encryption key pairs inside your browser.</p>
 	</div>

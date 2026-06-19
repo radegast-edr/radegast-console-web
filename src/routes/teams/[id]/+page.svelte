@@ -6,6 +6,7 @@
 	import { api, type Team, type TeamMember, type Group, type Device } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let team = $state<Team | null>(null);
 	let members = $state<TeamMember[]>([]);
@@ -285,7 +286,7 @@
 		</div>
 	</div>
 {:else}
-	<p>Loading...</p>
+	<Spinner centered text="Loading team details..." py={5} />
 {/if}
 
 <Modal show={showInvite} title="Invite User" onClose={() => (showInvite = false)}>

@@ -7,6 +7,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
 	import { isDeviceActive } from '$lib/utils';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let group = $state<(GroupDetail & { devices: Device[]; teams: Team[]; exclusions: Exclusion[] }) | null>(null);
 	let allTeams = $state<Team[]>([]);
@@ -226,7 +227,8 @@
 			const data: ExclusionCreate = {
 				name: exclusionName.trim(),
 				jsonata_query: exclusionQuery.trim(),
-				description: exclusionDescription.trim() || null
+				description: exclusionDescription.trim() || null,
+				alert_id: editingExclusion ? editingExclusion.alert_id : null
 			};
 			
 			if (editingExclusion) {
@@ -411,6 +413,7 @@
 							<th>Name</th>
 							<th>JSONata Query</th>
 							<th>Description</th>
+							<th>Source Alert</th>
 							{#if hasPackWrite}
 								<th></th>
 							{/if}
@@ -422,6 +425,13 @@
 								<td><strong>{exclusion.name}</strong></td>
 								<td><code class="small">{exclusion.jsonata_query}</code></td>
 								<td>{exclusion.description || '-'}</td>
+								<td>
+									{#if exclusion.alert_id}
+										<a href="{base}/alert/{exclusion.alert_id}" class="badge bg-secondary text-decoration-none">Alert #{exclusion.alert_id}</a>
+									{:else}
+										-
+									{/if}
+								</td>
 								{#if hasPackWrite}
 									<td>
 										<button class="btn btn-sm btn-outline-secondary me-2" onclick={() => openCreateExclusion(exclusion)} title="Edit">✎</button>
@@ -538,5 +548,5 @@
 		</form>
 	</Modal>
 {:else}
-	<p>Loading…</p>
+	<Spinner centered text="Loading group details..." py={5} />
 {/if}

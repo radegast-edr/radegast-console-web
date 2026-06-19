@@ -6,6 +6,7 @@
 	import { showFlash, showError } from '$lib/store';
 	import { isDeviceActive, formatFullDateTime } from '$lib/utils';
 	import AgentSetupInstructions from '$lib/components/AgentSetupInstructions.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let device = $state<DeviceDetail | null>(null);
 	let allGroups = $state<Group[]>([]);
@@ -186,5 +187,5 @@
 		</div>
 	</div>
 {:else}
-	<p>Loading…</p>
+	<Spinner centered text="Loading device details..." py={5} />
 {/if}

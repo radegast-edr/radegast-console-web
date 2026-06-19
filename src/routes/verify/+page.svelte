@@ -3,6 +3,7 @@
 	import { api } from '$lib/api';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let status = $state<'loading' | 'success' | 'error'>('loading');
 	let errorMessage = $state('');
@@ -31,10 +32,7 @@
 <div class="row justify-content-center mt-5">
 	<div class="col-md-6 col-lg-4 text-center">
 		{#if status === 'loading'}
-			<div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
-				<span class="visually-hidden">Verifying…</span>
-			</div>
-			<p class="text-muted">Verifying your email address…</p>
+			<Spinner centered size="lg" color="primary" text="Verifying your email address…" py={3} />
 
 		{:else if status === 'success'}
 			<div class="mb-4" style="font-size: 4rem;">✅</div>

@@ -353,6 +353,9 @@ export const api = {
 		})),
 
 	// Logs
+	getLog: (log_id: number) =>
+		call(callOp('get_log_api_v1_logs__log_id__get', { params: { path: { log_id } } })),
+
 	listLogs: (
 		page = 1,
 		limit = 100,
