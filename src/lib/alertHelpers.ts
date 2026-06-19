@@ -58,7 +58,11 @@ export function getPrimaryCategory(alert: Record<string, unknown>): string {
 /** Format a timestamp for display */
 export function formatAlertTimestamp(isoString: string): string {
 	try {
-		const d = new Date(isoString);
+		let cleanStr = isoString;
+		if (typeof isoString === 'string' && !isoString.endsWith('Z') && !isoString.includes('+')) {
+			cleanStr = isoString + 'Z';
+		}
+		const d = new Date(cleanStr);
 		if (isNaN(d.getTime())) return isoString;
 		const pad = (n: number) => String(n).padStart(2, '0');
 		return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} UTC`;

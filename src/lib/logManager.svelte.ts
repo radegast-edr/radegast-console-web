@@ -54,7 +54,11 @@ export class LogManager {
 			}
 		}
 
-		const reported_timestamp = new Date(log.time).toISOString();
+		let cleanTime = log.time;
+		if (typeof cleanTime === 'string' && !cleanTime.endsWith('Z') && !cleanTime.includes('+')) {
+			cleanTime = cleanTime + 'Z';
+		}
+		const reported_timestamp = new Date(cleanTime).toISOString();
 		const decState = this.decryptionState[log.id];
 		let severityVal: any = log.severity;
 		if (decState && decState.success && decState.parsed && typeof decState.parsed === 'object' && decState.parsed.severity !== undefined) {
