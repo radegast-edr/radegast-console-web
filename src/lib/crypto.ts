@@ -191,7 +191,7 @@ export async function getStoredPrivateKey(userId: string | number): Promise<stri
 				stored.ciphertext
 			);
 			return new TextDecoder().decode(plainBuf);
-		} catch (err) {
+		} catch {
 			await clearStoredPrivateKey(userId);
 			return null;
 		}
@@ -266,7 +266,7 @@ export async function getPublicKeyForLogin(email: string): Promise<string | null
 			};
 			req.onerror = () => resolve(null);
 		});
-	} catch (err) {
+	} catch {
 		return null;
 	}
 }

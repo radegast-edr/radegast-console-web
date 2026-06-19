@@ -51,11 +51,11 @@
 		let cancelled = false;
 		// Svelte 5 reactive state is wrapped in a Proxy — snapshot to a plain object before passing to jsonata
 		const plainAlertObj = $state.snapshot(alertObj);
-		console.debug('Evaluating JSONata query against alert:', { query, alert: plainAlertObj });
+		console.info('Evaluating JSONata query against alert:', { query, alert: plainAlertObj });
 		jsonata(query)
 			.evaluate(plainAlertObj)
 			.then((result) => {
-				console.debug('JSONata evaluation result:', result);
+				console.info('JSONata evaluation result:', result);
 				if (!cancelled) queryMatchesAlert = !!result;
 			})
 			.catch(() => {

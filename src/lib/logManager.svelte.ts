@@ -112,7 +112,7 @@ export class LogManager {
 					return await matchesJsonata(obj, searchQuery);
 				})
 			);
-		} catch (e) {
+		} catch {
 			// Fallback to full-text search on failure
 			this.searchError = '';
 			const queryLower = searchQuery.toLowerCase();
@@ -161,7 +161,7 @@ export class LogManager {
 				}
 			}
 
-			let newDecryptionState = { ...this.decryptionState };
+			const newDecryptionState = { ...this.decryptionState };
 			if (this.privateKey) {
 				for (const log of logsData) {
 					if (newDecryptionState[log.id]) continue;
@@ -170,7 +170,7 @@ export class LogManager {
 						let parsed: any;
 						try {
 							parsed = JSON.parse(dec);
-						} catch (e) {
+						} catch {
 							parsed = dec;
 						}
 						newDecryptionState[log.id] = { success: true, parsed };

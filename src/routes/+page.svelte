@@ -108,9 +108,9 @@
  				devices = devicesRes;
  				unreadCount = resCounts.unread;
  				hasPrivateKey = !!(await getStoredPrivateKey(me.id));
- 			} catch (e) {
- 				goto(`${base}/login`);
- 			} finally {
+ 			} catch {
+				goto(`${base}/login`);
+			} finally {
  				isLoading = false;
  			}
  		};

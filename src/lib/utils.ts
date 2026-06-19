@@ -73,7 +73,7 @@ export async function matchesJsonata(obj: any, query: string): Promise<boolean> 
 		const res = await expr.evaluate(obj);
 		if (typeof res === 'boolean') return res;
 		return !!res;
-	} catch (e) {
+	} catch {
 		return false;
 	}
 }

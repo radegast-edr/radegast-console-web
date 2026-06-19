@@ -3,7 +3,7 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { api, type GroupDetail, type Team, type Device, type EnabledPack, type Pack, type PackVersion, type Exclusion, type ExclusionCreate } from '$lib/api';
-	import { showFlash, showError, user } from '$lib/store';
+	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
 	import { isDeviceActive } from '$lib/utils';
@@ -236,7 +236,7 @@
 				await api.deleteExclusion(editingExclusion.id);
 			}
 			
-			const newExclusion = await api.createExclusion(Number(group.id), data);
+			await api.createExclusion(Number(group.id), data);
 			showExclusionModal = false;
 			showFlash('Exclusion saved');
 			

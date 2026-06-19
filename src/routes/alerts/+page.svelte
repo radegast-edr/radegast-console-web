@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { askConfirm } from '$lib/confirm';
-	import { base } from '$app/paths';
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { api, type Log, type Device, type Group, type Team, type ExclusionCreate } from '$lib/api';
 	import { showError, showFlash, user } from '$lib/store';
-	import { initAgeWasm, getStoredPrivateKey, aesEncrypt, decrypt, encrypt } from '$lib/crypto';
+	import { initAgeWasm, getStoredPrivateKey, decrypt, encrypt } from '$lib/crypto';
 	import { LogManager } from '$lib/logManager.svelte';
-	import { isDeviceActive, formatFullDateTime, mapSeverityToNumber } from '$lib/utils';
+	import { formatFullDateTime, mapSeverityToNumber } from '$lib/utils';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
 	import AlertDetail from '$lib/components/AlertDetail.svelte';
 	import Modal from '$lib/components/Modal.svelte';
@@ -39,7 +38,6 @@
 	let privateKey = $state<string | null>(null);
 
 	let searchQuery = $state(initialQ || '');
-	let isFilterExpanded = $state(false);
 
 	let selectedLog = $state<Log | null>(null);
 	let resolution = $state<string>('none');
@@ -142,29 +140,8 @@
 		}
 	});
 
-	function syntaxHighlightJson(json: string): string {
-		if (!json) return '';
-		const escaped = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-		return escaped.replace(
-			/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
-			(match) => {
-				let cls = 'number';
-				if (match.startsWith('"')) {
-					if (match.endsWith(':')) cls = 'key';
-					else cls = 'string';
-				} else if (match === 'true' || match === 'false') cls = 'boolean';
-				else if (match === 'null') cls = 'null';
 
-				if (cls === 'key') return `<span style="color: #ff79c6; font-weight: bold;">${match}</span>`;
-				else if (cls === 'string') return `<span style="color: #f1fa8c;">${match}</span>`;
-				else if (cls === 'number') return `<span style="color: #bd93f9;">${match}</span>`;
-				else if (cls === 'boolean') return `<span style="color: #50fa7b; font-weight: bold;">${match}</span>`;
-				else return `<span style="color: #6272a4;">${match}</span>`;
-			}
-		);
-	}
-
-	let markedSeenIds = new Set<number>();
+	const markedSeenIds = new Set<number>();
 
 	async function selectLog(log: Log) {
 		selectedLog = log;
@@ -671,7 +648,6 @@
 					<AlertDetail
 						alert={alertData}
 						meta={alertObj.meta}
-						log={selectedLog}
 						triggeredRule={selectedLog.triggered_rule}
 						hasPackWritePermission={hasAnyPackWritePermission}
 						extendedEdrEnabled={$user?.extended_edr_enabled ?? false}

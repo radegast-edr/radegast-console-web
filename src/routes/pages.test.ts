@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
-import { readable, writable } from 'svelte/store';
+import { readable } from 'svelte/store';
 import { api } from '$lib/api';
 import { user } from '$lib/store';
 
 // Page imports
-import Dashboard from './+page.svelte';
 import Admin from './admin/+page.svelte';
 import Alerts from './alerts/+page.svelte';
 import Devices from './devices/+page.svelte';

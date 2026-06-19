@@ -616,7 +616,6 @@ describe('Alerts Page', () => {
 
 	describe('Exclusion creation with group and permission restrictions', () => {
 		it('allows creating exclusion only for groups the device belongs to and where user has write permission', async () => {
-			const { showError } = await import('$lib/store');
 			vi.mocked(api.listTeams).mockResolvedValue([
 				{ id: 10, name: 'Team A', permission_pack: 'write' }
 			] as any);

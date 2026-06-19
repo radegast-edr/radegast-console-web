@@ -1,8 +1,6 @@
 <script lang="ts">
-	import type { Log } from '$lib/api';
 
 	let {
-		log,
 		triggeredRule,
 		hasPackWritePermission = false,
 		extendedEdrEnabled = false,
@@ -11,7 +9,6 @@
 		onAiAnalysis,
 		onCreateExclusion
 	}: {
-		log: Log;
 		triggeredRule?: { rule_type: string; rule_id: string; rule_content: string } | null;
 		hasPackWritePermission?: boolean;
 		extendedEdrEnabled?: boolean;

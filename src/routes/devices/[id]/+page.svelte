@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { api, type DeviceDetail, type Group } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
 	import { isDeviceActive, formatFullDateTime } from '$lib/utils';
@@ -18,7 +18,7 @@
 	let editName = $state('');
 
 	$effect(() => {
-		loadDevice($page.params.id ?? '');
+		loadDevice(page.params.id ?? '');
 	});
 
 	async function loadDevice(id: string | number): Promise<void> {

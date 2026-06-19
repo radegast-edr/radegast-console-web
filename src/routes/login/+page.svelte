@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { api } from '$lib/api';
-	import { user, showError } from '$lib/store';
+	import { user } from '$lib/store';
 	import { goto } from '$app/navigation';
 	import { getPublicKeyForLogin } from '$lib/crypto';
 	import { page } from '$app/stores';

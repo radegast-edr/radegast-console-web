@@ -40,7 +40,7 @@
 						matchedPublicKey = key.public_key;
 						break;
 					}
-				} catch (e) {
+				} catch {
 					// continue
 				}
 			}
@@ -50,7 +50,7 @@
 			await storePrivateKey(userId, decryptedKey, matchedPublicKey);
 			success = true;
 			showFlash('Keys recovered successfully! Private key stored in browser.');
-		} catch (e) {
+		} catch {
 			showError('Recovery failed — check that you entered the correct recovery key.');
 		}
 	}

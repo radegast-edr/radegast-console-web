@@ -2,10 +2,8 @@
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import KeyIcon from '~icons/lucide/key';
-	import SendIcon from '~icons/lucide/send';
 	import DownloadIcon from '~icons/lucide/download';
 	import AlertTriangleIcon from '~icons/lucide/alert-triangle';
-	import CheckIcon from '~icons/lucide/check';
 	import {
 		api,
 		type NotificationSettings,
@@ -95,7 +93,7 @@
 		try {
 			const me = await api.me();
 			userId = me.id;
-		} catch (e) {
+		} catch {
 			// not logged in
 		}
 		await loadKeys();

@@ -76,7 +76,7 @@
 			}
 			const nameOrderA = getNameOrder(a.name);
 			const nameOrderB = getNameOrder(b.name);
-			if (nameOrderA != nameOrderB) {
+			if (nameOrderA !== nameOrderB) {
 				return nameOrderA - nameOrderB;
 			}
 
@@ -163,7 +163,7 @@
 			if (saved) {
 				try {
 					savedFilters = JSON.parse(saved) || {};
-				} catch (e) {
+				} catch {
 					savedFilters = {};
 				}
 			}
@@ -282,7 +282,7 @@
 
 	// Close dropdowns when URL changes (filters applied)
 	$effect(() => {
-		$page.url;
+		const _ = $page.url;
 		closeAllDropdowns();
 	});
 
@@ -341,7 +341,6 @@
 
 	// View Versions State
 	let showVersions = $state(false);
-	let versionsPackId = $state<number | null>(null);
 	let versionsPackName = $state('');
 	let packVersions = $state<PackVersion[]>([]);
 	let loadingVersions = $state(false);
@@ -429,7 +428,6 @@
 	}
 
 	async function openVersions(pack: Pack): Promise<void> {
-		versionsPackId = pack.id;
 		versionsPackName = pack.name;
 		packVersions = [];
 		loadingVersions = true;
@@ -521,7 +519,6 @@
 						</span>
 					</button>
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 					<div class="dropdown-menu w-100 pack-tags {showStatusDropdown ? 'show' : ''}" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
 						{#each allStatuses as status}
 							<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
@@ -555,7 +552,6 @@
 						</span>
 					</button>
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 					<div class="dropdown-menu w-100 pack-tags {showOSDropdown ? 'show' : ''}" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
 						{#each allOS as os}
 							<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
@@ -589,7 +585,6 @@
 						</span>
 					</button>
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 					<div class="dropdown-menu w-100 pack-tags {showFPDropdown ? 'show' : ''}" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
 						{#each allFPLevels as fp}
 							<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
@@ -623,7 +618,6 @@
 						</span>
 					</button>
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 					<div class="dropdown-menu w-100 pack-tags {showLevelDropdown ? 'show' : ''}" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
 						{#each allLevels as level}
 							<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">

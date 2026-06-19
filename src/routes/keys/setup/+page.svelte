@@ -3,7 +3,6 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
-	import { showError } from '$lib/store';
 	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt } from '$lib/crypto';
 	import Spinner from '$lib/components/Spinner.svelte';
 

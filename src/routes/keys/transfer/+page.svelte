@@ -6,11 +6,9 @@
 	import { showFlash, showError } from '$lib/store';
 	import { initAgeWasm, generateKeypair, encrypt, decrypt, getStoredPrivateKey, storePrivateKey, aesEncrypt } from '$lib/crypto';
 	import AlertTriangleIcon from '~icons/lucide/alert-triangle';
-	import CheckIcon from '~icons/lucide/check';
 	import Spinner from '$lib/components/Spinner.svelte';
 
 	let wasmReady = $state(false);
-	let hasKey = $state(false);
 	let hasKeysOnServer = $state<boolean | null>(null); // null = unknown
 	let userId = $state<number | null>(null);
 
@@ -47,7 +45,6 @@
 			} catch {
 				hasKeysOnServer = false;
 			}
-			hasKey = userId !== null ? !!(await getStoredPrivateKey(userId)) : false;
 		};
 		loadData();
 		return () => { if (pollInterval !== undefined) clearInterval(pollInterval); };
@@ -94,7 +91,7 @@
 								matchedPubKey = key.public_key;
 								break;
 							}
-						} catch (e) {
+						} catch {
 							// ignore and continue
 						}
 					}

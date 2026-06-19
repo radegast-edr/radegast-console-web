@@ -101,7 +101,7 @@ export function getInterpolatedRoute<OpId extends keyof operations>(
 	return { path: interpolatedPath, method };
 }
 
-type OpResponse<OpId extends keyof operations, Options = {}> = FetchResponse<
+type OpResponse<OpId extends keyof operations, Options = Record<string, never>> = FetchResponse<
 	operations[OpId],
 	Options,
 	"application/json"

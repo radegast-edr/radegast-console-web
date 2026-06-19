@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { api, type Group, type Team, type ExclusionCreate } from '$lib/api';
 	import { showError, showFlash } from '$lib/store';
 	import { initAgeWasm, getStoredPrivateKey } from '$lib/crypto';

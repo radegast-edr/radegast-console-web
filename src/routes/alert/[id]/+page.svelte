@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import Spinner from '$lib/components/Spinner.svelte';
 
 	onMount(async () => {
-		const idStr = $page.params.id;
+		const idStr = page.params.id;
 		if (!idStr) {
 			goto(`${base}/alerts`);
 			return;

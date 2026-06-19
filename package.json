@@ -8,9 +8,12 @@
     "build": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "generate": "openapi-typescript src/lib/openapi.json -o src/lib/openapi.d.ts"
+    "generate": "openapi-typescript src/lib/openapi.json -o src/lib/openapi.d.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@iconify-json/boxicons": "^1.2.0",
     "@iconify-json/lucide": "^1.2.111",
     "@iconify-json/material-symbols": "^1.2.76",
@@ -21,12 +24,16 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/svelte": "^5.3.1",
     "@types/node": "^25.9.1",
+    "eslint": "^10.5.0",
+    "eslint-plugin-svelte": "^3.19.0",
+    "globals": "^17.6.0",
     "jsdom": "^29.1.1",
     "openapi-typescript": "^7.13.0",
     "svelte": "^5.0.0",
     "svelte-check": "^4.5.0",
     "tslib": "^2.8.1",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1",
     "unplugin-icons": "^23.0.1",
     "vite": "^6.0.0",
     "vitest": "^4.1.8"

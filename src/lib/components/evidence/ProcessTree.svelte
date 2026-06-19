@@ -28,7 +28,7 @@
 			<div class="text-body-secondary">{parentCommandLine ?? parentExecutable ?? ''}</div>
 			<div>
 				<span style="color: var(--bs-primary);">└─▶</span>
-				{' '}{processName ?? 'unknown'}{processPid !== undefined ? ` (PID ${processPid})` : ''}
+				 {processName ?? 'unknown'}{processPid !== undefined ? ` (PID ${processPid})` : ''}
 			</div>
 			<div class="text-body-secondary ps-4">{processExecutable ?? ''}</div>
 		{:else}

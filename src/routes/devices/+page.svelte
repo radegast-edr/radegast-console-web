@@ -2,7 +2,7 @@
 	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { api, type Device, type Team, type Group } from '$lib/api';
+	import { api, type Device } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 	import { isDeviceActive, formatFullDateTime } from '$lib/utils';

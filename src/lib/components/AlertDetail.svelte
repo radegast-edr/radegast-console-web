@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { Log } from '$lib/api';
 	import { getPrimaryCategory } from '$lib/alertHelpers';
 	import AlertHeader from '$lib/components/AlertHeader.svelte';
 	import RuleDescription from '$lib/components/RuleDescription.svelte';
@@ -25,7 +24,6 @@
 	let {
 		alert,
 		meta,
-		log,
 		triggeredRule = null,
 		hasPackWritePermission = false,
 		extendedEdrEnabled = false,
@@ -41,7 +39,6 @@
 	}: {
 		alert: Record<string, unknown>;
 		meta: AlertMeta;
-		log: Log;
 		triggeredRule?: { rule_type: string; rule_id: string; rule_content: string } | null;
 		hasPackWritePermission?: boolean;
 		extendedEdrEnabled?: boolean;
@@ -86,7 +83,6 @@
 
 	<!-- ⑤ Actions Bar -->
 	<AlertActions
-		{log}
 		{triggeredRule}
 		{hasPackWritePermission}
 		{extendedEdrEnabled}

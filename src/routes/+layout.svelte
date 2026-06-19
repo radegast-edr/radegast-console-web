@@ -12,7 +12,7 @@
 	import { api, type UserInfo } from '$lib/api';
 	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt, getStoredPrivateKey, getStoredPublicKey } from '$lib/crypto';
 
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import BoxiconsNoEntry from '~icons/boxicons/no-entry';
 	import MaterialSymbolsKey from '~icons/material-symbols/key';
 	import Spinner from '$lib/components/Spinner.svelte';
@@ -21,7 +21,7 @@
 
 	$effect(() => {
 		const currentUser = $user;
-		const path = $page.url.pathname;
+		const path = page.url.pathname;
 		const relativePath = path.startsWith(base) ? path.slice(base.length) : path;
 		const isBannerPage = relativePath === '/' || relativePath === '' || relativePath === '/alerts' || relativePath === '/hunt';
 
@@ -58,7 +58,7 @@
 	let confirmed = $state(false);
 
 	onMount(async () => {
-		const path = $page.url.pathname;
+		const path = page.url.pathname;
 		const relativePath = path.startsWith(base) ? path.slice(base.length) : path;
 
 		if (PUBLIC_PREFIXES.some((p) => relativePath.startsWith(p))) return;
@@ -68,14 +68,14 @@
 			$user = me;
 		} catch {
 			const nextPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
-			const search = $page.url.search;
+			const search = page.url.search;
 			const target = encodeURIComponent(`${nextPath}${search}`);
 			goto(`${base}/login?next=${target}`);
 		}
 	});
 
 	$effect(() => {
-		const path = $page.url.pathname;
+		const path = page.url.pathname;
 		const relativePath = path.startsWith(base) ? path.slice(base.length) : path;
 		if (PUBLIC_PREFIXES.some((p) => relativePath.startsWith(p))) return;
 

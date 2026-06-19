@@ -60,7 +60,6 @@
 
 <div class="card border-0 shadow-sm bg-body-tertiary mb-3">
 	<div class="card-body">
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="d-flex justify-content-between align-items-center"
 			style="cursor: pointer;"
@@ -78,7 +77,6 @@
 			<h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
 				<Icon icon={expanded ? 'lucide:chevron-down' : 'lucide:chevron-right'} /> Raw Telemetry
 			</h6>
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<button
 				class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"
 				onclick={(e) => {

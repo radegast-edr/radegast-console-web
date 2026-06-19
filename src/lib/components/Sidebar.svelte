@@ -3,8 +3,8 @@
 	import { user, flash } from '$lib/store';
 	import { api } from '$lib/api';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { theme, type ThemeType } from '$lib/theme';
+	import { page } from '$app/state';
+	import { theme } from '$lib/theme';
 	import { fly } from 'svelte/transition';
 
 	// Icon components compiled statically at build-time via unplugin-icons
@@ -42,11 +42,11 @@
 
 	$effect(() => {
 		// Just to react to pathname changes for active state
-		$page.url.pathname;
+		const _ = page.url.pathname;
 	});
 
 	function isActive(path: string) {
-		const current = $page.url.pathname;
+		const current = page.url.pathname;
 		if (path === '/' && current === base + '/') return true;
 		if (path !== '/' && current.startsWith(base + path)) return true;
 		return false;
@@ -72,7 +72,7 @@
 
 	$effect(() => {
 		// Close mobile menu on navigation
-		$page.url.pathname;
+		const _ = page.url.pathname;
 		mobileOpen = false;
 	});
 
@@ -241,7 +241,7 @@
 					</button>
 				</li>
 				<li><hr class="dropdown-divider"></li>
-				<li><button class="dropdown-item text-danger" onclick={(e) => { closeDropdown(); logout(); }}>Sign out</button></li>
+				<li><button class="dropdown-item text-danger" onclick={() => { closeDropdown(); logout(); }}>Sign out</button></li>
 			</ul>
 		</div>
 	</div>
