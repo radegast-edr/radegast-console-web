@@ -58,6 +58,7 @@
 	let selectedGroupId = $state<number | null>(null);
 	let userTeamsForPermission = $state<Team[]>([]);
 	let currentAlertObj = $state<Record<string, unknown> | null>(null);
+	let editingExclusion = $state<any>(null);
 
 	let hasAnyPackWritePermission = $derived(
 		!!$user &&
@@ -350,14 +351,33 @@
 			}
 		}
 
-		exclusionName = `Exclude ${ruleName || 'alert'}`;
-		exclusionQuery = suggestedQuery;
-		exclusionDescription = `Created from alert on ${new Date(selectedLog.time).toLocaleString()}`;
+		let existingExclusion = null;
+		const excludedBy = selectedLog.excluded_by;
+		if (excludedBy) {
+			try {
+				existingExclusion = await api.getExclusion(excludedBy.id);
+			} catch (e) {
+				console.error('Failed to load existing exclusion:', e);
+			}
+		}
 
-		if (userGroups.length > 0) {
-			selectedGroupId = userGroups[0].id;
+		if (existingExclusion && excludedBy) {
+			exclusionName = existingExclusion.name;
+			exclusionQuery = existingExclusion.jsonata_query;
+			exclusionDescription = existingExclusion.description || '';
+			exclusionType = (existingExclusion.exclusion_type as 'hard' | 'soft') || 'hard';
+			selectedGroupId = excludedBy.group.id;
+			editingExclusion = existingExclusion;
 		} else {
-			selectedGroupId = null;
+			editingExclusion = null;
+			exclusionName = `Exclude ${ruleName || 'alert'}`;
+			exclusionQuery = suggestedQuery;
+			exclusionDescription = `Created from alert on ${new Date(selectedLog.time).toLocaleString()}`;
+			if (userGroups.length > 0) {
+				selectedGroupId = userGroups[0].id;
+			} else {
+				selectedGroupId = null;
+			}
 		}
 
 		showExclusionModal = true;
@@ -378,17 +398,32 @@
 				exclusion_type: exclusionType
 			};
 
-			await api.createExclusion(selectedGroupId, data);
+			if (editingExclusion) {
+				await api.deleteExclusion(editingExclusion.id);
+			}
+			const newExclusion = await api.createExclusion(selectedGroupId, data);
 			showExclusionModal = false;
-			showFlash('Exclusion created from alert');
+			showFlash(editingExclusion ? 'Exclusion updated' : 'Exclusion created from alert');
+
+			if (selectedLog) {
+				const groupObj = userGroups.find((g) => g.id === selectedGroupId);
+				selectedLog.excluded_by = {
+					id: newExclusion.id,
+					group: {
+						id: selectedGroupId,
+						name: groupObj ? groupObj.name : 'Group'
+					}
+				};
+			}
 
 			exclusionName = '';
 			exclusionQuery = '';
 			exclusionDescription = '';
 			exclusionType = 'hard';
 			selectedGroupId = null;
+			editingExclusion = null;
 		} catch (e) {
-			showError('Failed to create exclusion: ' + (e as Error).message);
+			showError('Failed to save exclusion: ' + (e as Error).message);
 		}
 	}
 
@@ -707,10 +742,11 @@
 			bind:description={exclusionDescription}
 			bind:exclusionType={exclusionType}
 			bind:selectedGroupId={selectedGroupId}
-			title="Create Exclusion from Alert"
+			title={editingExclusion ? 'Edit Exclusion' : 'Create Exclusion from Alert'}
+			isEditMode={!!editingExclusion}
 			groups={userGroups}
 			alertObj={currentAlertObj}
-			onClose={() => { showExclusionModal = false; }}
+			onClose={() => { showExclusionModal = false; editingExclusion = null; }}
 			onSave={saveExclusionFromAlert}
 		/>
 	{/if}

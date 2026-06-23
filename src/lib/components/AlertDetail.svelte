@@ -91,6 +91,7 @@
 		{onViewRule}
 		{onAiAnalysis}
 		{onCreateExclusion}
+		isExcluded={!!meta.excluded_by}
 	/>
 
 	<!-- ⑥ Triage Section (Extended EDR only) -->
@@ -143,9 +144,9 @@
 						<button
 							class="btn btn-sm btn-outline-secondary"
 							onclick={onCreateExclusion}
-							title="Create exclusion from this alert"
+							title={meta.excluded_by ? "Edit exclusion for this alert" : "Create exclusion from this alert"}
 						>
-							Create Exclusion
+							{meta.excluded_by ? "Edit Exclusion" : "Create Exclusion"}
 						</button>
 					</div>
 				{/if}

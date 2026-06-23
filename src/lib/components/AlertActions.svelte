@@ -7,7 +7,8 @@
 		resolution = 'none',
 		onViewRule,
 		onAiAnalysis,
-		onCreateExclusion
+		onCreateExclusion,
+		isExcluded = false
 	}: {
 		triggeredRule?: { rule_type: string; rule_id: string; rule_content: string } | null;
 		hasPackWritePermission?: boolean;
@@ -16,6 +17,7 @@
 		onViewRule?: () => void;
 		onAiAnalysis?: () => void;
 		onCreateExclusion?: () => void;
+		isExcluded?: boolean;
 	} = $props();
 </script>
 
@@ -49,9 +51,9 @@
 					<button
 						class="btn btn-sm btn-outline-secondary"
 						onclick={onCreateExclusion}
-						title="Create exclusion from this alert"
+						title={isExcluded ? "Edit exclusion for this alert" : "Create exclusion from this alert"}
 					>
-						Create Exclusion
+						{isExcluded ? "Edit Exclusion" : "Create Exclusion"}
 					</button>
 				{/if}
 			{/if}

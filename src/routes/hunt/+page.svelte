@@ -50,6 +50,7 @@
 	let userGroups = $state<Group[]>([]);
 	let selectedLog = $state<any | null>(null);
 	let currentAlertObj = $state<Record<string, unknown> | null>(null);
+	let editingExclusion = $state<any>(null);
 
 	onMount(async () => {
 		try {
@@ -139,14 +140,32 @@
 			}
 		}
 
-		exclusionName = `Exclude ${ruleName || 'alert'}`;
-		exclusionQuery = suggestedQuery;
-		exclusionDescription = `Created from alert on ${new Date(log.time).toLocaleString()}`;
+		let existingExclusion = null;
+		if (alertObj.meta.excluded_by) {
+			try {
+				existingExclusion = await api.getExclusion(alertObj.meta.excluded_by.id);
+			} catch (e) {
+				console.error('Failed to load existing exclusion:', e);
+			}
+		}
 
-		if (exclusionGroups.length > 0) {
-			selectedGroupId = exclusionGroups[0].id;
+		if (existingExclusion) {
+			exclusionName = existingExclusion.name;
+			exclusionQuery = existingExclusion.jsonata_query;
+			exclusionDescription = existingExclusion.description || '';
+			exclusionType = (existingExclusion.exclusion_type as 'hard' | 'soft') || 'hard';
+			selectedGroupId = alertObj.meta.excluded_by.group.id;
+			editingExclusion = existingExclusion;
 		} else {
-			selectedGroupId = null;
+			editingExclusion = null;
+			exclusionName = `Exclude ${ruleName || 'alert'}`;
+			exclusionQuery = suggestedQuery;
+			exclusionDescription = `Created from alert on ${new Date(log.time).toLocaleString()}`;
+			if (exclusionGroups.length > 0) {
+				selectedGroupId = exclusionGroups[0].id;
+			} else {
+				selectedGroupId = null;
+			}
 		}
 
 		showExclusionModal = true;
@@ -167,9 +186,25 @@
 				exclusion_type: exclusionType
 			};
 
-			await api.createExclusion(selectedGroupId, data);
+			if (editingExclusion) {
+				await api.deleteExclusion(editingExclusion.id);
+			}
+			const newExclusion = await api.createExclusion(selectedGroupId, data);
 			showExclusionModal = false;
-			showFlash('Exclusion created from alert');
+			showFlash(editingExclusion ? 'Exclusion updated' : 'Exclusion created from alert');
+
+			if (selectedLog && logManager) {
+				const groupObj = exclusionGroups.find((g) => g.id === selectedGroupId);
+				selectedLog.excluded_by = {
+					id: newExclusion.id,
+					group: {
+						id: selectedGroupId,
+						name: groupObj ? groupObj.name : 'Group'
+					}
+				};
+				// Trigger Svelte reactivity on logs list
+				logManager.logs = [...logManager.logs];
+			}
 
 			exclusionName = '';
 			exclusionQuery = '';
@@ -177,8 +212,9 @@
 			exclusionType = 'hard';
 			selectedLog = null;
 			currentAlertObj = null;
+			editingExclusion = null;
 		} catch (e) {
-			showError('Failed to create exclusion: ' + (e as Error).message);
+			showError('Failed to save exclusion: ' + (e as Error).message);
 		}
 	}
 
@@ -314,7 +350,11 @@
 							<span class="text-info fw-bold">{new Date(log.time).toLocaleString()}</span>
 							<span class="text-warning fw-bold">
 								Device ID: {log.device_id} | Device: {alertObj.meta.device}
-								<button class="btn btn-link btn-sm text-danger p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem;" onclick={() => startExclusionFromHunt(log, alertObj)}>[exclude]</button>
+								{#if alertObj.meta.excluded_by}
+									<button class="btn btn-link btn-sm text-info p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem;" onclick={() => startExclusionFromHunt(log, alertObj)}>[show exclusion]</button>
+								{:else}
+									<button class="btn btn-link btn-sm text-danger p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem;" onclick={() => startExclusionFromHunt(log, alertObj)}>[exclude]</button>
+								{/if}
 							</span>
 						</div>
 						<pre class="m-0" style="white-space: pre-wrap; word-break: break-all;">{@html syntaxHighlightJson(JSON.stringify(alertObj, null, 2))}</pre>
@@ -336,12 +376,12 @@
 		bind:query={exclusionQuery}
 		bind:description={exclusionDescription}
 		bind:exclusionType={exclusionType}
-		title="Create Exclusion"
-		isEditMode={false}
+		title={editingExclusion ? 'Edit Exclusion' : 'Create Exclusion'}
+		isEditMode={!!editingExclusion}
 		groups={exclusionGroups}
 		bind:selectedGroupId={selectedGroupId}
 		alertObj={currentAlertObj}
-		onClose={() => (showExclusionModal = false)}
+		onClose={() => { showExclusionModal = false; editingExclusion = null; }}
 		onSave={saveExclusionFromHunt}
 	/>
 {:else}
