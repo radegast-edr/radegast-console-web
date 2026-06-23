@@ -778,6 +778,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/devices/encryption-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set Encryption Key */
+        post: operations["set_encryption_key_api_v1_devices_encryption_key_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/devices/{device_id}/reinstall": {
         parameters: {
             query?: never;
@@ -1926,6 +1943,8 @@ export interface components {
             name: string;
             /** Signature Public Key */
             signature_public_key: string | null;
+            /** Encryption Public Key */
+            encryption_public_key?: string | null;
             /** Last Seen */
             last_seen?: string | null;
             /** Agent Version */
@@ -1980,6 +1999,8 @@ export interface components {
             name: string;
             /** Signature Public Key */
             signature_public_key: string | null;
+            /** Encryption Public Key */
+            encryption_public_key?: string | null;
             /** Last Seen */
             last_seen?: string | null;
             /** Agent Version */
@@ -1988,6 +2009,11 @@ export interface components {
             rustinel_version?: string | null;
             /** Os */
             os?: string | null;
+        };
+        /** DeviceSetEncryptionKey */
+        DeviceSetEncryptionKey: {
+            /** Encryption Public Key */
+            encryption_public_key: string;
         };
         /** DeviceSetSigningKey */
         DeviceSetSigningKey: {
@@ -4201,6 +4227,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DeviceSetSigningKey"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_encryption_key_api_v1_devices_encryption_key_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceSetEncryptionKey"];
             };
         };
         responses: {
