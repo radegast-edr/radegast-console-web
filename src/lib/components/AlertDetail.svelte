@@ -19,6 +19,7 @@
 		last_seen?: string;
 		severity?: string;
 		severity_number?: number;
+		excluded_by?: { id: number; group: { id: number; name: string } } | null;
 	}
 
 	let {

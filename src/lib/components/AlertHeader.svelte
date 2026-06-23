@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import Icon from '@iconify/svelte';
 	import {
 		getSeverityClass,
@@ -20,6 +21,7 @@
 			last_seen?: string;
 			severity?: string;
 			severity_number?: number;
+			excluded_by?: { id: number; group: { id: number; name: string } } | null;
 		};
 	}>();
 
@@ -50,6 +52,14 @@
 				<span class="text-body-secondary small d-flex align-items-center gap-1">
 					<Icon icon="lucide:calendar" /> {formatAlertTimestamp(timestamp)}
 				</span>
+				{#if meta.excluded_by}
+					<a
+						href="{base}/groups/{meta.excluded_by.group.id}"
+						class="badge bg-info text-white text-decoration-none"
+					>
+						Excluded
+					</a>
+				{/if}
 			</div>
 		</div>
 

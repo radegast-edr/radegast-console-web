@@ -43,6 +43,7 @@
 	let exclusionName = $state('');
 	let exclusionQuery = $state('');
 	let exclusionDescription = $state('');
+	let exclusionType = $state<'hard' | 'soft'>('hard');
 	let exclusionGroups = $state<Group[]>([]);
 	let selectedGroupId = $state<number | null>(null);
 	let userTeamsForPermission = $state<Team[]>([]);
@@ -162,7 +163,8 @@
 				name: exclusionName.trim(),
 				jsonata_query: exclusionQuery.trim(),
 				description: exclusionDescription.trim() || null,
-				alert_id: selectedLog ? selectedLog.id : null
+				alert_id: selectedLog ? selectedLog.id : null,
+				exclusion_type: exclusionType
 			};
 
 			await api.createExclusion(selectedGroupId, data);
@@ -172,6 +174,7 @@
 			exclusionName = '';
 			exclusionQuery = '';
 			exclusionDescription = '';
+			exclusionType = 'hard';
 			selectedLog = null;
 			currentAlertObj = null;
 		} catch (e) {
@@ -332,6 +335,7 @@
 		bind:name={exclusionName}
 		bind:query={exclusionQuery}
 		bind:description={exclusionDescription}
+		bind:exclusionType={exclusionType}
 		title="Create Exclusion"
 		isEditMode={false}
 		groups={exclusionGroups}

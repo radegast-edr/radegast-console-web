@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { askConfirm } from '$lib/confirm';
 	import { onMount } from 'svelte';
 	import { api, type Log, type Device, type Group, type Team, type ExclusionCreate } from '$lib/api';
@@ -52,6 +53,7 @@
 	let exclusionName = $state('');
 	let exclusionQuery = $state('');
 	let exclusionDescription = $state('');
+	let exclusionType = $state<'hard' | 'soft'>('hard');
 	let userGroups = $state<Group[]>([]);
 	let selectedGroupId = $state<number | null>(null);
 	let userTeamsForPermission = $state<Team[]>([]);
@@ -372,7 +374,8 @@
 				name: exclusionName.trim(),
 				jsonata_query: exclusionQuery.trim(),
 				description: exclusionDescription.trim() || null,
-				alert_id: selectedLog ? selectedLog.id : null
+				alert_id: selectedLog ? selectedLog.id : null,
+				exclusion_type: exclusionType
 			};
 
 			await api.createExclusion(selectedGroupId, data);
@@ -382,6 +385,7 @@
 			exclusionName = '';
 			exclusionQuery = '';
 			exclusionDescription = '';
+			exclusionType = 'hard';
 			selectedGroupId = null;
 		} catch (e) {
 			showError('Failed to create exclusion: ' + (e as Error).message);
@@ -596,6 +600,15 @@
 							<div class="d-flex justify-content-between align-items-center small">
 								<span class="opacity-75">{alertObj.meta.device}</span>
 								<div class="d-flex gap-1 align-items-center">
+									{#if alertObj.meta.excluded_by}
+										<a
+											href="{base}/groups/{alertObj.meta.excluded_by.group.id}"
+											class="badge bg-info text-white text-decoration-none"
+											onclick={(e) => e.stopPropagation()}
+										>
+											Excluded
+										</a>
+									{/if}
 									{#if log.alert_resolution && log.alert_resolution !== 'none'}
 										{@const res = log.alert_resolution}
 										<span class="badge {res === 'true_positive' ? 'bg-danger' : (res === 'false_positive' ? 'bg-success' : 'bg-secondary')}">
@@ -692,6 +705,7 @@
 			bind:name={exclusionName}
 			bind:query={exclusionQuery}
 			bind:description={exclusionDescription}
+			bind:exclusionType={exclusionType}
 			bind:selectedGroupId={selectedGroupId}
 			title="Create Exclusion from Alert"
 			groups={userGroups}

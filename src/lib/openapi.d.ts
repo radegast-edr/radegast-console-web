@@ -2004,6 +2004,19 @@ export interface components {
             description?: string | null;
             /** Alert Id */
             alert_id?: number | null;
+            /**
+             * Exclusion Type
+             * @default hard
+             * @enum {string}
+             */
+            exclusion_type: "hard" | "soft";
+        };
+        /** ExclusionGroupResponse */
+        ExclusionGroupResponse: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
         };
         /** ExclusionListResponse */
         ExclusionListResponse: {
@@ -2024,6 +2037,17 @@ export interface components {
             created_at: string;
             /** Alert Id */
             alert_id?: number | null;
+            /**
+             * Exclusion Type
+             * @default hard
+             */
+            exclusion_type: string;
+        };
+        /** ExclusionRefResponse */
+        ExclusionRefResponse: {
+            /** Id */
+            id: number;
+            group: components["schemas"]["ExclusionGroupResponse"];
         };
         /** ExclusionResponse */
         ExclusionResponse: {
@@ -2044,6 +2068,12 @@ export interface components {
             created_at: string;
             /** Alert Id */
             alert_id?: number | null;
+            /**
+             * Exclusion Type
+             * @default hard
+             * @enum {string}
+             */
+            exclusion_type: "hard" | "soft";
         };
         /** ExtendedEdrSettings */
         ExtendedEdrSettings: {
@@ -2140,6 +2170,8 @@ export interface components {
             rule_id?: string | null;
             /** Rule Type */
             rule_type?: string | null;
+            /** Excluded By */
+            excluded_by?: number | null;
         };
         /** LogResolveRequest */
         LogResolveRequest: {
@@ -2178,6 +2210,7 @@ export interface components {
             /** Rule Type */
             rule_type?: string | null;
             triggered_rule?: components["schemas"]["TriggeredRuleResponse"] | null;
+            excluded_by?: components["schemas"]["ExclusionRefResponse"] | null;
         };
         /**
          * LogSeverity

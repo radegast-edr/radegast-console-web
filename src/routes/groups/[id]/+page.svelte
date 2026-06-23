@@ -20,6 +20,7 @@
 	let exclusionName = $state('');
 	let exclusionQuery = $state('');
 	let exclusionDescription = $state('');
+	let exclusionType = $state<'hard' | 'soft'>('hard');
 	let editingExclusion = $state<Exclusion | null>(null);
 
 	// User teams and Pack Write Permissions
@@ -210,10 +211,12 @@
 			exclusionName = exclusion.name;
 			exclusionQuery = exclusion.jsonata_query;
 			exclusionDescription = exclusion.description || '';
+			exclusionType = (exclusion.exclusion_type as 'hard' | 'soft') || 'hard';
 		} else {
 			exclusionName = '';
 			exclusionQuery = '';
 			exclusionDescription = '';
+			exclusionType = 'hard';
 		}
 		showExclusionModal = true;
 	}
@@ -228,7 +231,8 @@
 				name: exclusionName.trim(),
 				jsonata_query: exclusionQuery.trim(),
 				description: exclusionDescription.trim() || null,
-				alert_id: editingExclusion ? editingExclusion.alert_id : null
+				alert_id: editingExclusion ? editingExclusion.alert_id : null,
+				exclusion_type: exclusionType
 			};
 			
 			if (editingExclusion) {
@@ -248,6 +252,7 @@
 			exclusionName = '';
 			exclusionQuery = '';
 			exclusionDescription = '';
+			exclusionType = 'hard';
 			editingExclusion = null;
 		} catch (e) {
 			showError((e as Error).message);
@@ -411,6 +416,7 @@
 					<thead>
 						<tr>
 							<th>Name</th>
+							<th>Type</th>
 							<th>JSONata Query</th>
 							<th>Description</th>
 							<th>Source Alert</th>
@@ -423,6 +429,13 @@
 						{#each group.exclusions as exclusion}
 							<tr>
 								<td><strong>{exclusion.name}</strong></td>
+								<td>
+									{#if exclusion.exclusion_type === 'soft'}
+										<span class="badge bg-info text-dark">Soft</span>
+									{:else}
+										<span class="badge bg-secondary">Hard</span>
+									{/if}
+								</td>
 								<td><code class="small">{exclusion.jsonata_query}</code></td>
 								<td>{exclusion.description || '-'}</td>
 								<td>
@@ -509,6 +522,7 @@
 		bind:name={exclusionName}
 		bind:query={exclusionQuery}
 		bind:description={exclusionDescription}
+		bind:exclusionType={exclusionType}
 		title={editingExclusion ? 'Edit Exclusion' : 'Create Exclusion'}
 		isEditMode={!!editingExclusion}
 		onClose={() => { showExclusionModal = false; editingExclusion = null; }}

@@ -77,6 +77,7 @@ export class LogManager {
 		if (last_seen !== undefined) meta.last_seen = last_seen;
 		if (severityVal !== null && severityVal !== undefined) meta.severity = severityVal;
 		if (severity_number !== undefined) meta.severity_number = severity_number;
+		if (log.excluded_by) meta.excluded_by = log.excluded_by;
 
 		if (!decState) {
 			let alertVal = 'encrypted alert';
@@ -94,6 +95,7 @@ export class LogManager {
 			};
 			if (severityVal !== null && severityVal !== undefined) failedMeta.severity = severityVal;
 			if (severity_number !== undefined) failedMeta.severity_number = severity_number;
+			if (log.excluded_by) failedMeta.excluded_by = log.excluded_by;
 			return { meta: failedMeta, alert: `decrpytion failed: ${decState.error}` };
 		}
 	}

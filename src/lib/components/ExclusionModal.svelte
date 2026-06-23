@@ -2,6 +2,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import jsonata from 'jsonata';
 	import type { Group } from '$lib/api';
+	import { user } from '$lib/store';
 
 	let {
 		show = $bindable(false),
@@ -9,6 +10,7 @@
 		name = $bindable(''),
 		query = $bindable(''),
 		description = $bindable(''),
+		exclusionType = $bindable<'hard' | 'soft'>('hard'),
 		selectedGroupId = $bindable<number | null>(null),
 		groups = [],
 		alertObj = null,
@@ -21,6 +23,7 @@
 		name: string;
 		query: string;
 		description: string;
+		exclusionType?: 'hard' | 'soft';
 		selectedGroupId?: number | null;
 		groups?: Group[];
 		alertObj?: Record<string, unknown> | null;
@@ -128,6 +131,23 @@
 				<code>`rule.name`='Test Rule'</code>
 			</small>
 		</div>
+
+		{#if $user?.extended_edr_enabled}
+			<div class="mb-3">
+				<label for="exclusionTypeSelect" class="form-label">Exclusion Type</label>
+				<select class="form-select" id="exclusionTypeSelect" bind:value={exclusionType}>
+					<option value="hard">Hard Exclusion</option>
+					<option value="soft">Soft Exclusion</option>
+				</select>
+				<div class="form-text mt-1 small text-body-secondary">
+					{#if exclusionType === 'hard'}
+						Alert is completely filtered out on the agent and never sent to console.
+					{:else if exclusionType === 'soft'}
+						Alert is still sent, but overridden to informational severity.
+					{/if}
+				</div>
+			</div>
+		{/if}
 
 		<div class="mb-3">
 			<label for="exclusionDescription" class="form-label">Description</label>
