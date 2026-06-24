@@ -156,6 +156,12 @@ export const api = {
 	register: (email: string, password: string, turnstile_token: string | null = null) =>
 		call(callOp('register_api_v1_auth_register_post', { body: { email, password, turnstile_token } })),
 
+	requestPasswordReset: (email: string, turnstile_token: string | null = null) =>
+		call(callOp('request_password_reset_api_v1_auth_password_reset_request_post', { body: { email, turnstile_token } })),
+
+	confirmPasswordReset: (token: string) =>
+		call(callOp('confirm_password_reset_api_v1_auth_password_reset_confirm_post', { body: { token } })),
+
 	login: (email: string, password: string, public_key: string | null = null) =>
 		call(callOp('login_api_v1_auth_login_post', { body: { email, password, public_key } })),
 

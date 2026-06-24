@@ -28,6 +28,7 @@ import TeamDetail from './teams/[id]/+page.svelte';
 import Terms from './terms/+page.svelte';
 import Unsubscribe from './unsubscribe/+page.svelte';
 import Verify from './verify/+page.svelte';
+import ResetPassword from './reset-password/+page.svelte';
 
 // Mock SvelteKit stores & navigation
 vi.mock('$app/paths', () => ({
@@ -130,6 +131,8 @@ vi.mock('$lib/api', () => ({
 		uploadRelease: vi.fn(),
 		deleteRelease: vi.fn(),
 		getAuthConfig: vi.fn(),
+		requestPasswordReset: vi.fn(),
+		confirmPasswordReset: vi.fn(),
 		adminListUsers: vi.fn(),
 		adminDeleteUser: vi.fn(),
 		adminResetUserPassword: vi.fn(),
@@ -201,6 +204,8 @@ describe('Route Pages Load Verification', () => {
 		vi.mocked(api.listVersions).mockResolvedValue([{ id: 1, pack_id: 1, version: '1.0.0', released: '2026-06-04T05:00:00Z' }] as any);
 		vi.mocked(api.listEnabledPacks).mockResolvedValue([{ id: 1, pack_version_id: 1, autoupdate: true, pack_name: 'Pack A' }] as any);
 		vi.mocked(api.verifyEmail).mockResolvedValue({ message: 'Verified' } as any);
+		vi.mocked(api.requestPasswordReset).mockResolvedValue({ message: 'Sent' } as any);
+		vi.mocked(api.confirmPasswordReset).mockResolvedValue({ message: 'Reset' } as any);
 		vi.mocked(api.listMembers).mockResolvedValue([{ id: 1, email: 'admin@example.com', role: 'admin' }] as any);
 		vi.mocked(api.listTeamGroups).mockResolvedValue([{ id: 1, name: 'Group A' }] as any);
 		vi.mocked(api.setupKeys).mockResolvedValue({} as any);
@@ -526,6 +531,13 @@ describe('Route Pages Load Verification', () => {
 		render(Verify);
 		await waitFor(() => {
 			expect(screen.getByText('Email Verified')).toBeInTheDocument();
+		});
+	});
+
+	it('renders ResetPassword page', async () => {
+		render(ResetPassword);
+		await waitFor(() => {
+			expect(screen.getByText('Reset Password')).toBeInTheDocument();
 		});
 	});
 });

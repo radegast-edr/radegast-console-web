@@ -161,6 +161,9 @@
 			<p class="mt-3 text-center">
 				Don't have an account? <a href="{base}/register">Register</a>
 			</p>
+			<p class="mt-2 text-center small">
+				<a href="{base}/reset-password" class="text-secondary">Forgot password?</a>
+			</p>
 		{:else if step === 'mfa'}
 			<div class="card p-3 shadow-sm border-0 bg-light">
 				<h5 class="fw-bold text-center mb-3">🔒 MFA Verification</h5>
