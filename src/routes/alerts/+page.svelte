@@ -44,6 +44,7 @@
 	let resolution = $state<string>('none');
 	let triageNote = $state<string>('');
 	let savingResolution = $state(false);
+	let selectedDeviceDetails = $state<any>(null);
 
 	let fromTime = $state<string | null>(initialFrom || (hasHashParams ? null : getDefaultFromTime()));
 	let toTime = $state<string | null>(initialTo || (hasHashParams ? null : getDefaultToTime()));
@@ -149,6 +150,17 @@
 	async function selectLog(log: Log) {
 		selectedLog = log;
 		resolution = log.alert_resolution || 'none';
+		selectedDeviceDetails = null;
+		const devicePromise = api.getDevice(log.device_id);
+		if (devicePromise && typeof devicePromise.then === 'function') {
+			devicePromise.then(details => {
+				if (selectedLog?.id === log.id) {
+					selectedDeviceDetails = details;
+				}
+			}).catch(e => {
+				console.error("Failed to load device details for groups", e);
+			});
+		}
 		
 		if (log.triage_note && privateKey) {
 			try {
@@ -490,10 +502,14 @@
 		if (!selectedLog || !logManager) return;
 		const alertObj = logManager.getAlertObject(selectedLog);
 		const telemetry = JSON.stringify(alertObj.alert);
+		let ruleContext = '';
+		if (selectedLog.triggered_rule) {
+			ruleContext = `\n\nTriggered Rule:\nType: ${selectedLog.triggered_rule.rule_type}\nID: ${selectedLog.triggered_rule.rule_id}\nContent:\n${selectedLog.triggered_rule.rule_content}`;
+		}
 		const promptText = `Analyze if this alert is a true or false positive in plain non-technical language.
 							If you deem this alert to be a false positive, propose a JSONata query that could be used to exclude this alert in the future, and explain your reasoning for the proposed query. The query should depend on rule ID or rule name if available and should be a flat expression (e.g. \`rule.name\` = 'Disable Or Stop Services' and $contains(\`process.parent.command_line\`, "/usr/lib/snapd/snapd"). DO NOT FORGET THE BACKTICKS AROUND FIELD NAMES. If unsure, check the JSONata syntax at https://docs.jsonata.org/)
 							The exclusion should match the alert (exclusions are always matching) and should be generic enough to cover similar use cases but not too generic to avoid over-permissive detections. If you cannot determine a good exclusion query, say "No good exclusion query can be determined".
-							\n\n${telemetry}`;
+							\n\n${telemetry}${ruleContext}`;
 		
 		const tool = $user?.ai_analysis_tool || 'lumo-guest';
 		
@@ -697,6 +713,8 @@
 						alert={alertData}
 						meta={alertObj.meta}
 						triggeredRule={selectedLog.triggered_rule}
+						deviceGroups={selectedDeviceDetails?.groups || []}
+						{userGroups}
 						hasPackWritePermission={hasAnyPackWritePermission}
 						extendedEdrEnabled={$user?.extended_edr_enabled ?? false}
 						{resolution}

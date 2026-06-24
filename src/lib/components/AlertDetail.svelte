@@ -26,6 +26,8 @@
 		alert,
 		meta,
 		triggeredRule = null,
+		deviceGroups = [],
+		userGroups = [],
 		hasPackWritePermission = false,
 		extendedEdrEnabled = false,
 		resolution = 'none',
@@ -40,7 +42,9 @@
 	}: {
 		alert: Record<string, unknown>;
 		meta: AlertMeta;
-		triggeredRule?: { rule_type: string; rule_id: string; rule_content: string } | null;
+		triggeredRule?: { rule_type: string; rule_id: string; rule_content: string; pack_id?: number | null; pack_name?: string | null } | null;
+		deviceGroups?: Array<{ id: number; name: string }>;
+		userGroups?: Array<{ id: number; name: string }>;
 		hasPackWritePermission?: boolean;
 		extendedEdrEnabled?: boolean;
 		resolution?: string;
@@ -80,7 +84,7 @@
 	{/if}
 
 	<!-- ④ Context Card -->
-	<AlertContext {alert} {meta} />
+	<AlertContext {alert} {meta} {deviceGroups} {userGroups} {triggeredRule} />
 
 	<!-- ⑤ Actions Bar -->
 	<AlertActions

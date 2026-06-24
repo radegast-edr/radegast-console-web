@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 
 	let {
 		triggeredRule,
@@ -10,7 +11,7 @@
 		onCreateExclusion,
 		isExcluded = false
 	}: {
-		triggeredRule?: { rule_type: string; rule_id: string; rule_content: string } | null;
+		triggeredRule?: { rule_type: string; rule_id: string; rule_content: string; pack_id?: number | null } | null;
 		hasPackWritePermission?: boolean;
 		extendedEdrEnabled?: boolean;
 		resolution?: string;
@@ -25,7 +26,7 @@
 	<div class="card-body">
 		<h6 class="fw-bold text-body-secondary mb-3">Actions</h6>
 		<div class="d-flex flex-wrap gap-2">
-			{#if triggeredRule && onViewRule}
+			{#if extendedEdrEnabled && triggeredRule && onViewRule}
 				<button
 					class="btn btn-sm btn-outline-warning"
 					onclick={onViewRule}
@@ -36,6 +37,15 @@
 					>
 					View Rule
 				</button>
+				{#if triggeredRule.pack_id}
+					<a
+						href="{base}/packs/{triggeredRule.pack_id}"
+						class="btn btn-sm btn-outline-primary d-inline-flex align-items-center"
+						title="View detection pack details"
+					>
+						View Pack
+					</a>
+				{/if}
 			{/if}
 			{#if onAiAnalysis}
 				<button

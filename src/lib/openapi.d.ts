@@ -2541,6 +2541,10 @@ export interface components {
             rule_type: string;
             /** Pack Version Id */
             pack_version_id: number;
+            /** Pack Id */
+            pack_id?: number | null;
+            /** Pack Name */
+            pack_name?: string | null;
             /** Rule Content */
             rule_content: string;
         };

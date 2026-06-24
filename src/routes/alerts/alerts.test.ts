@@ -659,7 +659,7 @@ describe('Alerts Page', () => {
 			// Verify the modal is shown and shows Group A
 			await waitFor(() => {
 				expect(screen.getByText('Create Exclusion from Alert')).toBeInTheDocument();
-				expect(screen.getByText('Group A')).toBeInTheDocument();
+				expect(screen.getAllByText('Group A')[0]).toBeInTheDocument();
 			});
 		});
 

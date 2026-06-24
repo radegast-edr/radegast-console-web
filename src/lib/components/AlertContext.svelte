@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Icon from '@iconify/svelte';
+	import { base } from '$app/paths';
 	import {
 		getOsIcon,
 		getProviderName,
@@ -8,7 +9,7 @@
 		getAlertArray
 	} from '$lib/alertHelpers';
 
-	let { alert, meta } = $props<{
+	let { alert, meta, deviceGroups = [], userGroups = [], triggeredRule = null } = $props<{
 		alert: Record<string, unknown>;
 		meta: {
 			alert_id: number;
@@ -20,6 +21,9 @@
 			severity?: string;
 			severity_number?: number;
 		};
+		deviceGroups?: Array<{ id: number; name: string }>;
+		userGroups?: Array<{ id: number; name: string }>;
+		triggeredRule?: { rule_type: string; rule_id: string; rule_content: string; pack_id?: number | null; pack_name?: string | null } | null;
 	}>();
 
 	let userName = $derived(getAlertField(alert, 'user.name'));
@@ -65,6 +69,30 @@
 					{#if meta.status === 'offline' && meta.last_seen}
 						<div class="small text-body-secondary">Last seen: {meta.last_seen}</div>
 					{/if}
+					{#if deviceGroups && deviceGroups.length > 0}
+						<div class="mt-1 d-flex flex-wrap gap-1 align-items-center" style="margin-top: 0.35rem !important;">
+							<span class="text-body-secondary small me-1">Groups:</span>
+							{#each deviceGroups as group}
+								{@const isMember = userGroups.some((ug: { id: number }) => ug.id === group.id)}
+								{#if isMember}
+									<a
+										href="{base}/groups/{group.id}"
+										class="badge bg-primary-subtle text-primary border border-primary-subtle text-decoration-none"
+										style="font-size: 0.75rem;"
+									>
+										{group.name}
+									</a>
+								{:else}
+									<span
+										class="badge bg-secondary-subtle text-secondary border"
+										style="font-size: 0.75rem;"
+									>
+										{group.name}
+									</span>
+								{/if}
+							{/each}
+						</div>
+					{/if}
 				</div>
 			</div>
 
@@ -85,6 +113,22 @@
 					{/if}
 				</div>
 			</div>
+
+			{#if triggeredRule && triggeredRule.pack_id && triggeredRule.pack_name}
+				<div class="col-12 col-md-6">
+					<div class="mb-2">
+						<div class="small text-body-secondary fw-bold d-flex align-items-center gap-1"><Icon icon="lucide:package" /> Detection Pack</div>
+						<div class="fw-semibold">
+							<a
+								href="{base}/packs/{triggeredRule.pack_id}"
+								class="text-primary text-decoration-none d-inline-flex align-items-center gap-1"
+							>
+								{triggeredRule.pack_name}
+							</a>
+						</div>
+					</div>
+				</div>
+			{/if}
 
 			<!-- Row 3: Timestamps (full width) -->
 			<div class="col-12">
