@@ -2545,6 +2545,8 @@ export interface components {
             pack_id?: number | null;
             /** Pack Name */
             pack_name?: string | null;
+            /** Pack Version */
+            pack_version?: string | null;
             /** Rule Content */
             rule_content: string;
         };

@@ -78,6 +78,15 @@ export class LogManager {
 		if (severityVal !== null && severityVal !== undefined) meta.severity = severityVal;
 		if (severity_number !== undefined) meta.severity_number = severity_number;
 		if (log.excluded_by) meta.excluded_by = log.excluded_by;
+		if (log.triggered_rule) {
+			meta.rule_id = log.triggered_rule.rule_id;
+			meta.rule_type = log.triggered_rule.rule_type;
+			meta.pack = {
+				id: log.triggered_rule.pack_id,
+				name: log.triggered_rule.pack_name,
+				version: log.triggered_rule.pack_version
+			};
+		}
 
 		if (!decState) {
 			let alertVal = 'encrypted alert';
@@ -96,6 +105,15 @@ export class LogManager {
 			if (severityVal !== null && severityVal !== undefined) failedMeta.severity = severityVal;
 			if (severity_number !== undefined) failedMeta.severity_number = severity_number;
 			if (log.excluded_by) failedMeta.excluded_by = log.excluded_by;
+			if (log.triggered_rule) {
+				failedMeta.rule_id = log.triggered_rule.rule_id;
+				failedMeta.rule_type = log.triggered_rule.rule_type;
+				failedMeta.pack = {
+					id: log.triggered_rule.pack_id,
+					name: log.triggered_rule.pack_name,
+					version: log.triggered_rule.pack_version
+				};
+			}
 			return { meta: failedMeta, alert: `decrpytion failed: ${decState.error}` };
 		}
 	}

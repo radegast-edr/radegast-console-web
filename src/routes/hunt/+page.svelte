@@ -8,6 +8,7 @@
 	import { LogManager } from '$lib/logManager.svelte';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
+	import Modal from '$lib/components/Modal.svelte';
 
 	// Parse URL hash synchronously before Svelte state initialization
 	const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
@@ -51,6 +52,12 @@
 	let selectedLog = $state<any | null>(null);
 	let currentAlertObj = $state<Record<string, unknown> | null>(null);
 	let editingExclusion = $state<any>(null);
+	let showTriggeredRuleModal = $state(false);
+
+	function openRuleModal(log: any) {
+		selectedLog = log;
+		showTriggeredRuleModal = true;
+	}
 
 	onMount(async () => {
 		try {
@@ -350,6 +357,12 @@
 							<span class="text-info fw-bold">{new Date(log.time).toLocaleString()}</span>
 							<span class="text-warning fw-bold">
 								Device ID: {log.device_id} | Device: {alertObj.meta.device}
+								{#if alertObj.meta.rule_id}
+									<button class="btn btn-link btn-sm text-success p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem;" onclick={() => openRuleModal(log)}>[show rule]</button>
+								{/if}
+								{#if alertObj.meta.pack?.id}
+									<a href="{base}/packs/{alertObj.meta.pack.id}" class="btn btn-link btn-sm text-primary p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem; text-decoration: none;">[show pack]</a>
+								{/if}
 								{#if alertObj.meta.excluded_by}
 									<button class="btn btn-link btn-sm text-info p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem;" onclick={() => startExclusionFromHunt(log, alertObj)}>[show exclusion]</button>
 								{:else}
@@ -384,6 +397,21 @@
 		onClose={() => { showExclusionModal = false; editingExclusion = null; }}
 		onSave={saveExclusionFromHunt}
 	/>
+
+	<!-- Triggered Rule Modal -->
+	{#if selectedLog?.triggered_rule}
+		<Modal
+			show={showTriggeredRuleModal}
+			title="Triggered Rule"
+			onClose={() => { showTriggeredRuleModal = false; }}
+		>
+			<div class="mb-2 d-flex gap-2 align-items-center">
+				<span class="badge bg-warning text-dark text-uppercase">{selectedLog.triggered_rule.rule_type}</span>
+				<span class="fw-bold text-body font-monospace small">{selectedLog.triggered_rule.rule_id}</span>
+			</div>
+			<pre class="p-3 rounded font-monospace mb-0" style="background-color: #282a36; color: #f8f8f2; white-space: pre-wrap; word-break: break-all; font-size: 0.82rem; border: 1px solid #44475a; max-height: 60vh; overflow-y: auto;">{selectedLog.triggered_rule.rule_content}</pre>
+		</Modal>
+	{/if}
 {:else}
 	<Spinner centered text="Loading crypto environment..." py={5} />
 {/if}
