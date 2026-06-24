@@ -43,6 +43,18 @@
 	// Grouped view: { version -> { os -> [arch, ...] } }
 	let grouped = $derived(groupReleases(releases));
 
+	function parseVersion(v: string): [number, number, number, number] {
+		const match = v.match(/^(\d+)\.(\d+)\.(\d+)(?:r(\d+))?$/);
+		if (!match) return [0, 0, 0, 0];
+		const [, major, minor, patch, r] = match;
+		return [
+			parseInt(major, 10),
+			parseInt(minor, 10),
+			parseInt(patch, 10),
+			r ? parseInt(r, 10) : 0
+		];
+	}
+
 	function groupReleases(list: any[]): any[] {
 		const map = new Map();
 		for (const r of list) {
@@ -53,9 +65,11 @@
 		}
 		// Sort versions descending
 		return [...map.entries()].sort((a, b) => {
-			const av = a[0].split('.').map(Number);
-			const bv = b[0].split('.').map(Number);
-			for (let i = 0; i < 3; i++) if (av[i] !== bv[i]) return bv[i] - av[i];
+			const av = parseVersion(a[0]);
+			const bv = parseVersion(b[0]);
+			for (let i = 0; i < 4; i++) {
+				if (av[i] !== bv[i]) return bv[i] - av[i];
+			}
 			return 0;
 		});
 	}
@@ -212,10 +226,10 @@
 				id="rel-version"
 				bind:value={uploadVersion}
 				placeholder="1.2.3"
-				pattern="\d+\.\d+\.\d+"
+				pattern="\d+\.\d+\.\d+(?:r\d+)?"
 				required
 			/>
-			<div class="form-text">Semantic version, e.g. 1.2.3</div>
+			<div class="form-text">Semantic version, e.g. 1.2.3 or 1.2.3r1</div>
 		</div>
 		<div class="row g-3 mb-3">
 			<div class="col">
