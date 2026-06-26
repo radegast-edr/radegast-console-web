@@ -273,6 +273,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/user/public-keys-by-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Public Keys By Email
+         * @description Retrieve public keys of another registered user by email.
+         */
+        get: operations["get_public_keys_by_email_api_v1_user_public_keys_by_email_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/user/keys/{key_id}": {
         parameters: {
             query?: never;
@@ -654,6 +674,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{team_id}/invitations/{user_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Invitation */
+        post: operations["cancel_invitation_api_v1_teams__team_id__invitations__user_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{team_id}/members": {
         parameters: {
             query?: never;
@@ -671,7 +708,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{team_id}/members/{user_id}": {
+    "/api/v1/teams/{team_id}/recipient-public-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Team Recipient Public Keys */
+        get: operations["get_team_recipient_public_keys_api_v1_teams__team_id__recipient_public_keys_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{team_id}/members/{user_id}/delete": {
         parameters: {
             query?: never;
             header?: never;
@@ -680,9 +734,9 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
         /** Remove Member */
-        delete: operations["remove_member_api_v1_teams__team_id__members__user_id__delete"];
+        post: operations["remove_member_api_v1_teams__team_id__members__user_id__delete_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -928,14 +982,15 @@ export interface paths {
         get: operations["get_group_api_v1_groups__group_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete Group */
+        delete: operations["delete_group_api_v1_groups__group_id__delete"];
         options?: never;
         head?: never;
         /** Rename Group */
         patch: operations["rename_group_api_v1_groups__group_id__patch"];
         trace?: never;
     };
-    "/api/v1/groups/{group_id}/teams/{team_id}": {
+    "/api/v1/groups/{group_id}/teams/{team_id}/unlink": {
         parameters: {
             query?: never;
             header?: never;
@@ -944,9 +999,9 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
         /** Unlink Group From Team */
-        delete: operations["unlink_group_from_team_api_v1_groups__group_id__teams__team_id__delete"];
+        post: operations["unlink_group_from_team_api_v1_groups__group_id__teams__team_id__unlink_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -963,8 +1018,58 @@ export interface paths {
         put?: never;
         /** Add Device To Group */
         post: operations["add_device_to_group_api_v1_groups__group_id__devices__device_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{group_id}/devices/{device_id}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
         /** Remove Device From Group */
-        delete: operations["remove_device_from_group_api_v1_groups__group_id__devices__device_id__delete"];
+        post: operations["remove_device_from_group_api_v1_groups__group_id__devices__device_id__remove_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{group_id}/recipient-public-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Recipient Public Keys */
+        get: operations["get_recipient_public_keys_api_v1_groups__group_id__recipient_public_keys_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{group_id}/keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Setup Group Keys */
+        post: operations["setup_group_keys_api_v1_groups__group_id__keys_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1919,6 +2024,13 @@ export interface components {
             /** Release Notes */
             release_notes?: string | null;
         };
+        /** CancelInvitationRequest */
+        CancelInvitationRequest: {
+            /** Group Keys */
+            group_keys: {
+                [key: string]: string;
+            };
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Old Password */
@@ -1952,6 +2064,11 @@ export interface components {
             device_teams_map: {
                 [key: string]: string[];
             };
+        };
+        /** DeviceAddPayload */
+        DeviceAddPayload: {
+            /** Encrypted Private Key */
+            encrypted_private_key: string;
         };
         /** DeviceCreate */
         DeviceCreate: {
@@ -2007,6 +2124,17 @@ export interface components {
             devices: components["schemas"]["DeviceResponse"][];
             /** Exclusions */
             exclusions: components["schemas"]["ExclusionResponse"][];
+            /** Public Key */
+            public_key?: string | null;
+            /** Private Key */
+            private_key?: string | null;
+            /**
+             * Invitations
+             * @default []
+             */
+            invitations: {
+                [key: string]: unknown;
+            }[];
         };
         /** DeviceGroupResponse */
         DeviceGroupResponse: {
@@ -2014,11 +2142,20 @@ export interface components {
             id: number;
             /** Name */
             name: string;
+            /** Private Key */
+            private_key?: string | null;
+            /** Public Key */
+            public_key?: string | null;
         };
         /** DeviceLogin */
         DeviceLogin: {
             /** Token */
             token: string;
+        };
+        /** DeviceRemovePayload */
+        DeviceRemovePayload: {
+            /** Encrypted Private Key */
+            encrypted_private_key: string;
         };
         /** DeviceRename */
         DeviceRename: {
@@ -2070,6 +2207,11 @@ export interface components {
              * @enum {string}
              */
             exclusion_type: "hard" | "soft";
+            /**
+             * Encrypted
+             * @default false
+             */
+            encrypted: boolean;
         };
         /** ExclusionGroupResponse */
         ExclusionGroupResponse: {
@@ -2134,16 +2276,38 @@ export interface components {
              * @enum {string}
              */
             exclusion_type: "hard" | "soft";
+            /**
+             * Encrypted
+             * @default false
+             */
+            encrypted: boolean;
         };
         /** ExtendedEdrSettings */
         ExtendedEdrSettings: {
             /** Extended Edr Enabled */
             extended_edr_enabled: boolean;
         };
+        /** GroupKeysSetup */
+        GroupKeysSetup: {
+            /** Public Key */
+            public_key: string;
+            /** Private Key */
+            private_key: string;
+        };
+        /** GroupLinkPayload */
+        GroupLinkPayload: {
+            /** Encrypted Private Key */
+            encrypted_private_key: string;
+        };
         /** GroupRename */
         GroupRename: {
             /** Name */
             name: string;
+        };
+        /** GroupUnlinkPayload */
+        GroupUnlinkPayload: {
+            /** Encrypted Private Key */
+            encrypted_private_key: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2277,6 +2441,13 @@ export interface components {
          * @enum {string}
          */
         LogSeverity: "informational" | "low" | "medium" | "high" | "critical";
+        /** MemberRemovePayload */
+        MemberRemovePayload: {
+            /** Group Keys */
+            group_keys: {
+                [key: string]: string;
+            };
+        };
         /** MessageResponse */
         MessageResponse: {
             /** Message */
@@ -2537,6 +2708,10 @@ export interface components {
         TeamInvite: {
             /** Email */
             email: string;
+            /** Group Keys */
+            group_keys?: {
+                [key: string]: string;
+            } | null;
         };
         /** TeamMemberResponse */
         TeamMemberResponse: {
@@ -3188,6 +3363,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_public_keys_by_email_api_v1_user_public_keys_by_email_get: {
+        parameters: {
+            query: {
+                email: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3929,6 +4135,42 @@ export interface operations {
             };
         };
     };
+    cancel_invitation_api_v1_teams__team_id__invitations__user_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_members_api_v1_teams__team_id__members_get: {
         parameters: {
             query?: never;
@@ -3960,7 +4202,38 @@ export interface operations {
             };
         };
     };
-    remove_member_api_v1_teams__team_id__members__user_id__delete: {
+    get_team_recipient_public_keys_api_v1_teams__team_id__recipient_public_keys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_member_api_v1_teams__team_id__members__user_id__delete_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3970,7 +4243,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberRemovePayload"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -4068,7 +4345,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupLinkPayload"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -4580,6 +4861,37 @@ export interface operations {
             };
         };
     };
+    delete_group_api_v1_groups__group_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rename_group_api_v1_groups__group_id__patch: {
         parameters: {
             query?: never;
@@ -4615,7 +4927,7 @@ export interface operations {
             };
         };
     };
-    unlink_group_from_team_api_v1_groups__group_id__teams__team_id__delete: {
+    unlink_group_from_team_api_v1_groups__group_id__teams__team_id__unlink_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -4625,7 +4937,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupUnlinkPayload"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -4657,7 +4973,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceAddPayload"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -4679,7 +4999,7 @@ export interface operations {
             };
         };
     };
-    remove_device_from_group_api_v1_groups__group_id__devices__device_id__delete: {
+    remove_device_from_group_api_v1_groups__group_id__devices__device_id__remove_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -4689,7 +5009,79 @@ export interface operations {
             };
             cookie?: never;
         };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceRemovePayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_recipient_public_keys_api_v1_groups__group_id__recipient_public_keys_get: {
+        parameters: {
+            query?: {
+                exclude_user_id?: number | null;
+            };
+            header?: never;
+            path: {
+                group_id: number;
+            };
+            cookie?: never;
+        };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setup_group_keys_api_v1_groups__group_id__keys_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupKeysSetup"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

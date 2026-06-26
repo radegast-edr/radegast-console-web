@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import { api } from '$lib/api';
 import { user } from '$lib/store';
+import { goto } from '$app/navigation';
 import Alerts from './+page.svelte';
 
 vi.mock('$app/paths', () => ({
@@ -493,17 +494,15 @@ describe('Alerts Page', () => {
 
 	describe('URL Hash Shareable State', () => {
 		let originalHash: string;
-		let replaceStateSpy: any;
 
 		beforeEach(() => {
 			originalHash = window.location.hash;
 			window.location.hash = '#q=url_hash_query&from=2026-06-04T05%3A00&to=2026-06-05T05%3A00';
-			replaceStateSpy = vi.spyOn(window.history, 'replaceState').mockImplementation(() => {});
+			vi.mocked(goto).mockClear();
 		});
 
 		afterEach(() => {
 			window.location.hash = originalHash;
-			replaceStateSpy.mockRestore();
 		});
 
 		it('loads search query and date times from URL hash on mount', async () => {
@@ -542,10 +541,9 @@ describe('Alerts Page', () => {
 			await fireEvent.input(queryInput, { target: { value: 'new_filter_query' } });
 
 			await waitFor(() => {
-				expect(replaceStateSpy).toHaveBeenCalledWith(
-					null,
-					'',
-					expect.stringContaining('q=new_filter_query')
+				expect(goto).toHaveBeenCalledWith(
+					expect.stringContaining('q=new_filter_query'),
+					expect.objectContaining({ replaceState: true })
 				);
 			});
 		});

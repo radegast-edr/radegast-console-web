@@ -220,14 +220,20 @@ export const api = {
 	updateTeam: (team_id: number, body: components['schemas']['TeamUpdate']) =>
 		call(callOp('update_team_api_v1_teams__team_id__put', { params: { path: { team_id } }, body })),
 
-	inviteToTeam: (team_id: number, email: string) =>
-		call(callOp('invite_to_team_api_v1_teams__team_id__invite_post', { params: { path: { team_id } }, body: { email } })),
+	inviteToTeam: (team_id: number, email: string, group_keys: Record<number, string> | null = null) =>
+		call(callOp('invite_to_team_api_v1_teams__team_id__invite_post', { params: { path: { team_id } }, body: { email, group_keys } })),
+
+	cancelInvitation: (team_id: number, user_id: number, group_keys: Record<number, string>) =>
+		call(callOp('cancel_invitation_api_v1_teams__team_id__invitations__user_id__cancel_post', { params: { path: { team_id, user_id } }, body: { group_keys } })),
+
+	getTeamRecipientPublicKeys: (team_id: number) =>
+		call(callOp('get_team_recipient_public_keys_api_v1_teams__team_id__recipient_public_keys_get', { params: { path: { team_id } } })),
 
 	listMembers: (team_id: number) =>
 		call(callOp('list_members_api_v1_teams__team_id__members_get', { params: { path: { team_id } } })),
 
-	removeMember: (team_id: number, user_id: number) =>
-		call(callOp('remove_member_api_v1_teams__team_id__members__user_id__delete', { params: { path: { team_id, user_id } } })),
+	removeMember: (team_id: number, user_id: number, group_keys: Record<number, string>) =>
+		call(callOp('remove_member_api_v1_teams__team_id__members__user_id__delete_post', { params: { path: { team_id, user_id } }, body: { group_keys } })),
 
 	listTeamGroups: (team_id: number) =>
 		call(callOp('list_team_groups_api_v1_teams__team_id__groups_get', { params: { path: { team_id } } })),
@@ -235,8 +241,8 @@ export const api = {
 	createTeamGroup: (team_id: number, name: string) =>
 		call(callOp('create_team_group_api_v1_teams__team_id__groups_post', { params: { path: { team_id } }, body: { name } })),
 
-	linkGroupToTeam: (team_id: number, group_id: number) =>
-		call(callOp('link_group_to_team_api_v1_teams__team_id__groups__group_id__link_post', { params: { path: { team_id, group_id } } })),
+	linkGroupToTeam: (team_id: number, group_id: number, encrypted_private_key: string) =>
+		call(callOp('link_group_to_team_api_v1_teams__team_id__groups__group_id__link_post', { params: { path: { team_id, group_id } }, body: { encrypted_private_key } })),
 
 	listTeamDevices: (team_id: number) =>
 		call(callOp('list_team_devices_api_v1_teams__team_id__devices_get', { params: { path: { team_id } } })),
@@ -276,14 +282,28 @@ export const api = {
 	renameGroup: (group_id: number, name: string) =>
 		call(callOp('rename_group_api_v1_groups__group_id__patch', { params: { path: { group_id } }, body: { name } })),
 
-	unlinkGroupFromTeam: (group_id: number, team_id: number) =>
-		call(callOp('unlink_group_from_team_api_v1_groups__group_id__teams__team_id__delete', { params: { path: { group_id, team_id } } })),
+	unlinkGroupFromTeam: (group_id: number, team_id: number, encrypted_private_key: string) =>
+		call(callOp('unlink_group_from_team_api_v1_groups__group_id__teams__team_id__unlink_post', { params: { path: { group_id, team_id } }, body: { encrypted_private_key } })),
 
-	addDeviceToGroupViaGroup: (group_id: number, device_id: number) =>
-		call(callOp('add_device_to_group_api_v1_groups__group_id__devices__device_id__post', { params: { path: { group_id, device_id } } })),
+	addDeviceToGroupViaGroup: (group_id: number, device_id: number, encrypted_private_key: string) =>
+		call(callOp('add_device_to_group_api_v1_groups__group_id__devices__device_id__post', { params: { path: { group_id, device_id } }, body: { encrypted_private_key } })),
 
-	removeDeviceFromGroupViaGroup: (group_id: number, device_id: number) =>
-		call(callOp('remove_device_from_group_api_v1_groups__group_id__devices__device_id__delete', { params: { path: { group_id, device_id } } })),
+	removeDeviceFromGroupViaGroup: (group_id: number, device_id: number, encrypted_private_key: string) =>
+		call(callOp('remove_device_from_group_api_v1_groups__group_id__devices__device_id__remove_post', { params: { path: { group_id, device_id } }, body: { encrypted_private_key } })),
+
+	getGroupRecipientPublicKeys: (group_id: number, exclude_user_id: number | null = null) =>
+		call(callOp('get_recipient_public_keys_api_v1_groups__group_id__recipient_public_keys_get', {
+			params: {
+				path: { group_id },
+				query: { ...(exclude_user_id ? { exclude_user_id } : {}) }
+			}
+		})),
+
+	setupGroupKeys: (group_id: number, keys: { public_key: string; private_key: string }) =>
+		call(callOp('setup_group_keys_api_v1_groups__group_id__keys_post', { params: { path: { group_id } }, body: keys })),
+
+	deleteGroup: (group_id: number) =>
+		call(callOp('delete_group_api_v1_groups__group_id__delete', { params: { path: { group_id } } })),
 
 	// Exclusions
 	listExclusionsForGroup: (group_id: number) =>
@@ -443,6 +463,9 @@ export const api = {
 
 	acceptInvite: (token: string) =>
 		call(callOp('accept_invite_api_v1_auth_invite_accept_get', { params: { query: { token } } })),
+
+	getPublicKeysByEmail: (email: string) =>
+		call(callOp('get_public_keys_by_email_api_v1_user_public_keys_by_email_get', { params: { query: { email } } })),
 
 	unsubscribe: (token: string) =>
 		call(callOp('unsubscribe_api_v1_user_unsubscribe_post', { body: { token } } as any)),

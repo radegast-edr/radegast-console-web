@@ -60,6 +60,7 @@ vi.mock('$lib/crypto', () => ({
 	getStoredPrivateKey: vi.fn().mockResolvedValue('fake_private_key'),
 	getStoredPublicKey: vi.fn().mockResolvedValue('fake_public_key'),
 	decrypt: vi.fn().mockReturnValue('{"rule":{"name":"Test Rule"}}'),
+	encrypt: vi.fn().mockReturnValue('fake_encrypted_data'),
 	generateKeypair: vi.fn().mockReturnValue({ publicKey: 'pub', privateKey: 'priv' }),
 	storePrivateKey: vi.fn().mockResolvedValue(undefined),
 	aesEncrypt: vi.fn().mockResolvedValue('encrypted_key')
@@ -113,6 +114,14 @@ vi.mock('$lib/api', () => ({
 		getGroup: vi.fn(),
 		renameGroup: vi.fn(),
 		unlinkGroupFromTeam: vi.fn(),
+		cancelInvitation: vi.fn(),
+		deleteGroup: vi.fn(),
+		getGroupRecipientPublicKeys: vi.fn(),
+		setupGroupKeys: vi.fn(),
+		removeDeviceFromGroupViaGroup: vi.fn(),
+		addDeviceToGroupViaGroup: vi.fn(),
+		getPublicKeysByEmail: vi.fn(),
+		getTeamRecipientPublicKeys: vi.fn(),
 		listPacks: vi.fn(),
 		createPack: vi.fn(),
 		updatePack: vi.fn(),
@@ -209,6 +218,10 @@ describe('Route Pages Load Verification', () => {
 		vi.mocked(api.listMembers).mockResolvedValue([{ id: 1, email: 'admin@example.com', role: 'admin' }] as any);
 		vi.mocked(api.listTeamGroups).mockResolvedValue([{ id: 1, name: 'Group A' }] as any);
 		vi.mocked(api.setupKeys).mockResolvedValue({} as any);
+		vi.mocked(api.getGroupRecipientPublicKeys).mockResolvedValue([] as any);
+		vi.mocked(api.setupGroupKeys).mockResolvedValue({} as any);
+		vi.mocked(api.deleteGroup).mockResolvedValue({} as any);
+		vi.mocked(api.getTeamRecipientPublicKeys).mockResolvedValue([] as any);
 		vi.mocked(api.client.GET).mockResolvedValue({
 			data: [{ user_id: 1, public_key: 'pubkey', key_type: 'regular' }]
 		} as any);

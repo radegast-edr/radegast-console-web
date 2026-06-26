@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import { goto } from '$app/navigation';
 	import { askConfirm } from '$lib/confirm';
 	import { onMount } from 'svelte';
 	import { api, type Log, type Device, type Group, type Team, type ExclusionCreate } from '$lib/api';
 	import { showError, showFlash, user } from '$lib/store';
 	import { initAgeWasm, getStoredPrivateKey, decrypt, encrypt } from '$lib/crypto';
+	import { decryptExclusion, encryptExclusion } from '$lib/exclusionHelpers';
 	import { LogManager } from '$lib/logManager.svelte';
 	import { formatFullDateTime, mapSeverityToNumber } from '$lib/utils';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
@@ -57,6 +59,7 @@
 	let exclusionType = $state<'hard' | 'soft'>('hard');
 	let userGroups = $state<Group[]>([]);
 	let selectedGroupId = $state<number | null>(null);
+	let exclusionEncrypted = $state(false);
 	let userTeamsForPermission = $state<Team[]>([]);
 	let currentAlertObj = $state<Record<string, unknown> | null>(null);
 	let editingExclusion = $state<any>(null);
@@ -140,7 +143,11 @@
 		const hash = params.toString();
 		const newHash = hash ? `#${hash}` : '';
 		if (window.location.hash !== newHash) {
-			window.history.replaceState(null, '', window.location.pathname + window.location.search + newHash);
+			goto(window.location.pathname + window.location.search + newHash, {
+				replaceState: true,
+				noScroll: true,
+				keepFocus: true
+			});
 		}
 	});
 
@@ -374,10 +381,12 @@
 		}
 
 		if (existingExclusion && excludedBy) {
-			exclusionName = existingExclusion.name;
-			exclusionQuery = existingExclusion.jsonata_query;
-			exclusionDescription = existingExclusion.description || '';
+			const decrypted = await decryptExclusion(existingExclusion, excludedBy.group.id);
+			exclusionName = decrypted.name;
+			exclusionQuery = decrypted.jsonata_query;
+			exclusionDescription = decrypted.description;
 			exclusionType = (existingExclusion.exclusion_type as 'hard' | 'soft') || 'hard';
+			exclusionEncrypted = existingExclusion.encrypted || false;
 			selectedGroupId = excludedBy.group.id;
 			editingExclusion = existingExclusion;
 		} else {
@@ -402,12 +411,22 @@
 		}
 
 		try {
+			const groupDetail = await api.getGroup(selectedGroupId);
+			const { name: finalName, jsonata_query: finalQuery, description: finalDesc } = await encryptExclusion(
+				exclusionName.trim(),
+				exclusionQuery.trim(),
+				exclusionDescription.trim() || null,
+				exclusionEncrypted,
+				groupDetail.public_key
+			);
+
 			const data: ExclusionCreate = {
-				name: exclusionName.trim(),
-				jsonata_query: exclusionQuery.trim(),
-				description: exclusionDescription.trim() || null,
+				name: finalName,
+				jsonata_query: finalQuery,
+				description: finalDesc,
 				alert_id: selectedLog ? selectedLog.id : null,
-				exclusion_type: exclusionType
+				exclusion_type: exclusionType,
+				encrypted: exclusionEncrypted
 			};
 
 			if (editingExclusion) {
@@ -433,6 +452,7 @@
 			exclusionDescription = '';
 			exclusionType = 'hard';
 			selectedGroupId = null;
+			exclusionEncrypted = false;
 			editingExclusion = null;
 		} catch (e) {
 			showError('Failed to save exclusion: ' + (e as Error).message);
@@ -760,6 +780,7 @@
 			bind:description={exclusionDescription}
 			bind:exclusionType={exclusionType}
 			bind:selectedGroupId={selectedGroupId}
+			bind:encrypted={exclusionEncrypted}
 			title={editingExclusion ? 'Edit Exclusion' : 'Create Exclusion from Alert'}
 			isEditMode={!!editingExclusion}
 			groups={userGroups}

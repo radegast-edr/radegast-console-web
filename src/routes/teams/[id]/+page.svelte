@@ -7,6 +7,7 @@
 	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
+	import { initAgeWasm, decrypt, encrypt, getStoredPrivateKey } from '$lib/crypto';
 
 	let team = $state<Team | null>(null);
 	let members = $state<TeamMember[]>([]);
@@ -68,10 +69,29 @@
 
 	async function invite(): Promise<void> {
 		try {
-			await api.inviteToTeam(teamId, inviteEmail);
+			const newPubs = await api.getPublicKeysByEmail(inviteEmail.trim());
+			const groupKeysMap: Record<number, string> = {};
+			await initAgeWasm();
+			const me = await api.me();
+			const userPrivKey = await getStoredPrivateKey(me.id);
+
+			for (const g of groups) {
+				const fullGroup = await api.getGroup(g.id);
+				if (fullGroup.private_key && userPrivKey) {
+					const currentPubKeys = await api.getGroupRecipientPublicKeys(g.id);
+					newPubs.forEach(p => {
+						if (!currentPubKeys.includes(p)) currentPubKeys.push(p);
+					});
+					const groupPrivKey = decrypt(fullGroup.private_key, userPrivKey);
+					groupKeysMap[g.id] = encrypt(groupPrivKey, currentPubKeys);
+				}
+			}
+
+			await api.inviteToTeam(teamId, inviteEmail.trim(), groupKeysMap);
 			showInvite = false;
 			inviteEmail = '';
 			showFlash('Invitation sent');
+			await loadTeam();
 		} catch (e) {
 			showError((e as Error).message);
 		}
@@ -80,7 +100,21 @@
 	async function removeMember(userId: string | number): Promise<void> {
 		if (!await askConfirm('Remove this member?')) return;
 		try {
-			await api.removeMember(teamId, Number(userId));
+			const groupKeysMap: Record<number, string> = {};
+			await initAgeWasm();
+			const me = await api.me();
+			const userPrivKey = await getStoredPrivateKey(me.id);
+
+			for (const g of groups) {
+				const fullGroup = await api.getGroup(g.id);
+				if (fullGroup.private_key && userPrivKey) {
+					const updatedPubKeys = await api.getGroupRecipientPublicKeys(g.id, Number(userId));
+					const groupPrivKey = decrypt(fullGroup.private_key, userPrivKey);
+					groupKeysMap[g.id] = encrypt(groupPrivKey, updatedPubKeys);
+				}
+			}
+
+			await api.removeMember(teamId, Number(userId), groupKeysMap);
 			await loadTeam();
 			showFlash('Member removed');
 		} catch (e) {

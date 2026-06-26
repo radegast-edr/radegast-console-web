@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import { api } from '$lib/api';
 import { user } from '$lib/store';
+import { goto } from '$app/navigation';
 import Hunt from './+page.svelte';
 
 vi.mock('$app/paths', () => ({
@@ -54,12 +55,11 @@ function makeLog(overrides = {}) {
 
 describe('Hunt URL Hash Shareable State', () => {
 	let originalHash: string;
-	let replaceStateSpy: any;
 
 	beforeEach(() => {
 		originalHash = window.location.hash;
 		window.location.hash = '#q=hunt_hash_query&from=2026-06-04T05%3A00&to=2026-06-05T05%3A00';
-		replaceStateSpy = vi.spyOn(window.history, 'replaceState').mockImplementation(() => {});
+		vi.mocked(goto).mockClear();
 		
 		vi.mocked(api.me).mockResolvedValue({
 			id: 1,
@@ -83,7 +83,6 @@ describe('Hunt URL Hash Shareable State', () => {
 
 	afterEach(() => {
 		window.location.hash = originalHash;
-		replaceStateSpy.mockRestore();
 		vi.clearAllMocks();
 	});
 
@@ -122,10 +121,9 @@ describe('Hunt URL Hash Shareable State', () => {
 		await fireEvent.input(queryInput, { target: { value: 'new_hunt_query' } });
 
 		await waitFor(() => {
-			expect(replaceStateSpy).toHaveBeenCalledWith(
-				null,
-				'',
-				expect.stringContaining('q=new_hunt_query')
+			expect(goto).toHaveBeenCalledWith(
+				expect.stringContaining('q=new_hunt_query'),
+				expect.objectContaining({ replaceState: true })
 			);
 		});
 	});

@@ -7,6 +7,7 @@
 	import { isDeviceActive, formatFullDateTime } from '$lib/utils';
 	import AgentSetupInstructions from '$lib/components/AgentSetupInstructions.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
+	import { initAgeWasm, decrypt, encrypt, getStoredPrivateKey, getStoredPublicKey } from '$lib/crypto';
 
 	let device = $state<DeviceDetail | null>(null);
 	let allGroups = $state<Group[]>([]);
@@ -56,12 +57,44 @@
 		}
 	}
 
+	async function getReencryptedGroupKey(group: any, newRecipientPubKeys: string[]): Promise<string> {
+		await initAgeWasm();
+		const me = await api.me();
+		const userPrivKey = await getStoredPrivateKey(me.id);
+		if (!userPrivKey) {
+			throw new Error('You do not have your private encryption key configured locally on this browser.');
+		}
+		if (!group.private_key) {
+			return '';
+		}
+		const groupPrivKey = decrypt(group.private_key, userPrivKey);
+		if (newRecipientPubKeys.length === 0) {
+			const myPub = await getStoredPublicKey(me.id);
+			if (myPub) {
+				return encrypt(groupPrivKey, [myPub]);
+			}
+			throw new Error('No recipients and no user public key available');
+		}
+		return encrypt(groupPrivKey, newRecipientPubKeys);
+	}
+
 	async function removeFromGroup(groupId: string | number): Promise<void> {
 		if (!device) return;
+		const dev = device;
 		try {
-			await api.removeDeviceFromGroupViaGroup(Number(groupId), Number(device.id));
+			const g = await api.getGroup(Number(groupId));
+			const currentPubKeys = await api.getGroupRecipientPublicKeys(g.id);
+			const updatedPubKeys = dev.encryption_public_key 
+				? currentPubKeys.filter(k => k !== dev.encryption_public_key)
+				: currentPubKeys;
+			let reencryptedKey = '';
+			if (g.private_key) {
+				reencryptedKey = await getReencryptedGroupKey(g, updatedPubKeys);
+			}
+
+			await api.removeDeviceFromGroupViaGroup(Number(groupId), Number(dev.id), reencryptedKey);
 			showFlash('Removed from group');
-			await loadDevice(device.id);
+			await loadDevice(dev.id);
 		} catch (e) {
 			showError((e as Error).message);
 		}
@@ -69,10 +102,21 @@
 
 	async function addToGroup(): Promise<void> {
 		if (!addGroupId || !device) return;
+		const dev = device;
 		try {
-			await api.addDeviceToGroupViaGroup(Number(addGroupId), Number(device.id));
+			const g = await api.getGroup(Number(addGroupId));
+			const currentPubKeys = await api.getGroupRecipientPublicKeys(g.id);
+			if (dev.encryption_public_key && !currentPubKeys.includes(dev.encryption_public_key)) {
+				currentPubKeys.push(dev.encryption_public_key);
+			}
+			let reencryptedKey = '';
+			if (g.private_key) {
+				reencryptedKey = await getReencryptedGroupKey(g, currentPubKeys);
+			}
+
+			await api.addDeviceToGroupViaGroup(Number(addGroupId), Number(dev.id), reencryptedKey);
 			showFlash('Added to group');
-			await loadDevice(device.id);
+			await loadDevice(dev.id);
 		} catch (e) {
 			showError((e as Error).message);
 		}
