@@ -2,6 +2,7 @@
 	import { getPrimaryCategory } from '$lib/alertHelpers';
 	import AlertHeader from '$lib/components/AlertHeader.svelte';
 	import RuleDescription from '$lib/components/RuleDescription.svelte';
+	import RuleContext from '$lib/components/RuleContext.svelte';
 	import ProcessEvidence from '$lib/components/evidence/ProcessEvidence.svelte';
 	import FileEvidence from '$lib/components/evidence/FileEvidence.svelte';
 	import NetworkEvidence from '$lib/components/evidence/NetworkEvidence.svelte';
@@ -68,6 +69,9 @@
 
 	<!-- ② Rule Description -->
 	<RuleDescription {alert} />
+
+	<!-- ②b Rule Context -->
+	<RuleContext {triggeredRule} />
 
 	<!-- ③ Category-Specific Evidence -->
 	{#if category === 'process'}

@@ -10,6 +10,8 @@
 
 	let destIp = $derived(getAlertField(alert, 'destination.ip'));
 	let destPort = $derived(getAlertNumber(alert, 'destination.port'));
+	let sourceIp = $derived(getAlertField(alert, 'source.ip'));
+	let sourcePort = $derived(getAlertNumber(alert, 'source.port'));
 	let direction = $derived(getAlertField(alert, 'network.direction'));
 	let networkType = $derived(getAlertField(alert, 'network.type'));
 
@@ -37,7 +39,7 @@
 			>
 				<div class="d-flex align-items-center gap-2 flex-wrap">
 					<span
-						>{processName ?? 'unknown'}{pid !== undefined ? ` (PID ${pid})` : ''}</span
+						>{processName ?? 'unknown'}{pid !== undefined ? ` (PID ${pid})` : ''}{#if sourceIp}<span class="text-body-secondary"> ({sourceIp}{sourcePort !== undefined ? `:${sourcePort}` : ''})</span>{/if}</span
 					>
 					{#if isIngress}
 						<span class="text-primary">◀──────</span>
@@ -64,6 +66,18 @@
 
 		<table class="table table-sm table-borderless mb-0">
 			<tbody>
+				{#if sourceIp}
+					<tr>
+						<td class="text-body-secondary" style="width: 140px;">Source IP</td>
+						<td style="font-family: 'Hack', monospace;">{sourceIp}</td>
+					</tr>
+				{/if}
+				{#if sourcePort !== undefined}
+					<tr>
+						<td class="text-body-secondary" style="width: 140px;">Source Port</td>
+						<td>{sourcePort}</td>
+					</tr>
+				{/if}
 				{#if destIp}
 					<tr>
 						<td class="text-body-secondary" style="width: 140px;">Destination IP</td>

@@ -38,6 +38,9 @@
 	let timestamp = $derived(
 		getAlertField(alert, '@timestamp') ?? meta.reported_timestamp
 	);
+	let parentCommandLine = $derived(getAlertField(alert, 'process.parent.command_line'));
+	let sourceIp = $derived(getAlertField(alert, 'source.ip'));
+	let destinationIp = $derived(getAlertField(alert, 'destination.ip'));
 </script>
 
 <div class="card border-0 shadow-sm bg-body-tertiary mb-3">
@@ -89,7 +92,28 @@
 					<Icon icon={categoryDisplay.icon} /> {categoryDisplay.label}
 				</span>
 			{/if}
+
+			{#if sourceIp}
+				<span class="d-flex align-items-center gap-1">
+					<Icon icon="lucide:arrow-up-right" /> Src: {sourceIp}
+				</span>
+			{/if}
+
+			{#if destinationIp}
+				<span class="d-flex align-items-center gap-1">
+					<Icon icon="lucide:arrow-down-left" /> Dst: {destinationIp}
+				</span>
+			{/if}
 		</div>
+
+		{#if parentCommandLine}
+			<div class="mt-3 pt-3 border-top">
+				<div class="small text-body-secondary fw-bold mb-1 d-flex align-items-center gap-1">
+					<Icon icon="lucide:terminal" /> Parent Command Line
+				</div>
+				<pre class="bg-body-secondary text-body p-2 mb-0 overflow-auto font-monospace small" style="border-radius: 3px; max-height: 120px;">{parentCommandLine}</pre>
+			</div>
+		{/if}
 	</div>
 </div>
 
