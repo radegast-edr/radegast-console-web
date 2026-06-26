@@ -52,6 +52,11 @@
 			<ul>
 				<li class="text-body"><strong>Encrypted Payloads:</strong> Host devices submit security alerts and detailed log payloads to the console. These payloads are encrypted client-side by the agent using your team's public key prior to transmission. The console stores these payloads in their encrypted format. Because we do not hold the corresponding private keys, we cannot read, decode, or inspect the contents of these logs.</li>
 			</ul>
+
+			<h5 class="fw-bold fs-6 mt-3 text-body">D. Exclusions (Encrypted)</h5>
+			<ul>
+				<li class="text-body"><strong>End-to-End Encrypted Exclusions:</strong> Exclusion rules (including the rule name, JSONata query, and description) created for device groups that support End-to-End Encryption (E2EE) are encrypted in the browser prior to transmission. The console stores them in ciphertext, and they can only be decrypted by authorized console users and EDR agents with access to the group's private key.</li>
+			</ul>
 		</section>
 
 		<section class="my-4">
