@@ -4,7 +4,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { api, type Team, type TeamMember, type Group, type Device } from '$lib/api';
-	import { showFlash, showError } from '$lib/store';
+	import { showFlash, showError, triggerKeyRefresh } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import { initAgeWasm, decrypt, encrypt, getStoredPrivateKey } from '$lib/crypto';
@@ -88,6 +88,7 @@
 			}
 
 			await api.inviteToTeam(teamId, inviteEmail.trim(), groupKeysMap);
+			triggerKeyRefresh.update(n => n + 1);
 			showInvite = false;
 			inviteEmail = '';
 			showFlash('Invitation sent');
@@ -115,6 +116,7 @@
 			}
 
 			await api.removeMember(teamId, Number(userId), groupKeysMap);
+			triggerKeyRefresh.update(n => n + 1);
 			await loadTeam();
 			showFlash('Member removed');
 		} catch (e) {

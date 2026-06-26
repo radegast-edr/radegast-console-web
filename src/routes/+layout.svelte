@@ -16,6 +16,7 @@
 	import BoxiconsNoEntry from '~icons/boxicons/no-entry';
 	import MaterialSymbolsKey from '~icons/material-symbols/key';
 	import Spinner from '$lib/components/Spinner.svelte';
+	import GroupKeyRefresher from '$lib/components/GroupKeyRefresher.svelte';
 
 	let showNoKeyBanner = $state(false);
 
@@ -187,6 +188,7 @@
 						</div>
 					</div>
 				{/if}
+				<GroupKeyRefresher />
 				{@render children()}
 			</div>
 		</main>

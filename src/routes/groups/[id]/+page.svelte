@@ -5,13 +5,14 @@
 	import { decryptExclusionsList, encryptExclusion } from '$lib/exclusionHelpers';
 	import { page } from '$app/stores';
 	import { api, type GroupDetail, type Team, type TeamMember, type Device, type EnabledPack, type Pack, type PackVersion, type Exclusion, type ExclusionCreate } from '$lib/api';
-	import { showFlash, showError } from '$lib/store';
+	import { showFlash, showError, triggerKeyRefresh } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
 	import { isDeviceActive } from '$lib/utils';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import { initAgeWasm, generateKeypair, encrypt, decrypt, getStoredPrivateKey, getStoredPublicKey } from '$lib/crypto';
 	import { goto } from '$app/navigation';
+	import { refreshGroupKeys } from '$lib/groupHelpers';
 
 	let group = $state<(GroupDetail & { devices: Device[]; teams: Team[]; exclusions: Exclusion[]; public_key?: string | null; private_key?: string | null; invitations?: any[] }) | null>(null);
 	let allTeams = $state<Team[]>([]);
@@ -124,6 +125,16 @@
 				const updatedGroup = await api.getGroup(Number(id));
 				g.public_key = updatedGroup.public_key;
 				g.private_key = updatedGroup.private_key;
+			}
+
+			// Automatic background key refresh migration
+			if (g.private_key_needs_refresh && g.private_key && userPriv) {
+				try {
+					await refreshGroupKeys(g.id, g.name, g.private_key, g.public_key!, userPriv);
+					g.private_key_needs_refresh = false;
+				} catch (err) {
+					console.error('Failed to automatically refresh group keys:', err);
+				}
 			}
 
 			// Decrypt exclusions if encrypted
@@ -479,6 +490,7 @@
 			}
 			
 			await api.inviteToTeam(targetTeamId, inviteEmail.trim(), groupKeysMap);
+			triggerKeyRefresh.update(n => n + 1);
 			showFlash(`Invitation sent to ${inviteEmail}`);
 			inviteEmail = '';
 			await loadGroup(group.id);
@@ -504,6 +516,7 @@
 			}
 			
 			await api.cancelInvitation(teamId, userId, groupKeysMap);
+			triggerKeyRefresh.update(n => n + 1);
 			showFlash('Invitation cancelled');
 			await loadGroup(group.id);
 		} catch (e) {

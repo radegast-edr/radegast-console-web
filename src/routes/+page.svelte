@@ -104,15 +104,15 @@
  				totalLogsCount = logsRes.length;
  
  				teams = teamsRes;
- 				groups = groupsRes;
- 				devices = devicesRes;
- 				unreadCount = resCounts.unread;
- 				hasPrivateKey = !!(await getStoredPrivateKey(me.id));
- 			} catch {
+				groups = groupsRes;
+				devices = devicesRes;
+				unreadCount = resCounts.unread;
+				hasPrivateKey = !!(await getStoredPrivateKey(me.id));
+			} catch {
 				goto(`${base}/login`);
 			} finally {
- 				isLoading = false;
- 			}
+				isLoading = false;
+			}
  		};
  		loadData();
  
@@ -170,6 +170,8 @@
 		<a href="{base}/keys/transfer" class="btn btn-outline-dark btn-sm fw-bold">Transfer from Another Browser</a>
 	</div>
 {/if}
+
+
 
 <div class="row g-4 mb-4">
 	<div class="col-md-4">

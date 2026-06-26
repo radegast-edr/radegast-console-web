@@ -971,6 +971,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/groups/needs-refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Groups Needing Refresh
+         * @description List all device groups that need a private key refresh and are visible to the current user.
+         */
+        get: operations["list_groups_needing_refresh_api_v1_groups_needs_refresh_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/groups/{group_id}": {
         parameters: {
             query?: never;
@@ -2135,6 +2155,16 @@ export interface components {
             invitations: {
                 [key: string]: unknown;
             }[];
+            /**
+             * Private Key Needs Refresh
+             * @default false
+             */
+            private_key_needs_refresh: boolean;
+            /**
+             * User Has Pack Write
+             * @default false
+             */
+            user_has_pack_write: boolean;
         };
         /** DeviceGroupResponse */
         DeviceGroupResponse: {
@@ -2146,6 +2176,16 @@ export interface components {
             private_key?: string | null;
             /** Public Key */
             public_key?: string | null;
+            /**
+             * Private Key Needs Refresh
+             * @default false
+             */
+            private_key_needs_refresh: boolean;
+            /**
+             * User Has Pack Write
+             * @default false
+             */
+            user_has_pack_write: boolean;
         };
         /** DeviceLogin */
         DeviceLogin: {
@@ -4811,6 +4851,26 @@ export interface operations {
         };
     };
     list_groups_api_v1_groups__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceGroupResponse"][];
+                };
+            };
+        };
+    };
+    list_groups_needing_refresh_api_v1_groups_needs_refresh_get: {
         parameters: {
             query?: never;
             header?: never;

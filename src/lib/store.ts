@@ -15,6 +15,9 @@ export const loading = writable<boolean>(false);
 /** Flash messages */
 export const flash = writable<FlashMessage | null>(null);
 
+/** Store or trigger to request a key refresh check */
+export const triggerKeyRefresh = writable<number>(0);
+
 export function showFlash(message: string, type: string = 'success'): void {
 	flash.set({ message, type });
 	setTimeout(() => flash.set(null), 5000);

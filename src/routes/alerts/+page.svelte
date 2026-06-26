@@ -2,7 +2,7 @@
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { askConfirm } from '$lib/confirm';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { api, type Log, type Device, type Group, type Team, type ExclusionCreate } from '$lib/api';
 	import { showError, showFlash, user } from '$lib/store';
 	import { initAgeWasm, getStoredPrivateKey, decrypt, encrypt } from '$lib/crypto';
@@ -81,7 +81,48 @@
 		}
 	}
 
+	function syncFromHash() {
+		if (typeof window === 'undefined') return;
+		const hash = window.location.hash;
+		const hashParams = new URLSearchParams(hash.slice(1));
+		searchQuery = hashParams.get('q') || '';
+		
+		const f = hashParams.get('from');
+		if (f) {
+			fromTime = f;
+		} else {
+			fromTime = hasHashParams ? null : getDefaultFromTime();
+		}
+		
+		const t = hashParams.get('to');
+		if (t) {
+			toTime = t;
+		} else {
+			toTime = hasHashParams ? null : getDefaultToTime();
+		}
+		
+		const focused = hashParams.get('focused_alert');
+		if (!focused) {
+			selectedLog = null;
+		} else if (logManager) {
+			const focusedId = Number(focused);
+			const matchedLog = logManager.logs.find(l => l.id === focusedId);
+			if (matchedLog) {
+				selectedLog = matchedLog;
+			}
+		}
+	}
+
+	onDestroy(() => {
+		if (typeof window !== 'undefined') {
+			window.removeEventListener('hashchange', syncFromHash);
+		}
+	});
+
 	onMount(async () => {
+		if (typeof window !== 'undefined') {
+			window.addEventListener('hashchange', syncFromHash);
+		}
 		try {
 			await initAgeWasm();
 			const me = await api.me();

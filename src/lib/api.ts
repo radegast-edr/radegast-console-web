@@ -276,6 +276,9 @@ export const api = {
 	listGroups: () =>
 		call(callOp('list_groups_api_v1_groups__get', {})),
 
+	listGroupsNeedingRefresh: () =>
+		call(callOp('list_groups_needing_refresh_api_v1_groups_needs_refresh_get', {})),
+
 	getGroup: (group_id: number) =>
 		call(callOp('get_group_api_v1_groups__group_id__get', { params: { path: { group_id } } })),
 
