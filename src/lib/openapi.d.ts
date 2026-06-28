@@ -2165,6 +2165,11 @@ export interface components {
              * @default false
              */
             user_has_pack_write: boolean;
+            /**
+             * User Has Admin
+             * @default false
+             */
+            user_has_admin: boolean;
         };
         /** DeviceGroupResponse */
         DeviceGroupResponse: {
@@ -2186,6 +2191,11 @@ export interface components {
              * @default false
              */
             user_has_pack_write: boolean;
+            /**
+             * User Has Admin
+             * @default false
+             */
+            user_has_admin: boolean;
         };
         /** DeviceLogin */
         DeviceLogin: {

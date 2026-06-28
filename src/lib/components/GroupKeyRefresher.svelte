@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { api, type Group } from '$lib/api';
 	import { user, showFlash, triggerKeyRefresh } from '$lib/store';
-	import { getStoredPrivateKey, initAgeWasm, decrypt } from '$lib/crypto';
+	import { getStoredPrivateKey, initAgeWasm, decrypt, generateKeypair, encrypt, getStoredPublicKey } from '$lib/crypto';
 	import { refreshGroupKeys } from '$lib/groupHelpers';
 	import Spinner from './Spinner.svelte';
 
@@ -53,7 +53,10 @@
 
 			for (const g of groupsRes) {
 				let canDecrypt = false;
-				if (g.user_has_pack_write && g.private_key && userPriv) {
+				let needsSetup = false;
+				if (g.user_has_admin && (!g.private_key || !g.public_key) && userPriv) {
+					needsSetup = true;
+				} else if (g.user_has_pack_write && g.private_key && userPriv) {
 					try {
 						await initAgeWasm();
 						decrypt(g.private_key, userPriv);
@@ -62,7 +65,7 @@
 						canDecrypt = false;
 					}
 				}
-				if (canDecrypt) {
+				if (canDecrypt || needsSetup) {
 					autoRefreshQueue.push(g);
 				} else {
 					adminQueue.push(g);
@@ -76,7 +79,23 @@
 				for (let i = 0; i < autoRefreshQueue.length; i++) {
 					const g = autoRefreshQueue[i];
 					try {
-						await refreshGroupKeys(g.id, g.name, g.private_key!, g.public_key!, userPriv!);
+						if (!g.private_key || !g.public_key) {
+							// Generate new keys for the group
+							await initAgeWasm();
+							const { publicKey, privateKey } = generateKeypair();
+							const pubKeys = await api.getGroupRecipientPublicKeys(g.id);
+							const myPub = await getStoredPublicKey(currentUser.id);
+							if (myPub && !pubKeys.includes(myPub)) {
+								pubKeys.push(myPub);
+							}
+							const encPriv = encrypt(privateKey, pubKeys);
+							await api.setupGroupKeys(g.id, {
+								public_key: publicKey,
+								private_key: encPriv
+							});
+						} else {
+							await refreshGroupKeys(g.id, g.name, g.private_key!, g.public_key!, userPriv!);
+						}
 					} catch (err) {
 						console.error(`Failed to automatically refresh group ${g.name} keys:`, err);
 					}
