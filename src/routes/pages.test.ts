@@ -442,7 +442,7 @@ describe('Route Pages Load Verification', () => {
 					pack_id: 1,
 					version: '1.0.0',
 					released: '2026-06-04T05:00:00Z',
-					meta: { level: 'essential', os: 'any', expected_false_positive_level: 'low' }
+					meta: { level: 'essential', os: 'any', expected_false_positive_level: 'low', status: 'stable' }
 				}
 			},
 			{
@@ -454,7 +454,7 @@ describe('Route Pages Load Verification', () => {
 					pack_id: 2,
 					version: '1.0.0',
 					released: '2026-06-04T05:00:00Z',
-					meta: { level: 'hunting', os: 'windows' }
+					meta: { level: 'hunting', os: 'windows', status: 'stable' }
 				}
 			}
 		];

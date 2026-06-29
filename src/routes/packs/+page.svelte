@@ -14,7 +14,7 @@
 
 	// Filter state
 	let searchQuery = $state('');
-	let statusFilters = $state<string[]>([]);
+	let statusFilters = $state<string[]>(['stable']);
 	let osFilters = $state<string[]>([]);
 	let fpFilters = $state<string[]>(['low']);
 	let levelFilters = $state<string[]>(['essential']);
@@ -184,7 +184,7 @@
 		}
 
 		// 2. Status Filters
-		statusFilters = getArrayVal('status', savedFilters.status, []);
+		statusFilters = getArrayVal('status', savedFilters.status, ['stable']);
 
 		// 3. OS Filters
 		osFilters = getArrayVal('os', savedFilters.os, []);

@@ -8,7 +8,7 @@
 	import { initAgeWasm, getStoredPrivateKey, decrypt, encrypt } from '$lib/crypto';
 	import { decryptExclusion, encryptExclusion } from '$lib/exclusionHelpers';
 	import { LogManager } from '$lib/logManager.svelte';
-	import { formatFullDateTime, mapSeverityToNumber } from '$lib/utils';
+	import { formatFullDateTime, mapSeverityToNumber, toLocalISOString, toUTCISOString } from '$lib/utils';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
 	import AlertDetail from '$lib/components/AlertDetail.svelte';
 	import Modal from '$lib/components/Modal.svelte';
@@ -48,8 +48,8 @@
 	let savingResolution = $state(false);
 	let selectedDeviceDetails = $state<any>(null);
 
-	let fromTime = $state<string | null>(initialFrom || (hasHashParams ? null : getDefaultFromTime()));
-	let toTime = $state<string | null>(initialTo || (hasHashParams ? null : getDefaultToTime()));
+	let fromTime = $state<string | null>(toLocalISOString(initialFrom) || (hasHashParams ? null : getDefaultFromTime()));
+	let toTime = $state<string | null>(toLocalISOString(initialTo) || (hasHashParams ? null : getDefaultToTime()));
 
 	// Exclusion creation from alert
 	let showExclusionModal = $state(false);
@@ -89,14 +89,14 @@
 		
 		const f = hashParams.get('from');
 		if (f) {
-			fromTime = f;
+			fromTime = toLocalISOString(f);
 		} else {
 			fromTime = hasHashParams ? null : getDefaultFromTime();
 		}
 		
 		const t = hashParams.get('to');
 		if (t) {
-			toTime = t;
+			toTime = toLocalISOString(t);
 		} else {
 			toTime = hasHashParams ? null : getDefaultToTime();
 		}
@@ -177,8 +177,8 @@
 		if (!initialized || typeof window === 'undefined') return;
 		const params = new URLSearchParams();
 		if (searchQuery) params.set('q', searchQuery);
-		if (fromTime) params.set('from', fromTime);
-		if (toTime) params.set('to', toTime);
+		if (fromTime) params.set('from', toUTCISOString(fromTime));
+		if (toTime) params.set('to', toUTCISOString(toTime));
 		if (selectedLog) params.set('focused_alert', String(selectedLog.id));
 		
 		const hash = params.toString();

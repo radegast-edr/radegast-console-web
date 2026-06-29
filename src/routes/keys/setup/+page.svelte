@@ -125,35 +125,39 @@
 			<Spinner centered text="Generating keys…" color="primary" />
 
 		{:else if step === 'show_recovery'}
-			<div class="alert alert-danger">
-				<h5>⚠️ Save Your Recovery Key Now</h5>
-				<p>
-					This is the <strong>only time</strong> you'll see this key.
-					If you lose your private key, you'll need this to recover access.
-					Store it in a password manager or write it down.
-				</p>
-				<label for="setup-recovery-key" class="form-label fw-bold">Recovery Key (AES recovery key):</label>
-				<textarea
-					id="setup-recovery-key"
-					class="form-control font-monospace mb-3"
-					rows="2"
-					readonly
-					value={recoveryKey}
-				></textarea>
-				<div class="form-check mb-3">
-					<input
-						class="form-check-input"
-						type="checkbox"
-						id="confirmSaved"
-						bind:checked={confirmed}
-					/>
-					<label class="form-check-label" for="confirmSaved">
-						I have saved my recovery key in a secure location.
-					</label>
+			<div class="card border-danger">
+				<div class="card-body">
+					<h5 class="card-title text-danger mb-3">⚠️ Save Your Recovery Key Now</h5>
+					<p class="text-muted">
+						This is the <strong>only time</strong> you'll see this key.
+						If you lose your private key, you'll need this to recover access.
+						Store it in a password manager or write it down.
+					</p>
+					<div class="mb-3">
+						<label for="setup-recovery-key" class="form-label fw-bold">Recovery Key (AES recovery key):</label>
+						<textarea
+							id="setup-recovery-key"
+							class="form-control font-monospace"
+							rows="2"
+							readonly
+							value={recoveryKey}
+						></textarea>
+					</div>
+					<div class="form-check mb-3">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="confirmSaved"
+							bind:checked={confirmed}
+						/>
+						<label class="form-check-label" for="confirmSaved">
+							I have saved my recovery key in a secure location.
+						</label>
+					</div>
+					<button class="btn btn-danger" onclick={finishSetup} disabled={!confirmed}>
+						I've Saved It — Continue to Dashboard
+					</button>
 				</div>
-				<button class="btn btn-danger" onclick={finishSetup} disabled={!confirmed}>
-					I've Saved It — Continue to Dashboard
-				</button>
 			</div>
 		{/if}
 	</div>

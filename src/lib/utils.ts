@@ -147,3 +147,18 @@ export function mapSeverityToNumber(severity: any): number {
 			return 0;
 	}
 }
+
+export function toLocalISOString(dateOrStr: string | Date | null | undefined): string {
+	if (!dateOrStr) return '';
+	const date = new Date(dateOrStr);
+	if (isNaN(date.getTime())) return '';
+	const pad = (num: number) => String(num).padStart(2, '0');
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export function toUTCISOString(localStr: string | null | undefined): string {
+	if (!localStr) return '';
+	const date = new Date(localStr);
+	if (isNaN(date.getTime())) return '';
+	return date.toISOString();
+}

@@ -71,17 +71,17 @@
 			<a href="{base}/" class="btn btn-primary">Go to Dashboard</a>
 		{:else}
 			<p class="text-muted">
-				Enter the AGE recovery key that was shown when you first set up your account.
+				Enter the recovery AES secret that was shown when you first set up your account.
 			</p>
 			<form onsubmit={(e) => { e.preventDefault(); recover(); }}>
 				<div class="mb-3">
-					<label for="recoveryKey" class="form-label">Recovery Key</label>
+					<label for="recoveryKey" class="form-label">Recovery AES Secret</label>
 					<textarea
 						class="form-control font-monospace"
 						id="recoveryKey"
 						rows="3"
 						bind:value={recoveryKey}
-						placeholder="AGE-SECRET-KEY-1..."
+						placeholder="Enter your 64-character hex recovery AES secret..."
 						required
 					></textarea>
 				</div>

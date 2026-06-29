@@ -7,6 +7,7 @@
 	import { decryptExclusion, encryptExclusion } from '$lib/exclusionHelpers';
 	import { initAgeWasm, getStoredPrivateKey } from '$lib/crypto';
 	import { LogManager } from '$lib/logManager.svelte';
+	import { toLocalISOString, toUTCISOString } from '$lib/utils';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import Modal from '$lib/components/Modal.svelte';
@@ -37,8 +38,8 @@
 	let privateKey = $state<string | null>(null);
 
 	let searchQuery = $state(initialQ || '');
-	let fromTime = $state<string | null>(initialFrom || (hasHashParams ? null : getDefaultFromTime()));
-	let toTime = $state<string | null>(initialTo || (hasHashParams ? null : getDefaultToTime()));
+	let fromTime = $state<string | null>(toLocalISOString(initialFrom) || (hasHashParams ? null : getDefaultFromTime()));
+	let toTime = $state<string | null>(toLocalISOString(initialTo) || (hasHashParams ? null : getDefaultToTime()));
 
 	// Exclusion creation from hunt
 	let showExclusionModal = $state(false);
@@ -251,8 +252,8 @@
 		if (!initialized || typeof window === 'undefined') return;
 		const params = new URLSearchParams();
 		if (searchQuery) params.set('q', searchQuery);
-		if (fromTime) params.set('from', fromTime);
-		if (toTime) params.set('to', toTime);
+		if (fromTime) params.set('from', toUTCISOString(fromTime));
+		if (toTime) params.set('to', toUTCISOString(toTime));
 		
 		const hash = params.toString();
 		const newHash = hash ? `#${hash}` : '';
