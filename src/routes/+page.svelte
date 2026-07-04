@@ -173,8 +173,9 @@
 
 
 
-<div class="row g-4 mb-4">
+<div class="row g-4 mb-4" data-tour="dashboard-stats">
 	<div class="col-md-4">
+
 		<div class="card h-100 border-0 shadow-sm" style="background: var(--bs-body-bg);">
 			<div class="card-body d-flex flex-column justify-content-center align-items-center py-4">
 				<h6 class="text-uppercase text-muted fw-bold mb-3" style="letter-spacing: 0.05em;">Total Devices</h6>

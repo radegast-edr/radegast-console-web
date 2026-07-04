@@ -479,8 +479,9 @@
 </div>
 
 <!-- Filter Bar -->
-<div class="card mb-4 shadow-sm">
+<div class="card mb-4 shadow-sm" data-tour="pack-filters">
 	<div class="card-body">
+
 		<div class="row g-3">
 			<div class="col-12">
 				<label for="searchInput" class="form-label fw-semibold small">Search</label>
@@ -648,9 +649,10 @@
 </div>
 
 <div class="row">
-	{#each filteredPacks as pack}
-		<div class="col-md-6 col-lg-4 mb-3">
+	{#each filteredPacks as pack, idx}
+		<div class="col-md-6 col-lg-4 mb-3" data-tour={idx === 0 ? "first-pack-card" : undefined}>
 			<div class="card h-100 shadow-sm">
+
 				<div class="card-body d-flex flex-column">
 					<h5 class="card-title fw-bold text-primary d-flex align-items-center justify-content-between gap-2">
 						<a href="{base}/packs/{pack.id}" class="text-decoration-none text-truncate">{pack.name}</a>

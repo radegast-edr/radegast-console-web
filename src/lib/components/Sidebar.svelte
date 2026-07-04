@@ -111,7 +111,7 @@
 		<div class="d-md-none" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1040;" onclick={() => mobileOpen = false}></div>
 	{/if}
 
-	<div class="sidebar d-flex flex-column flex-shrink-0 p-2 bg-body-tertiary border-end {mobileOpen ? 'mobile-open' : ''}" style="--sidebar-width: {collapsed ? '60px' : '180px'};">
+	<div class="sidebar d-flex flex-column flex-shrink-0 p-2 bg-body-tertiary border-end {mobileOpen ? 'mobile-open' : ''}" style="--sidebar-width: {collapsed ? '60px' : '180px'};" data-tour="sidebar">
 		<div class="d-none d-md-flex align-items-center justify-content-center mb-3 px-1 mt-2">
 			<a href="{base}/" class="link-body-emphasis text-decoration-none text-truncate logo">
 				<span class="logo-parenthesis">[</span>
@@ -123,37 +123,37 @@
 		
 		<ul class="nav nav-pills flex-column mb-auto">
 			<li class="nav-item">
-				<a href="{base}/" class="nav-link {isActive('/') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Dashboard">
+				<a href="{base}/" class="nav-link {isActive('/') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Dashboard" data-tour="nav-dashboard">
 					<LayoutDashboard style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Dashboard</span>{/if}
 				</a>
 			</li>
 			<li>
-				<a href="{base}/teams" class="nav-link {isActive('/teams') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Teams">
+				<a href="{base}/teams" class="nav-link {isActive('/teams') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Teams" data-tour="nav-teams">
 					<Users style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Teams</span>{/if}
 				</a>
 			</li>
 			<li>
-				<a href="{base}/groups" class="nav-link {isActive('/groups') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Groups">
+				<a href="{base}/groups" class="nav-link {isActive('/groups') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Groups" data-tour="nav-groups">
 					<Server style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Groups</span>{/if}
 				</a>
 			</li>
 			<li>
-				<a href="{base}/devices" class="nav-link {isActive('/devices') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Devices">
+				<a href="{base}/devices" class="nav-link {isActive('/devices') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Devices" data-tour="nav-devices">
 					<Laptop style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Devices</span>{/if}
 				</a>
 			</li>
 			<li>
-				<a href="{base}/packs" class="nav-link {isActive('/packs') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Packs">
+				<a href="{base}/packs" class="nav-link {isActive('/packs') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Packs" data-tour="nav-packs">
 					<Package style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Packs</span>{/if}
 				</a>
 			</li>
 			<li>
-				<a href="{base}/alerts" class="nav-link {isActive('/alerts') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Alerts">
+				<a href="{base}/alerts" class="nav-link {isActive('/alerts') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Alerts" data-tour="nav-alerts">
 					<Bell style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Alerts</span>{/if}
 				</a>
@@ -234,7 +234,8 @@
 				class="dropdown-menu text-small shadow custom-dropdown-menu {collapsed ? 'collapsed' : 'expanded'} {dropdownOpen ? 'show' : ''}"
 				onclick={(e) => e.stopPropagation()}
 			>
-				<li><a class="dropdown-item" href="{base}/settings" onclick={closeDropdown}>Settings</a></li>
+				<li><a class="dropdown-item" href="{base}/settings" onclick={closeDropdown} data-tour="nav-settings">Settings</a></li>
+
 				<li>
 					<button class="dropdown-item d-flex align-items-center justify-content-between" onclick={cycleTheme}>
 						Theme: <span class="badge text-bg-secondary text-capitalize">{$theme}</span>

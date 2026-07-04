@@ -47,6 +47,8 @@
     "js-yaml": "^5.1.0",
     "jsonata": "^2.2.1",
     "openapi-fetch": "^0.17.0",
-    "quill": "^2.0.3"
+    "quill": "^2.0.3",
+    "shepherd.js": "^13.0.0"
   }
+
 }

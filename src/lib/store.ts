@@ -18,6 +18,10 @@ export const flash = writable<FlashMessage | null>(null);
 /** Store or trigger to request a key refresh check */
 export const triggerKeyRefresh = writable<number>(0);
 
+/** Whether to show the onboarding walkthrough tour */
+export const showOnboarding = writable<boolean>(false);
+
+
 export function showFlash(message: string, type: string = 'success'): void {
 	flash.set({ message, type });
 	setTimeout(() => flash.set(null), 5000);

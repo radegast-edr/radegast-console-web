@@ -381,7 +381,7 @@
 
 		<!-- Right Column: Enable in Groups -->
 		<div class="col-lg-5">
-			<div class="card shadow-sm">
+			<div class="card shadow-sm" data-tour="group-assignments-card">
 				<div class="card-header bg-body-tertiary py-3 d-flex justify-content-between align-items-center">
 					<h5 class="mb-0 fw-bold">Group Assignments</h5>
 					<button class="btn btn-sm btn-success" onclick={saveGroupAccess} disabled={savingAccess || groupStates.length === 0}>

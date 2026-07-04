@@ -33,8 +33,10 @@ describe('store', () => {
 			extended_edr_enabled: false,
 			api_keys_enabled: false,
 			notification_level: 'medium',
-			ai_analysis_tool: 'lumo-guest'
+			ai_analysis_tool: 'lumo-guest',
+			onboarding_completed: false
 		});
+
 		expect(get(user)).toEqual(expect.objectContaining({ id: 1, email: 'test@example.com' }));
 
 		loading.set(true);

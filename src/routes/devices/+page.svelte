@@ -85,8 +85,10 @@
 	<h2>Devices</h2>
 	<button
 		class="btn btn-primary"
-		onclick={openCreateModal}>Add Device</button
+		onclick={openCreateModal}
+		data-tour="add-device">Add Device</button
 	>
+
 </div>
 
 <AgentSetupInstructions

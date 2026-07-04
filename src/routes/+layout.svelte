@@ -8,9 +8,13 @@
 	import GlobalConfirm from '$lib/components/GlobalConfirm.svelte';
 	import { onMount, type Snippet } from 'svelte';
 	import { goto, beforeNavigate } from '$app/navigation';
-	import { user } from '$lib/store';
+	import { user, showOnboarding } from '$lib/store';
 	import { api, type UserInfo } from '$lib/api';
 	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt, getStoredPrivateKey, getStoredPublicKey } from '$lib/crypto';
+	import OnboardingTour from '$lib/components/OnboardingTour.svelte';
+	import Modal from '$lib/components/Modal.svelte';
+	import Icon from '@iconify/svelte';
+
 
 	import { page } from '$app/state';
 	import BoxiconsNoEntry from '~icons/boxicons/no-entry';
@@ -85,6 +89,26 @@
 			autoSetupKeys(currentUser);
 		}
 	});
+
+	$effect(() => {
+		const path = page.url.pathname;
+		const relativePath = path.startsWith(base) ? path.slice(base.length) : path;
+		if (PUBLIC_PREFIXES.some((p) => relativePath.startsWith(p))) return;
+
+		const currentUser = $user;
+		if (
+			currentUser &&
+			currentUser.has_keys &&
+			currentUser.onboarding_completed === false &&
+			!generatingKeys &&
+			!showRecoveryModal &&
+			!setupError &&
+			!$showOnboarding
+		) {
+			showOnboarding.set(true);
+		}
+	});
+
 
 	async function autoSetupKeys(me: UserInfo): Promise<void> {
 		generatingKeys = true;
@@ -204,6 +228,11 @@
 
 <GlobalConfirm />
 
+{#if $showOnboarding}
+	<OnboardingTour />
+{/if}
+
+
 {#if generatingKeys}
 	<div class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-white" style="z-index: 1999; opacity: 0.9;">
 		<div class="mb-3">
@@ -226,53 +255,48 @@
 	</div>
 {/if}
 
-{#if showRecoveryModal}
-	<div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.65); backdrop-filter: blur(5px); z-index: 2000;">
-		<div class="modal-dialog modal-dialog-centered">
-			<div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
-				<div class="modal-header bg-danger text-white border-0 py-3">
-					<h5 class="modal-title fw-bold mb-0">⚠️ Save Your Recovery Key</h5>
-				</div>
-				<div class="modal-body p-4">
-					<p class="text-muted small">
-						Your account has been secured with End-to-End Encryption. We've generated your encryption keys automatically.
-					</p>
-					<div class="alert alert-warning py-2 small border-0 mb-3" style="border-radius: 8px;">
-						This is the <strong>only time</strong> you'll see this key.
-						If you clear your browser data or log in on a new device, you will need this key to read your logs.
-					</div>
-					<div class="mb-3">
-						<label for="layout-recovery-key" class="form-label fw-bold small text-secondary">Recovery Key (AES recovery key):</label>
-						<textarea
-							id="layout-recovery-key"
-							class="form-control font-monospace text-center fw-bold bg-light py-2"
-							rows="1"
-							readonly
-							value={recoveryKey}
-							style="letter-spacing: 0.5px; font-size: 1.05rem; border-radius: 8px;"
-						></textarea>
-					</div>
-					<div class="form-check mb-2">
-						<input
-							class="form-check-input"
-							type="checkbox"
-							id="layoutConfirmSaved"
-							bind:checked={confirmed}
-						/>
-						<label class="form-check-label small text-muted" for="layoutConfirmSaved">
-							I have securely saved this recovery key in a safe location.
-						</label>
-					</div>
-				</div>
-				<div class="modal-footer border-0 bg-light py-3">
-					<button class="btn btn-danger px-4 w-100 fw-bold" onclick={() => { showRecoveryModal = false; window.location.reload(); }} disabled={!confirmed} style="border-radius: 8px; py-2">
-						I've Saved It — Proceed to App
-					</button>
-				</div>
-			</div>
+<Modal show={showRecoveryModal} title="Save Your Recovery Key" preventClose={true}>
+	<div class="p-1">
+		<div class="d-flex align-items-center gap-2 mb-3 text-danger">
+			<Icon icon="lucide:shield-alert" class="fs-4" />
+			<h6 class="fw-bold mb-0">Save Your Recovery Key Required</h6>
+		</div>
+		<p class="text-body-secondary small">
+			Your account has been secured with End-to-End Encryption. We've generated your encryption keys automatically.
+		</p>
+		<div class="alert alert-warning py-2 small border-0 mb-3">
+			This is the <strong>only time</strong> you'll see this key.
+			If you clear your browser data or log in on a new device, you will need this key to read your logs.
+		</div>
+		<div class="mb-3">
+			<label for="layout-recovery-key" class="form-label fw-bold small text-body-secondary">Recovery Key (AES recovery key):</label>
+			<textarea
+				id="layout-recovery-key"
+				class="form-control font-monospace text-center fw-bold bg-body-secondary py-2"
+				rows="1"
+				readonly
+				value={recoveryKey}
+				style="letter-spacing: 0.5px; font-size: 1.05rem;"
+			></textarea>
+		</div>
+		<div class="form-check mb-4">
+			<input
+				class="form-check-input"
+				type="checkbox"
+				id="layoutConfirmSaved"
+				bind:checked={confirmed}
+			/>
+			<label class="form-check-label small text-body-secondary" for="layoutConfirmSaved">
+				I have securely saved this recovery key in a safe location.
+			</label>
+		</div>
+		<div class="pt-3 border-top">
+			<button class="btn btn-danger px-4 w-100 fw-bold" onclick={() => { showRecoveryModal = false; window.location.reload(); }} disabled={!confirmed}>
+				I've Saved It — Proceed to App
+			</button>
 		</div>
 	</div>
-{/if}
+</Modal>
 
 <style>
 	.main-content {

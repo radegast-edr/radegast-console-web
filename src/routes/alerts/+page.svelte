@@ -116,6 +116,7 @@
 	onDestroy(() => {
 		if (typeof window !== 'undefined') {
 			window.removeEventListener('hashchange', syncFromHash);
+			delete (window as any)._radegast_alert_page_state;
 		}
 	});
 
@@ -130,6 +131,30 @@
 			privateKey = await getStoredPrivateKey(me.id);
 			
 			logManager = new LogManager(privateKey, showBrowserNotification);
+			if (typeof window !== 'undefined') {
+				(window as any)._radegast_alert_page_state = {
+					injectMockAlert: (mockLog: Log, decrypted: any, device: any) => {
+						if (!logManager) return;
+						logManager.deviceMap.set(device.id, device);
+						if (!logManager.logs.some(l => l.id === mockLog.id)) {
+							logManager.logs = [mockLog, ...logManager.logs];
+						}
+						logManager.decryptionState[mockLog.id] = {
+							success: true,
+							parsed: decrypted
+						};
+						selectLog(mockLog);
+					},
+					cleanupMockAlert: (mockLogId: number) => {
+						if (!logManager) return;
+						logManager.logs = logManager.logs.filter(l => l.id !== mockLogId);
+						delete logManager.decryptionState[mockLogId];
+						if (selectedLog?.id === mockLogId) {
+							selectedLog = null;
+						}
+					}
+				};
+			}
 			const devicesData = await api.listDevices();
 			logManager.setDevices(devicesData);
 
@@ -659,8 +684,9 @@
 		<div class="alerts-container">
 			<!-- Left Pane: Alert List -->
 			<div class="left-pane">
-			<div class="mb-3">
+			<div class="mb-3" data-tour="alert-filters">
 				<input 
+
 					type="text" 
 					class="form-control mb-2" 
 					placeholder="Filter alerts (JSONata)..." 
@@ -703,6 +729,7 @@
 						onkeydown={(e) => { if (e.key === 'Enter') selectLog(log); }}
 						role="button"
 						tabindex="0"
+						data-tour={log.id === 104932 ? "mock-alert" : undefined}
 					>
 						<div class="card-body p-3">
 							<div class="d-flex justify-content-between mb-1">
@@ -764,7 +791,7 @@
 		</div>
 
 		<!-- Right Pane: Alert Details -->
-		<div class="right-pane">
+		<div class="right-pane" data-tour={selectedLog?.id === 104932 ? "mock-alert-detail" : undefined}>
 			{#if selectedLog}
 				{@const alertObj = logManager.getAlertObject(selectedLog)}
 				{@const alertData = typeof alertObj.alert === 'object' && alertObj.alert !== null ? alertObj.alert : null}

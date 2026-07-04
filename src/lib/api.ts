@@ -201,6 +201,10 @@ export const api = {
 	changePassword: (old_password: string, new_password: string) =>
 		call(callOp('change_password_api_v1_user_change_password_post', { body: { old_password, new_password } })),
 
+	completeOnboarding: () =>
+		call(callOp('complete_onboarding_api_v1_user_onboarding_complete_post', {})),
+
+
 	getNotifications: () =>
 		call(callOp('get_notifications_api_v1_user_notifications_get', {})),
 

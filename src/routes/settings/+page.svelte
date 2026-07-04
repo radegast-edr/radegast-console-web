@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import KeyIcon from '~icons/lucide/key';
+	import CompassIcon from '~icons/lucide/compass';
 	import DownloadIcon from '~icons/lucide/download';
 	import AlertTriangleIcon from '~icons/lucide/alert-triangle';
 	import {
@@ -11,10 +13,16 @@
 		type MfaSettings,
 		type MfaOtpSetupResponse,
 	} from '$lib/api';
-	import { showFlash, showError, user } from '$lib/store';
+	import { showFlash, showError, user, showOnboarding } from '$lib/store';
 	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt, getStoredPublicKey } from '$lib/crypto';
 	import Modal from '$lib/components/Modal.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
+
+	function restartOnboardingTour() {
+		showOnboarding.set(true);
+		goto(`${base}/`);
+	}
+
 
 	// Password change
 	let oldPassword = $state('');
@@ -995,7 +1003,24 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- Onboarding Tour Card -->
+	<div class="col-12 mb-4" data-tour="settings">
+		<div class="card">
+			<div class="card-header"><h5 class="mb-0">Help & Onboarding</h5></div>
+			<div class="card-body">
+				<p class="text-muted small">
+					Re-launch the interactive walkthrough to learn about all the features of the Radegast console.
+				</p>
+				<button class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2" onclick={restartOnboardingTour}>
+					<CompassIcon style="width: 16px; height: 16px;" />
+					Restart Onboarding Tour
+				</button>
+			</div>
+		</div>
+	</div>
 </div>
+
 
 <Modal
 	show={showConfirmModal}
