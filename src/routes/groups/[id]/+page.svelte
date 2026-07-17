@@ -5,7 +5,7 @@
 	import { decryptExclusionsList, encryptExclusion } from '$lib/exclusionHelpers';
 	import { page } from '$app/stores';
 	import { api, type GroupDetail, type Team, type TeamMember, type Device, type EnabledPack, type Pack, type PackVersion, type Exclusion, type ExclusionCreate } from '$lib/api';
-	import { showFlash, showError, triggerKeyRefresh } from '$lib/store';
+	import { showFlash, showError, triggerKeyRefresh, user } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
 	import { isDeviceActive } from '$lib/utils';
@@ -71,6 +71,33 @@
 		return false;
 	}
 
+	let unsupportedResponseDevices = $derived.by(() => {
+		if (!group) return [];
+		return (group.devices ?? []).filter(d => isAgentVersionUnsupportedForResponse(d.agent_version));
+	});
+
+	function isAgentVersionUnsupportedForResponse(version: string | null | undefined): boolean {
+		if (!version) return true;
+		const trimmed = version.trim();
+		if (!trimmed) return true;
+		if (trimmed.toLowerCase() === 'unknown') return true;
+		
+		if (trimmed.startsWith('python ')) {
+			const verNum = trimmed.substring(7).trim();
+			const parts = verNum.split('.').map(Number);
+			if (parts.length >= 3) {
+				const [major, minor] = parts;
+				if (major < 0 || (major === 0 && minor < 6)) {
+					return true;
+				}
+			} else {
+				return true;
+			}
+			return false;
+		}
+		return false;
+	}
+
 	// Pack Management State
 	let enabledPacks = $state<EnabledPack[]>([]);
 	let showEnablePackModal = $state(false);
@@ -79,6 +106,80 @@
 	let packVersions = $state<PackVersion[]>([]);
 	let selectedVersionId = $state('');
 	let autoupdate = $state(true);
+
+	// Active Response Settings State
+	let showResponseWarningModal = $state(false);
+	let localResponseEnabled = $state(false);
+	let localResponseSeverity = $state('critical');
+
+	$effect(() => {
+		if (group) {
+			localResponseEnabled = group.response_enabled || false;
+			localResponseSeverity = group.response_min_severity || 'critical';
+		}
+	});
+
+	async function handleResponseToggle(e: Event): Promise<void> {
+		if (!group) return;
+		const target = e.target as HTMLInputElement;
+		const checked = target.checked;
+
+		if (checked) {
+			target.checked = false; // keep visual unchecked until confirmed
+			showResponseWarningModal = true;
+		} else {
+			try {
+				await api.updateGroupResponse(group.id, {
+					response_enabled: false,
+					response_min_severity: localResponseSeverity
+				});
+				group.response_enabled = false;
+				localResponseEnabled = false;
+				showFlash('Active Response disabled');
+			} catch (err) {
+				showError((err as Error).message);
+				target.checked = true;
+			}
+		}
+	}
+
+	async function confirmEnableResponse(): Promise<void> {
+		if (!group) return;
+		showResponseWarningModal = false;
+		try {
+			await api.updateGroupResponse(group.id, {
+				response_enabled: true,
+				response_min_severity: localResponseSeverity
+			});
+			group.response_enabled = true;
+			localResponseEnabled = true;
+			showFlash('Active Response enabled');
+		} catch (err) {
+			showError((err as Error).message);
+		}
+	}
+
+	async function handleSeverityChange(e: Event): Promise<void> {
+		if (!group) return;
+		const target = e.target as HTMLSelectElement;
+		const val = target.value;
+		if (!group.response_enabled) {
+			localResponseSeverity = val;
+			return;
+		}
+		try {
+			await api.updateGroupResponse(group.id, {
+				response_enabled: true,
+				response_min_severity: val
+			});
+			localResponseSeverity = val;
+			group.response_min_severity = val;
+			showFlash('Response severity updated');
+		} catch (err) {
+			showError((err as Error).message);
+			target.value = localResponseSeverity;
+		}
+	}
 
 	// inline rename
 	let editingName = $state(false);
@@ -746,6 +847,71 @@
 		</div>
 	</div>
 
+	{#if $user?.extended_edr_enabled}
+	<!-- Active Response Settings section -->
+	<div class="card mb-4">
+		<div class="card-header"><h5 class="mb-0">Active Response Settings</h5></div>
+		<div class="card-body">
+			<p class="text-muted small">
+				Active Response automatically terminates processes that trigger a rule with the selected severity or higher.
+			</p>
+
+			{#if unsupportedResponseDevices.length > 0}
+				<div class="alert alert-danger border-0 mb-3" role="alert">
+					<h6 class="alert-heading fw-bold">Warning: Unsupported Agent Versions for Active Response</h6>
+					<p class="mb-0 small">
+						The following devices in this group are running an agent with an unknown version or version lower than <strong>python 0.6.0</strong>.
+						Active Response <strong>will not apply</strong> and <strong>will not be enabled</strong> for these devices:
+					</p>
+					<ul class="mb-0 mt-2 small">
+						{#each unsupportedResponseDevices as device}
+							<li>
+								<a href="{base}/devices/{device.id}" class="text-danger fw-bold">{device.name}</a>
+								(version: <code>{device.agent_version || 'unknown'}</code>)
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+
+			<div class="row g-3 align-items-center">
+				<div class="col-auto">
+					<div class="form-check form-switch">
+						<input
+							class="form-check-input"
+							type="checkbox"
+							id="activeResponseToggle"
+							checked={localResponseEnabled}
+							onchange={handleResponseToggle}
+							disabled={!hasPackWrite}
+						/>
+						<label class="form-check-label" for="activeResponseToggle">
+							<strong>Enable Active Response (Process Termination)</strong>
+						</label>
+					</div>
+				</div>
+				<div class="col-auto ms-sm-4 d-flex align-items-center gap-2">
+					<label for="responseSeveritySelect" class="col-form-label col-form-label-sm text-nowrap mb-0">
+						Minimum severity level for termination:
+					</label>
+					<select
+						class="form-select form-select-sm w-auto"
+						id="responseSeveritySelect"
+						value={localResponseSeverity}
+						onchange={handleSeverityChange}
+						disabled={!hasPackWrite}
+					>
+						<option value="low">Low</option>
+						<option value="medium">Medium</option>
+						<option value="high">High</option>
+						<option value="critical">Critical</option>
+					</select>
+				</div>
+			</div>
+		</div>
+	</div>
+	{/if}
+
 	<!-- Exclusions section -->
 	<div class="card mb-4">
 		<div class="card-header d-flex justify-content-between align-items-center">
@@ -913,6 +1079,28 @@
 			</div>
 			<button type="submit" class="btn btn-primary" disabled={packVersions.length === 0}>Enable Pack</button>
 		</form>
+	</Modal>
+
+	<!-- Warning Modal for Active Response -->
+	<Modal show={showResponseWarningModal} title="Confirm Enabling Active Response" onClose={() => (showResponseWarningModal = false)}>
+		<div class="p-2">
+			<div class="alert alert-danger d-flex align-items-start gap-2 mb-3">
+				<Icon icon="lucide:alert-triangle" class="fs-4 flex-shrink-0 mt-0.5" />
+				<div>
+					<h6 class="alert-heading fw-bold mb-1">Dangerous Operation Warning</h6>
+					<p class="mb-0 small">
+						Enabling Active Response is a dangerous operation. When activated, the agent will kill offending processes, which could result in interrupted work and service disruptions on target hosts.
+					</p>
+				</div>
+			</div>
+			<p class="mb-3 small">
+				Please verify that you are not getting false positives for the selected severity level (<strong>{localResponseSeverity.toUpperCase()}</strong>) before enabling this.
+			</p>
+			<div class="d-flex justify-content-end gap-2 mt-4">
+				<button class="btn btn-outline-secondary btn-sm" onclick={() => (showResponseWarningModal = false)}>Cancel</button>
+				<button class="btn btn-danger btn-sm" onclick={confirmEnableResponse}>Enable Active Response</button>
+			</div>
+		</div>
 	</Modal>
 {:else}
 	<Spinner centered text="Loading group details..." py={5} />

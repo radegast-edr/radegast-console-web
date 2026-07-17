@@ -289,6 +289,9 @@ export const api = {
 	renameGroup: (group_id: number, name: string) =>
 		call(callOp('rename_group_api_v1_groups__group_id__patch', { params: { path: { group_id } }, body: { name } })),
 
+	updateGroupResponse: (group_id: number, data: { response_enabled: boolean; response_min_severity: string }) =>
+		call(callOp('update_group_response_api_v1_groups__group_id__response_patch', { params: { path: { group_id } }, body: data })),
+
 	unlinkGroupFromTeam: (group_id: number, team_id: number, encrypted_private_key: string) =>
 		call(callOp('unlink_group_from_team_api_v1_groups__group_id__teams__team_id__unlink_post', { params: { path: { group_id, team_id } }, body: { encrypted_private_key } })),
 

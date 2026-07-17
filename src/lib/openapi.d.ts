@@ -829,6 +829,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/devices/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Device Config
+         * @description Get active response settings for the device based on its groups.
+         */
+        get: operations["get_device_config_api_v1_devices_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/devices/{device_id}": {
         parameters: {
             query?: never;
@@ -1110,6 +1130,23 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{group_id}/response": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Group Response */
+        patch: operations["update_group_response_api_v1_groups__group_id__response_patch"];
         trace?: never;
     };
     "/api/v1/exclusions/": {
@@ -2187,6 +2224,16 @@ export interface components {
              * @default false
              */
             user_has_admin: boolean;
+            /**
+             * Response Enabled
+             * @default false
+             */
+            response_enabled: boolean;
+            /**
+             * Response Min Severity
+             * @default critical
+             */
+            response_min_severity: string;
         };
         /** DeviceGroupResponse */
         DeviceGroupResponse: {
@@ -2213,6 +2260,16 @@ export interface components {
              * @default false
              */
             user_has_admin: boolean;
+            /**
+             * Response Enabled
+             * @default false
+             */
+            response_enabled: boolean;
+            /**
+             * Response Min Severity
+             * @default critical
+             */
+            response_min_severity: string;
         };
         /** DeviceLogin */
         DeviceLogin: {
@@ -2370,6 +2427,13 @@ export interface components {
         GroupRename: {
             /** Name */
             name: string;
+        };
+        /** GroupResponseUpdate */
+        GroupResponseUpdate: {
+            /** Response Enabled */
+            response_enabled: boolean;
+            /** Response Min Severity */
+            response_min_severity: string;
         };
         /** GroupUnlinkPayload */
         GroupUnlinkPayload: {
@@ -4547,6 +4611,26 @@ export interface operations {
             };
         };
     };
+    get_device_config_api_v1_devices_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     get_device_api_v1_devices__device_id__get: {
         parameters: {
             query?: never;
@@ -5202,6 +5286,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_group_response_api_v1_groups__group_id__response_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupResponseUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceGroupResponse"];
                 };
             };
             /** @description Validation Error */
