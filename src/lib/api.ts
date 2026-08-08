@@ -536,13 +536,43 @@ export const api = {
 	getDashboardData: () =>
 		call(callOp('get_dashboard_data_api_v1_dashboard__get', {})),
 
-	adminGetAlertStats: (from_time?: string | null, to_time?: string | null) =>
+	adminGetAlertStats: (params: {
+		from_time?: string | null;
+		to_time?: string | null;
+		severity?: string[];
+		rule_type?: string[];
+		rule_id?: string[];
+		alert_resolution?: string[];
+	}) =>
 		call(
 			callOp('get_admin_alert_stats_api_v1_admin_stats_alerts_get', {
 				params: {
 					query: {
-						...(from_time ? { from_time } : {}),
-						...(to_time ? { to_time } : {})
+						...(params.from_time ? { from_time: params.from_time } : {}),
+						...(params.to_time ? { to_time: params.to_time } : {}),
+						...(params.severity?.length ? { severity: params.severity } : {}),
+						...(params.rule_type?.length ? { rule_type: params.rule_type } : {}),
+						...(params.rule_id?.length ? { rule_id: params.rule_id } : {}),
+						...(params.alert_resolution?.length
+							? { alert_resolution: params.alert_resolution }
+							: {})
+					}
+				}
+			})
+		),
+
+	adminGetAlertRuleIds: () =>
+		call(
+			callOp('get_admin_alert_rule_ids_api_v1_admin_stats_alerts_rule_ids_get', {})
+		),
+
+	adminGetAlertRuleContent: (rule_type: string, rule_id: string) =>
+		call(
+			callOp('get_admin_alert_rule_content_api_v1_admin_stats_alerts_rule_content_get', {
+				params: {
+					query: {
+						rule_type,
+						rule_id
 					}
 				}
 			})

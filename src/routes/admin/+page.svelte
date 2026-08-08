@@ -7,6 +7,7 @@
 	import { goto } from '$app/navigation';
 	import WysiwygEditor from '$lib/components/WysiwygEditor.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
+	import Modal from '$lib/components/Modal.svelte';
 
 	let users = $state<UserInfo[]>([]);
 	let devices = $state<Device[]>([]);
@@ -23,6 +24,33 @@
 
 	let excludeOffline = $state(false);
 	let excludeNoVersion = $state(false);
+
+	// Alert filter state
+	let filterSeverity = $state<string[]>([]);
+	let filterRuleType = $state<string[]>([]);
+	let filterRuleId = $state<string[]>([]);
+	let filterResolution = $state<string[]>([]);
+	let availableRuleIds = $state<string[]>([]);
+	let ruleIdSearch = $state('');
+	let ruleIdDropdownOpen = $state(false);
+
+	let showSeverityDropdown = $state(false);
+	let showRuleTypeDropdown = $state(false);
+	let showResolutionDropdown = $state(false);
+
+	let showRuleModal = $state(false);
+	let modalRuleType = $state('');
+	let modalRuleId = $state('');
+	let modalRuleContent = $state('');
+	let loadingRuleContent = $state(false);
+
+	let filteredRuleIds = $derived(
+		ruleIdSearch
+			? availableRuleIds.filter((r) =>
+					r.toLowerCase().includes(ruleIdSearch.toLowerCase())
+				)
+			: availableRuleIds
+	);
 
 	onMount(async () => {
 		if ($user?.role !== 'admin') {
@@ -47,7 +75,14 @@
 		try {
 			const fromUtc = alertFromTime ? new Date(alertFromTime).toISOString() : null;
 			const toUtc = alertToTime ? new Date(alertToTime).toISOString() : null;
-			alertStats = await api.adminGetAlertStats(fromUtc, toUtc);
+			alertStats = await api.adminGetAlertStats({
+				from_time: fromUtc,
+				to_time: toUtc,
+				severity: filterSeverity,
+				rule_type: filterRuleType,
+				rule_id: filterRuleId,
+				alert_resolution: filterResolution
+			});
 		} catch (e) {
 			showError((e as Error).message);
 		}
@@ -61,10 +96,80 @@
 		}
 	}
 
+	async function loadAvailableRuleIds() {
+		try {
+			availableRuleIds = await api.adminGetAlertRuleIds();
+		} catch (e) {
+			showError((e as Error).message);
+		}
+	}
+
+	function toggleFilter(
+		arr: string[],
+		value: string,
+		setter: (v: string[]) => void
+	) {
+		const idx = arr.indexOf(value);
+		if (idx >= 0) {
+			setter([...arr.slice(0, idx), ...arr.slice(idx + 1)]);
+		} else {
+			setter([...arr, value]);
+		}
+		loadAlertStats();
+	}
+
+	function removeRuleIdFilter(value: string) {
+		filterRuleId = filterRuleId.filter((v) => v !== value);
+		loadAlertStats();
+	}
+
+	function closeAllFilterDropdowns() {
+		showSeverityDropdown = false;
+		showRuleTypeDropdown = false;
+		showResolutionDropdown = false;
+		ruleIdDropdownOpen = false;
+	}
+
+	function toggleFilterDropdown(dropdownName: 'severity' | 'ruletype' | 'resolution') {
+		const wasOpen = dropdownName === 'severity' ? showSeverityDropdown :
+		                dropdownName === 'ruletype' ? showRuleTypeDropdown : showResolutionDropdown;
+		closeAllFilterDropdowns();
+		if (!wasOpen) {
+			if (dropdownName === 'severity') showSeverityDropdown = true;
+			if (dropdownName === 'ruletype') showRuleTypeDropdown = true;
+			if (dropdownName === 'resolution') showResolutionDropdown = true;
+		}
+	}
+
+	function handleStatsWindowClick(e: MouseEvent) {
+		const target = e.target as HTMLElement;
+		if (!target.closest('.filter-dropdown-container') && !target.closest('.rule-id-filter-container')) {
+			closeAllFilterDropdowns();
+		}
+	}
+
+	async function openRuleContent(ruleType: string, ruleId: string) {
+		modalRuleType = ruleType;
+		modalRuleId = ruleId;
+		modalRuleContent = '';
+		showRuleModal = true;
+		loadingRuleContent = true;
+		try {
+			const res = await api.adminGetAlertRuleContent(ruleType, ruleId);
+			modalRuleContent = res.content;
+		} catch (e) {
+			showError((e as Error).message);
+			showRuleModal = false;
+		} finally {
+			loadingRuleContent = false;
+		}
+	}
+
 	function selectStatsTab() {
 		activeTab = 'stats';
 		loadAlertStats();
 		loadDeviceStats();
+		loadAvailableRuleIds();
 	}
 
 	async function loadAll(): Promise<void> {
@@ -165,18 +270,22 @@
 	}
 </script>
 
+<svelte:window onclick={handleStatsWindowClick} />
+
 <h2>Admin Panel</h2>
 
 <ul class="nav nav-tabs mb-4">
 	<li class="nav-item">
-		<button class="nav-link" class:active={activeTab === 'users'} onclick={() => (activeTab = 'users')}>
+		<button
+			class="nav-link {activeTab === 'users' ? 'active' : 'text-body-secondary bg-transparent'}"
+			onclick={() => (activeTab = 'users')}
+		>
 			Users ({users.length})
 		</button>
 	</li>
 	<li class="nav-item">
 		<button
-			class="nav-link"
-			class:active={activeTab === 'devices'}
+			class="nav-link {activeTab === 'devices' ? 'active' : 'text-body-secondary bg-transparent'}"
 			onclick={() => (activeTab = 'devices')}
 		>
 			Devices ({devices.length})
@@ -184,8 +293,7 @@
 	</li>
 	<li class="nav-item">
 		<button
-			class="nav-link"
-			class:active={activeTab === 'packs'}
+			class="nav-link {activeTab === 'packs' ? 'active' : 'text-body-secondary bg-transparent'}"
 			onclick={() => (activeTab = 'packs')}
 		>
 			Packs ({packs.length})
@@ -193,8 +301,7 @@
 	</li>
 	<li class="nav-item">
 		<button
-			class="nav-link"
-			class:active={activeTab === 'stats'}
+			class="nav-link {activeTab === 'stats' ? 'active' : 'text-body-secondary bg-transparent'}"
 			onclick={selectStatsTab}
 		>
 			Stats
@@ -202,8 +309,7 @@
 	</li>
 	<li class="nav-item">
 		<button
-			class="nav-link"
-			class:active={activeTab === 'broadcast'}
+			class="nav-link {activeTab === 'broadcast' ? 'active' : 'text-body-secondary bg-transparent'}"
 			onclick={() => (activeTab = 'broadcast')}
 		>
 			Broadcast
@@ -246,7 +352,7 @@
 						{:else if u.mfa_configured_level === 'otp'}
 							<span class="badge bg-primary">OTP</span>
 						{:else}
-							<span class="badge bg-light text-dark">None</span>
+							<span class="badge bg-body-secondary text-body">None</span>
 						{/if}
 						{#if u.mfa_setup_missing}
 							<span class="badge bg-danger ms-1" title="Missing required setup">Setup Missing</span>
@@ -358,6 +464,155 @@
 						</div>
 					</div>
 
+					<div class="row g-2 mb-3">
+						<!-- Severity Dropdown -->
+						<div class="col-md-4 col-12 filter-dropdown-container dropdown position-relative">
+							<span class="form-label small fw-bold mb-1 d-block">Severity</span>
+							<button
+								type="button"
+								class="btn btn-outline-secondary btn-sm w-100 d-flex align-items-center justify-content-between dropdown-toggle {showSeverityDropdown ? 'show' : ''}"
+								onclick={() => toggleFilterDropdown('severity')}
+								aria-expanded={showSeverityDropdown}
+							>
+								<span class="text-truncate">
+									{#if filterSeverity.length > 0}
+										{filterSeverity.join(', ')}
+									{:else}
+										All Severities
+									{/if}
+								</span>
+							</button>
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<div class="dropdown-menu w-100 p-2 shadow-sm {showSeverityDropdown ? 'show' : ''}" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
+								{#each ['critical', 'high', 'medium', 'low', 'informational'] as sev}
+									<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
+										<input
+											type="checkbox"
+											checked={filterSeverity.includes(sev)}
+											onchange={() => toggleFilter(filterSeverity, sev, (v) => (filterSeverity = v))}
+										/>
+										<span class="text-capitalize small">{sev}</span>
+									</label>
+								{/each}
+							</div>
+						</div>
+
+						<!-- Rule Type Dropdown -->
+						<div class="col-md-4 col-12 filter-dropdown-container dropdown position-relative">
+							<span class="form-label small fw-bold mb-1 d-block">Rule Type</span>
+							<button
+								type="button"
+								class="btn btn-outline-secondary btn-sm w-100 d-flex align-items-center justify-content-between dropdown-toggle {showRuleTypeDropdown ? 'show' : ''}"
+								onclick={() => toggleFilterDropdown('ruletype')}
+								aria-expanded={showRuleTypeDropdown}
+							>
+								<span class="text-truncate">
+									{#if filterRuleType.length > 0}
+										{filterRuleType.map(r => r.toUpperCase()).join(', ')}
+									{:else}
+										All Rule Types
+									{/if}
+								</span>
+							</button>
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<div class="dropdown-menu w-100 p-2 shadow-sm {showRuleTypeDropdown ? 'show' : ''}" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
+								{#each ['sigma', 'ioc', 'yara'] as rt}
+									<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
+										<input
+											type="checkbox"
+											checked={filterRuleType.includes(rt)}
+											onchange={() => toggleFilter(filterRuleType, rt, (v) => (filterRuleType = v))}
+										/>
+										<span class="small">{rt.toUpperCase()}</span>
+									</label>
+								{/each}
+							</div>
+						</div>
+
+						<!-- Resolution Dropdown -->
+						<div class="col-md-4 col-12 filter-dropdown-container dropdown position-relative">
+							<span class="form-label small fw-bold mb-1 d-block">Resolution</span>
+							<button
+								type="button"
+								class="btn btn-outline-secondary btn-sm w-100 d-flex align-items-center justify-content-between dropdown-toggle {showResolutionDropdown ? 'show' : ''}"
+								onclick={() => toggleFilterDropdown('resolution')}
+								aria-expanded={showResolutionDropdown}
+							>
+								<span class="text-truncate">
+									{#if filterResolution.length > 0}
+										{filterResolution.map(r => r === 'none' ? 'Unresolved' : r.replace('_', ' ')).join(', ')}
+									{:else}
+										All Resolutions
+									{/if}
+								</span>
+							</button>
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<div class="dropdown-menu w-100 p-2 shadow-sm {showResolutionDropdown ? 'show' : ''}" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
+								{#each [['true_positive', 'True positive'], ['false_positive', 'False positive'], ['benign', 'Benign'], ['none', 'Unresolved']] as [res, label]}
+									<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
+										<input
+											type="checkbox"
+											checked={filterResolution.includes(res)}
+											onchange={() => toggleFilter(filterResolution, res, (v) => (filterResolution = v))}
+										/>
+										<span class="small">{label}</span>
+									</label>
+								{/each}
+							</div>
+						</div>
+					</div>
+
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div class="mb-4 rule-id-filter-container">
+						<label for="filter-rule-id-search" class="form-label small fw-bold mb-1">Rule ID</label>
+						<div class="position-relative">
+							<input
+								id="filter-rule-id-search"
+								type="text"
+								class="form-control form-control-sm"
+								placeholder="Search rule IDs..."
+								bind:value={ruleIdSearch}
+								onfocus={() => (ruleIdDropdownOpen = true)}
+							/>
+							{#if ruleIdDropdownOpen && filteredRuleIds.length > 0}
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<div
+									class="list-group position-absolute w-100 shadow-sm"
+									style="max-height: 200px; overflow-y: auto; z-index: 10;"
+									onkeydown={() => {}}
+								>
+									{#each filteredRuleIds.slice(0, 50) as rid}
+										<button
+											type="button"
+											class="list-group-item list-group-item-action small"
+											class:active={filterRuleId.includes(rid)}
+											onclick={() =>
+												toggleFilter(filterRuleId, rid, (v) => (filterRuleId = v))}
+										>
+											{rid}
+										</button>
+									{/each}
+								</div>
+							{/if}
+						</div>
+						{#if filterRuleId.length > 0}
+							<div class="d-flex flex-wrap gap-1 mt-1">
+								{#each filterRuleId as rid}
+									<span class="badge bg-info d-inline-flex align-items-center">
+										{rid}
+										<button
+											type="button"
+											class="btn-close btn-close-white ms-1"
+											style="font-size: 0.5rem;"
+											onclick={() => removeRuleIdFilter(rid)}
+											aria-label="Remove {rid}"
+										></button>
+									</span>
+								{/each}
+							</div>
+						{/if}
+					</div>
+
 					{#if alertStats}
 						{@const totalAlerts = Object.values(alertStats.severity_distribution).reduce((a, b) => a + b, 0)}
 
@@ -391,9 +646,23 @@
 							<div class="d-flex flex-column gap-3">
 								{#each Object.entries(alertStats.rule_distribution).sort((a, b) => b[1] - a[1]) as [ruleId, count]}
 									{@const pct = totalRules > 0 ? Math.round((count / totalRules) * 100) : 0}
+									{@const parts = ruleId.split('::')}
+									{@const hasType = parts.length > 1 && parts[0] !== 'unknown'}
 									<div>
 										<div class="d-flex justify-content-between mb-1">
-											<span class="fw-semibold small text-truncate" style="max-width: 70%;" title={ruleId}>{ruleId}</span>
+											{#if hasType}
+												<button
+													type="button"
+													class="btn btn-link btn-sm p-0 text-start text-truncate fw-semibold small text-decoration-none text-body-emphasis"
+													style="max-width: 70%;"
+													onclick={() => openRuleContent(parts[0], parts.slice(1).join('::'))}
+													title="Click to view rule content: {ruleId}"
+												>
+													{ruleId}
+												</button>
+											{:else}
+												<span class="fw-semibold small text-truncate" style="max-width: 70%;" title={ruleId}>{ruleId}</span>
+											{/if}
 											<span class="text-muted small">{count} ({pct}%)</span>
 										</div>
 										<div class="progress" style="height: 6px;">
@@ -555,3 +824,22 @@
 		</form>
 	</div>
 {/if}
+
+<!-- Detection Rule Modal -->
+<Modal
+	show={showRuleModal}
+	title="Detection Rule"
+	onClose={() => { showRuleModal = false; }}
+>
+	<div class="mb-2 d-flex gap-2 align-items-center">
+		<span class="badge bg-warning text-dark text-uppercase">{modalRuleType}</span>
+		<span class="fw-bold text-body font-monospace small">{modalRuleId}</span>
+	</div>
+	{#if loadingRuleContent}
+		<div class="py-4">
+			<Spinner centered size="sm" text="Loading rule content..." />
+		</div>
+	{:else}
+		<pre class="p-3 rounded font-monospace mb-0" style="background-color: #282a36; color: #f8f8f2; white-space: pre-wrap; word-break: break-all; font-size: 0.82rem; border: 1px solid #44475a; max-height: 60vh; overflow-y: auto;">{modalRuleContent}</pre>
+	{/if}
+</Modal>
