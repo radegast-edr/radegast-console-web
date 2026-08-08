@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { isDeviceActive, formatFullDateTime, matchesJsonata, mapSeverityToNumber } from './utils';
+import { isDeviceActive, formatFullDateTime, matchesJsonata, mapSeverityToNumber, toLocalISOString, toUTCISOString } from './utils';
 
 describe('utils', () => {
 	describe('isDeviceActive', () => {
@@ -167,4 +167,63 @@ describe('utils', () => {
 			expect(mapSeverityToNumber('5a')).toBe(0);
 		});
 	});
+
+	describe('toLocalISOString', () => {
+		it('returns empty string for empty inputs', () => {
+			expect(toLocalISOString(null)).toBe('');
+			expect(toLocalISOString(undefined)).toBe('');
+			expect(toLocalISOString('')).toBe('');
+		});
+
+		it('appends Z to timezone-naive ISO strings and converts to local time correctly', () => {
+			const input = '2026-08-08T18:45';
+			const parsedDate = new Date(input + 'Z');
+			const pad = (num: number) => String(num).padStart(2, '0');
+			const expectedHours = pad(parsedDate.getHours());
+			const expectedMinutes = pad(parsedDate.getMinutes());
+			const expectedLocal = `${parsedDate.getFullYear()}-${pad(parsedDate.getMonth() + 1)}-${pad(parsedDate.getDate())}T${expectedHours}:${expectedMinutes}`;
+			expect(toLocalISOString(input)).toBe(expectedLocal);
+		});
+
+		it('does not modify strings with Z or offsets', () => {
+			const utcInput = '2026-08-08T18:45Z';
+			const date = new Date(utcInput);
+			const pad = (num: number) => String(num).padStart(2, '0');
+			const expectedHours = pad(date.getHours());
+			const expectedMinutes = pad(date.getMinutes());
+			const expectedLocal = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${expectedHours}:${expectedMinutes}`;
+			expect(toLocalISOString(utcInput)).toBe(expectedLocal);
+
+			const offsetInput = '2026-08-08T18:45+02:00';
+			const dateWithOffset = new Date(offsetInput);
+			const expectedHoursOffset = pad(dateWithOffset.getHours());
+			const expectedMinutesOffset = pad(dateWithOffset.getMinutes());
+			const expectedLocalOffset = `${dateWithOffset.getFullYear()}-${pad(dateWithOffset.getMonth() + 1)}-${pad(dateWithOffset.getDate())}T${expectedHoursOffset}:${expectedMinutesOffset}`;
+			expect(toLocalISOString(offsetInput)).toBe(expectedLocalOffset);
+		});
+
+		it('handles Date objects directly', () => {
+			const date = new Date('2026-08-08T18:45Z');
+			const pad = (num: number) => String(num).padStart(2, '0');
+			const expectedHours = pad(date.getHours());
+			const expectedMinutes = pad(date.getMinutes());
+			const expectedLocal = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${expectedHours}:${expectedMinutes}`;
+			expect(toLocalISOString(date)).toBe(expectedLocal);
+		});
+	});
+
+	describe('toUTCISOString', () => {
+		it('returns empty string for empty inputs', () => {
+			expect(toUTCISOString(null)).toBe('');
+			expect(toUTCISOString(undefined)).toBe('');
+			expect(toUTCISOString('')).toBe('');
+		});
+
+		it('converts local datetime string to UTC ISO string correctly', () => {
+			const localInput = '2026-08-08T18:45';
+			const expectedUtc = new Date(localInput).toISOString();
+			expect(toUTCISOString(localInput)).toBe(expectedUtc);
+		});
+	});
 });
+

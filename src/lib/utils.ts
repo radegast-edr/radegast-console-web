@@ -150,7 +150,17 @@ export function mapSeverityToNumber(severity: any): number {
 
 export function toLocalISOString(dateOrStr: string | Date | null | undefined): string {
 	if (!dateOrStr) return '';
-	const date = new Date(dateOrStr);
+	let dateStr = dateOrStr;
+	if (typeof dateStr === 'string') {
+		if (dateStr.includes('T')) {
+			const parts = dateStr.split('T');
+			const timePart = parts[1] || '';
+			if (!timePart.includes('Z') && !timePart.includes('+') && !timePart.includes('-')) {
+				dateStr = dateStr + 'Z';
+			}
+		}
+	}
+	const date = new Date(dateStr);
 	if (isNaN(date.getTime())) return '';
 	const pad = (num: number) => String(num).padStart(2, '0');
 	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
