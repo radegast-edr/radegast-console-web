@@ -2048,8 +2048,16 @@ export interface components {
             severity_distribution: {
                 [key: string]: number;
             };
+            /** Resolution Distribution */
+            resolution_distribution: {
+                [key: string]: number;
+            };
             /** Rule Distribution */
             rule_distribution: {
+                [key: string]: number;
+            };
+            /** Rule Type Distribution */
+            rule_type_distribution: {
                 [key: string]: number;
             };
         };

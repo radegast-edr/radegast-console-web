@@ -16,7 +16,12 @@
 	let resetPasswordResult = $state<{ email: string } | null>(null);
 
 	// Stats tab state
-	let alertStats = $state<{ severity_distribution: Record<string, number>; rule_distribution: Record<string, number> } | null>(null);
+	let alertStats = $state<{
+		severity_distribution: Record<string, number>;
+		resolution_distribution: Record<string, number>;
+		rule_distribution: Record<string, number>;
+		rule_type_distribution: Record<string, number>;
+	} | null>(null);
 	let deviceStats = $state<{ agent_distribution: Record<string, number>; rustinel_distribution: Record<string, number>; os_distribution: Record<string, number> } | null>(null);
 
 	let alertFromTime = $state<string | null>(null);
@@ -638,12 +643,34 @@
 							</div>
 						{/if}
 
+						<h6 class="fw-bold mb-3">Alert Distribution by Resolution</h6>
+						{@const totalResolutions = Object.values(alertStats.resolution_distribution).reduce((a, b) => a + b, 0)}
+						{#if totalResolutions === 0}
+							<p class="text-muted small mb-4">No resolutions in this time frame.</p>
+						{:else}
+							<div class="d-flex flex-column gap-3 mb-4">
+								{#each [['true_positive', 'True Positive', 'bg-danger'], ['false_positive', 'False Positive', 'bg-warning'], ['benign', 'Benign', 'bg-success'], ['none', 'Unresolved', 'bg-secondary']] as [res, label, barColor]}
+									{@const count = alertStats.resolution_distribution[res] || 0}
+									{@const pct = totalResolutions > 0 ? Math.round((count / totalResolutions) * 100) : 0}
+									<div>
+										<div class="d-flex justify-content-between mb-1">
+											<span class="fw-semibold small">{label}</span>
+											<span class="text-muted small">{count} ({pct}%)</span>
+										</div>
+										<div class="progress" style="height: 6px;">
+											<div class="progress-bar {barColor}" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
 						<h6 class="fw-bold mb-3">Alert Distribution by Rule ID</h6>
 						{@const totalRules = Object.values(alertStats.rule_distribution).reduce((a, b) => a + b, 0)}
 						{#if totalRules === 0}
-							<p class="text-muted small">No matched detection rules.</p>
+							<p class="text-muted small mb-4">No matched detection rules.</p>
 						{:else}
-							<div class="d-flex flex-column gap-3">
+							<div class="d-flex flex-column gap-3 mb-4">
 								{#each Object.entries(alertStats.rule_distribution).sort((a, b) => b[1] - a[1]) as [ruleId, count]}
 									{@const pct = totalRules > 0 ? Math.round((count / totalRules) * 100) : 0}
 									{@const parts = ruleId.split('::')}
@@ -667,6 +694,27 @@
 										</div>
 										<div class="progress" style="height: 6px;">
 											<div class="progress-bar bg-info" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
+						<h6 class="fw-bold mb-3 mt-4">Alert Distribution by Rule Type</h6>
+						{@const totalRuleTypes = Object.values(alertStats.rule_type_distribution).reduce((a, b) => a + b, 0)}
+						{#if totalRuleTypes === 0}
+							<p class="text-muted small">No matched rule types.</p>
+						{:else}
+							<div class="d-flex flex-column gap-3">
+								{#each Object.entries(alertStats.rule_type_distribution).sort((a, b) => b[1] - a[1]) as [ruleType, count]}
+									{@const pct = totalRuleTypes > 0 ? Math.round((count / totalRuleTypes) * 100) : 0}
+									<div>
+										<div class="d-flex justify-content-between mb-1">
+											<span class="fw-semibold small text-uppercase">{ruleType}</span>
+											<span class="text-muted small">{count} ({pct}%)</span>
+										</div>
+										<div class="progress" style="height: 6px;">
+											<div class="progress-bar bg-primary" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
 										</div>
 									</div>
 								{/each}
