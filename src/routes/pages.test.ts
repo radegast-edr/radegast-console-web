@@ -542,10 +542,65 @@ describe('Route Pages Load Verification', () => {
 		});
 	});
 
-	it('renders Settings page', async () => {
+	it('renders Settings page and shows Admin notifications toggle for admin', async () => {
+		const mockAdmin = {
+			id: 1,
+			email: 'admin@test.com',
+			role: 'admin',
+			verified: true,
+			extended_edr_enabled: true,
+			has_keys: true
+		};
+		user.set(mockAdmin as any);
+		vi.mocked(api.me).mockResolvedValue(mockAdmin as any);
+		vi.mocked(api.getNotifications).mockResolvedValue({
+			notify_login: true,
+			notify_new_keys: true,
+			notify_recovery_used: true,
+			notify_keys_transferred: true,
+			notify_device_log: true,
+			notify_downtime_maintenance: true,
+			notify_api_key_modification: true,
+			notify_news_updates: true,
+			notify_admin_notifications: true,
+			notification_level: 'medium'
+		} as any);
+
 		render(Settings);
 		await waitFor(() => {
 			expect(screen.getByText('User Settings')).toBeInTheDocument();
+			expect(screen.getByLabelText('Admin notifications')).toBeInTheDocument();
+		});
+	});
+
+	it('renders Settings page and hides Admin notifications toggle for non-admin', async () => {
+		const mockRegularUser = {
+			id: 2,
+			email: 'user@test.com',
+			role: 'user',
+			verified: true,
+			extended_edr_enabled: true,
+			has_keys: true
+		};
+		user.set(mockRegularUser as any);
+		vi.mocked(api.me).mockResolvedValue(mockRegularUser as any);
+		vi.mocked(api.getNotifications).mockResolvedValue({
+			notify_login: true,
+			notify_new_keys: true,
+			notify_recovery_used: true,
+			notify_keys_transferred: true,
+			notify_device_log: true,
+			notify_downtime_maintenance: true,
+			notify_api_key_modification: true,
+			notify_news_updates: true,
+			notify_admin_notifications: true,
+			notification_level: 'medium'
+		} as any);
+
+		render(Settings);
+		await waitFor(() => {
+			expect(screen.getByText('User Settings')).toBeInTheDocument();
+			expect(screen.queryByLabelText('Admin notifications')).not.toBeInTheDocument();
 		});
 	});
 

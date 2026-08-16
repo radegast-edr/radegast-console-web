@@ -601,6 +601,17 @@
 						/>
 						<label class="form-check-label" for="notifyNewsUpdates">Platform news and updates</label>
 					</div>
+					{#if $user?.role === 'admin'}
+						<div class="form-check form-switch mb-3">
+							<input
+								class="form-check-input"
+								type="checkbox"
+								id="notifyAdminNotifications"
+								bind:checked={notifications.notify_admin_notifications}
+							/>
+							<label class="form-check-label" for="notifyAdminNotifications">Admin notifications</label>
+						</div>
+					{/if}
 					<button class="btn btn-primary d-flex align-items-center gap-2" onclick={saveNotifications} disabled={notifSaving}>
 						{notifSaving ? 'Saving…' : 'Save Preferences'}
 					</button>

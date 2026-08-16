@@ -2734,6 +2734,11 @@ export interface components {
              * @default true
              */
             notify_news_updates: boolean;
+            /**
+             * Notify Admin Notifications
+             * @default true
+             */
+            notify_admin_notifications: boolean;
             /** @default medium */
             notification_level: components["schemas"]["LogSeverity"];
         };
