@@ -185,6 +185,24 @@ describe('Hunt URL Hash Shareable State', () => {
 
 		createElementSpy.mockRestore();
 	});
+
+	it('fetches multiple pages until exhausted when performing hunt search', async () => {
+		window.location.hash = '';
+		const page1 = Array.from({ length: 100 }, (_, i) => makeLog({ id: i + 1 }));
+		const page2 = [makeLog({ id: 101 })];
+
+		vi.mocked(api.listLogs)
+			.mockResolvedValueOnce(page1 as any)
+			.mockResolvedValueOnce(page2 as any);
+		vi.mocked(api.listDevices).mockResolvedValue([]);
+
+		render(Hunt);
+
+		await waitFor(() => {
+			expect(api.listLogs).toHaveBeenCalledTimes(2);
+			expect(screen.getByText(/Found 101 matching events/i)).toBeInTheDocument();
+		});
+	});
 });
 
 

@@ -214,4 +214,78 @@ export class LogManager {
 			this.isInitialLoad = false;
 		}
 	}
+
+	async performHuntSearch(fromTime: string | null, toTime: string | null, min_level: LogSeverity | null = null) {
+		this.isSearching = true;
+		this.loading = true;
+		this.currentPage = 1;
+
+		const fromUtc = fromTime ? new Date(fromTime).toISOString() : null;
+		const toUtc = toTime ? new Date(toTime).toISOString() : null;
+
+		try {
+			let allLogs: Log[] = [];
+			let page = 1;
+			const newDecryptionState = { ...this.decryptionState };
+
+			while (true) {
+				const logsData = await api.listLogs(page, this.limit, null, fromUtc, toUtc, min_level);
+				if (!logsData || logsData.length === 0) {
+					break;
+				}
+
+				allLogs = allLogs.concat(logsData);
+
+				if (this.privateKey) {
+					for (const log of logsData) {
+						if (newDecryptionState[log.id]) continue;
+						try {
+							const dec = decrypt(log.content, this.privateKey);
+							let parsed: any;
+							try {
+								parsed = JSON.parse(dec);
+							} catch {
+								parsed = dec;
+							}
+							newDecryptionState[log.id] = { success: true, parsed };
+						} catch (e) {
+							newDecryptionState[log.id] = { success: false, error: (e as Error).message };
+						}
+					}
+				}
+
+				if (logsData.length < this.limit) {
+					break;
+				}
+				page++;
+			}
+
+			if (!this.isInitialLoad) {
+				for (const log of allLogs) {
+					if (!this.knownLogIds.has(log.id)) {
+						this.knownLogIds.add(log.id);
+						if (!log.seen && this.onNewAlert) {
+							this.onNewAlert(log, this.deviceMap.get(log.device_id));
+						}
+					}
+				}
+			} else {
+				for (const log of allLogs) {
+					this.knownLogIds.add(log.id);
+				}
+			}
+
+			this.logs = allLogs;
+			this.decryptionState = newDecryptionState;
+			this.totalLogs = allLogs.length;
+			this.totalPages = 1;
+		} catch (e) {
+			console.error("performHuntSearch error:", e);
+			throw e;
+		} finally {
+			this.loading = false;
+			this.isSearching = false;
+			this.isInitialLoad = false;
+		}
+	}
 }

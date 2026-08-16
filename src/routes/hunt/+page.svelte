@@ -91,7 +91,7 @@
 	async function performHunt() {
 		if (!logManager) return;
 		try {
-			await logManager.performSearch(fromTime, toTime, "informational");
+			await logManager.performHuntSearch(fromTime, toTime, "informational");
 			await logManager.runFilter(searchQuery);
 		} catch (e) {
 			showError('Hunt search failed: ' + (e as Error).message);
