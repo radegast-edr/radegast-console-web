@@ -34,6 +34,7 @@
 			{ value: 'amd64', label: 'amd64 (x86_64)' }
 		],
 		mac: [
+			{ value: 'amd64', label: 'amd64 (Intel x86_64)' },
 			{ value: 'm5', label: 'm5 (Apple Silicon M5)' }
 		]
 	};

@@ -498,6 +498,43 @@ describe('Route Pages Load Verification', () => {
 		});
 	});
 
+	it('allows selecting amd64 for macOS when uploading releases', async () => {
+		const mockAdmin = {
+			id: 1,
+			email: 'admin@test.com',
+			role: 'admin',
+			verified: true,
+			otp_enabled: false,
+			mfa_required: false,
+			notify_login: false,
+			api_keys_enabled: true,
+			created_at: '2026-01-01T00:00:00Z',
+			password_change: '2026-01-01T00:00:00Z',
+			extended_edr_enabled: true,
+			has_keys: true
+		};
+		user.set(mockAdmin as any);
+		vi.mocked(api.listReleases).mockResolvedValue([]);
+
+		const { container } = render(Releases);
+		await waitFor(() => {
+			expect(screen.getByText('Upload First Release')).toBeInTheDocument();
+		});
+
+		const uploadBtn = screen.getByText('Upload First Release');
+		await fireEvent.click(uploadBtn);
+
+		const osSelect = container.querySelector('#rel-os') as HTMLSelectElement;
+		expect(osSelect).toBeInTheDocument();
+		await fireEvent.change(osSelect, { target: { value: 'mac' } });
+
+		const archSelect = container.querySelector('#rel-arch') as HTMLSelectElement;
+		expect(archSelect).toBeInTheDocument();
+		const options = Array.from(archSelect.options).map((opt) => opt.value);
+		expect(options).toContain('amd64');
+		expect(options).toContain('m5');
+	});
+
 	it('renders ReleaseDetail page', async () => {
 		render(ReleaseDetail);
 		await waitFor(() => {

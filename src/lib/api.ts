@@ -23,9 +23,12 @@ if (typeof window !== 'undefined') {
 			console.error('Failed to parse PUBLIC_BACKEND_URL:', e);
 		}
 	} else if (BACKEND_URL_RAW.startsWith('/')) {
-		BACKEND_URL = window.location.origin + BACKEND_URL_RAW;
+		BACKEND_URL = window.location.origin + (BACKEND_URL_RAW === '/' ? '' : BACKEND_URL_RAW);
 	}
 }
+
+// Strip any trailing /api/v1 or /api/v1/ and trailing slashes so paths from openapi.json (/api/v1/...) are never duplicated
+BACKEND_URL = BACKEND_URL.replace(/\/api\/v1\/?$/, '').replace(/\/+$/, '');
 
 // ---------------------------------------------------------------------------
 // openapi-fetch client

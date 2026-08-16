@@ -88,24 +88,15 @@
 				</div>
 			{:else if selectedOS === 'macos'}
 				<div class="mb-3">
-					<div class="alert alert-info border-0 shadow-sm" style="border-radius: 8px;">
-						<div class="d-flex align-items-center gap-2 mb-2">
-							<span class="fs-4">🍏</span>
-							<strong class="text-info-emphasis">macOS Support is coming soon!</strong>
-						</div>
-						<p class="mb-3 small text-dark-emphasis">
-							In the meantime, you can set up the agent manually by using the device token below.
-						</p>
-						<div class="mb-3">
-							<label for="macos-token-input" class="form-label fw-bold small text-secondary">Device Token:</label>
-							<div class="input-group">
-								<code id="macos-token-input" class="form-control bg-dark text-light p-2 font-monospace w-100" style="user-select: all;">{token}</code>
-							</div>
-						</div>
-						<small class="text-muted">
-							Configure your manual agent installation with the token above to authenticate this device.
-						</small>
+					<label for="mac-install-cmd" class="form-label fw-semibold">2. Run this command on your macOS device as root:</label>
+					<div class="input-group">
+						<code id="mac-install-cmd" class="form-control bg-dark text-light p-2 font-monospace" style="user-select: all;">
+							curl -sSL "{backendUrl}/api/v1/device/install?os=mac" | sudo RADEGAST_TOKEN="{token}" sh
+						</code>
 					</div>
+					<small class="form-text text-muted">
+						This will install <code>uv</code> and <code>radegast-agent</code>, download the official signed <code>rustinel</code> binary, and configure launchd services.
+					</small>
 				</div>
 			{/if}
 

@@ -40,8 +40,8 @@ describe('AgentSetupInstructions Component', () => {
 		// Click macOS
 		const macBtn = screen.getByText('macOS');
 		await fireEvent.click(macBtn);
-		expect(screen.getByText('macOS Support is coming soon!')).toBeInTheDocument();
-		expect(screen.getByText('my_test_token')).toBeInTheDocument();
+		expect(screen.getByText(/curl -sSL "http:\/\/localhost:8000\/api\/v1\/device\/install\?os=mac"/)).toBeInTheDocument();
+		expect(screen.getByText(/RADEGAST_TOKEN="my_test_token"/)).toBeInTheDocument();
 	});
 
 	it('calls onDismiss when Dismiss button is clicked', async () => {
