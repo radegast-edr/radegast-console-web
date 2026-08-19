@@ -47,7 +47,13 @@ export class LogManager {
 		let last_seen: string | undefined = undefined;
 		if (devObj) {
 			if (isDeviceActive(devObj.last_seen)) {
-				status = 'online';
+				if (devObj.healthy === false) {
+					status = 'unhealthy';
+				} else if (devObj.healthy === true) {
+					status = 'healthy';
+				} else {
+					status = 'online';
+				}
 			} else {
 				status = 'offline';
 				last_seen = formatFullDateTime(devObj.last_seen);

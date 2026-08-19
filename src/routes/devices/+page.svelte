@@ -118,13 +118,17 @@
 					{/if}
 				</td>
 				<td>
-					{#if isDeviceActive(device.last_seen)}
-						<span class="badge bg-success">Online</span>
-					{:else}
+					{#if !isDeviceActive(device.last_seen)}
 						<span class="badge bg-secondary">Offline</span>
 						{#if device.last_seen}
 							<span class="small ms-2">Last seen: {formatFullDateTime(device.last_seen)}</span>
 						{/if}
+					{:else if device.healthy === false}
+						<span class="badge bg-danger">Unhealthy</span>
+					{:else if device.healthy === true}
+						<span class="badge bg-success">Healthy</span>
+					{:else}
+						<span class="badge bg-success">Online</span>
 					{/if}
 				</td>
 				<td>{device.agent_version ?? 'N/A'}</td>

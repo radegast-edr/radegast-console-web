@@ -741,10 +741,14 @@
 							<tr>
 								<td><a href="{base}/devices/{device.id}">{device.name}</a></td>
 								<td>
-									{#if isDeviceActive(device.last_seen)}
-										<span class="badge bg-success">Online</span>
-									{:else}
+									{#if !isDeviceActive(device.last_seen)}
 										<span class="badge bg-secondary">Offline</span>
+									{:else if device.healthy === false}
+										<span class="badge bg-danger">Unhealthy</span>
+									{:else if device.healthy === true}
+										<span class="badge bg-success">Healthy</span>
+									{:else}
+										<span class="badge bg-success">Online</span>
 									{/if}
 								</td>
 								<td>

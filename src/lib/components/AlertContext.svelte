@@ -60,10 +60,12 @@
 					<div class="small text-body-secondary fw-bold d-flex align-items-center gap-1"><Icon icon="lucide:monitor" /> Device</div>
 					<div class="fw-semibold">
 						{meta.device}
-						{#if meta.status === 'online'}
-							<span class="text-success">●</span>
+						{#if meta.status === 'online' || meta.status === 'healthy'}
+							<span class="text-success" title="Status: {meta.status}">●</span>
+						{:else if meta.status === 'unhealthy'}
+							<span class="text-danger" title="Status: unhealthy">●</span>
 						{:else}
-							<span class="text-danger">●</span>
+							<span class="text-secondary" title="Status: offline">●</span>
 						{/if}
 					</div>
 					{#if meta.status === 'offline' && meta.last_seen}

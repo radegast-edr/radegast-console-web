@@ -920,6 +920,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/devices/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Report Device Health */
+        post: operations["report_device_health_api_v1_devices_health_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/devices/{device_id}/reinstall": {
         parameters: {
             query?: never;
@@ -2041,6 +2058,11 @@ export interface components {
              * @default []
              */
             logs: ("read" | "create" | "write" | "delete")[];
+            /**
+             * Releases
+             * @default []
+             */
+            releases: ("read" | "create" | "write" | "delete")[];
         };
         /** AdminAlertStatsResponse */
         AdminAlertStatsResponse: {
@@ -2219,6 +2241,8 @@ export interface components {
             encryption_public_key?: string | null;
             /** Last Seen */
             last_seen?: string | null;
+            /** Healthy */
+            healthy?: boolean | null;
             /** Agent Version */
             agent_version?: string | null;
             /** Rustinel Version */
@@ -2318,6 +2342,11 @@ export interface components {
              */
             response_min_severity: string;
         };
+        /** DeviceHealthReport */
+        DeviceHealthReport: {
+            /** Healthy */
+            healthy?: boolean | null;
+        };
         /** DeviceLogin */
         DeviceLogin: {
             /** Token */
@@ -2345,6 +2374,8 @@ export interface components {
             encryption_public_key?: string | null;
             /** Last Seen */
             last_seen?: string | null;
+            /** Healthy */
+            healthy?: boolean | null;
             /** Agent Version */
             agent_version?: string | null;
             /** Rustinel Version */
@@ -4910,6 +4941,39 @@ export interface operations {
             };
         };
     };
+    report_device_health_api_v1_devices_health_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceHealthReport"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     reinstall_device_api_v1_devices__device_id__reinstall_post: {
         parameters: {
             query?: never;
@@ -5876,6 +5940,7 @@ export interface operations {
                 agent_version?: string | null;
                 rustinel_version?: string | null;
                 os?: string | null;
+                healthy?: boolean | null;
             };
             header?: never;
             path?: never;

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, type APIKeyResponse, type APIKeyScopes } from '$lib/api';
-	import { showFlash, showError } from '$lib/store';
+	import { user, showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 	import { askConfirm } from '$lib/confirm';
 	import Spinner from '$lib/components/Spinner.svelte';
@@ -17,6 +17,7 @@
 	let groupsScope = $state<('read' | 'create' | 'write' | 'delete')[]>([]);
 	let packsScope = $state<('read' | 'create' | 'write' | 'delete')[]>([]);
 	let logsScope = $state<('read' | 'create' | 'write' | 'delete')[]>([]);
+	let releasesScope = $state<('read' | 'create' | 'write' | 'delete')[]>([]);
 
 	// Dropdown states
 	let devicesDropdownOpen = $state(false);
@@ -24,6 +25,7 @@
 	let groupsDropdownOpen = $state(false);
 	let packsDropdownOpen = $state(false);
 	let logsDropdownOpen = $state(false);
+	let releasesDropdownOpen = $state(false);
 
 	function closeAllDropdowns() {
 		devicesDropdownOpen = false;
@@ -31,6 +33,7 @@
 		groupsDropdownOpen = false;
 		packsDropdownOpen = false;
 		logsDropdownOpen = false;
+		releasesDropdownOpen = false;
 	}
 
 	// Key Expiration
@@ -70,7 +73,8 @@
 				teams: teamsScope,
 				groups: groupsScope,
 				packs: packsScope,
-				logs: logsScope
+				logs: logsScope,
+				releases: releasesScope
 			};
 
 			let expiresAt: string | null = null;
@@ -95,6 +99,7 @@
 			groupsScope = [];
 			packsScope = [];
 			logsScope = [];
+			releasesScope = [];
 			expiresOption = 'never';
 			expiresCustomDate = '';
 			showFlash('API key generated successfully.');
@@ -505,6 +510,55 @@
 								</div>
 							</div>
 						</div>
+
+						<!-- Releases -->
+						{#if $user?.role === 'admin'}
+							<div class="row align-items-center mb-3">
+								<div class="col-5">
+									<span class="fw-semibold">Releases</span>
+								</div>
+								<div class="col-7">
+									<div class="dropdown">
+										<button
+											class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start d-flex justify-content-between align-items-center {releasesDropdownOpen ? 'show' : ''}"
+											type="button"
+											onclick={(e) => { e.stopPropagation(); const wasOpen = releasesDropdownOpen; closeAllDropdowns(); releasesDropdownOpen = !wasOpen; }}
+											aria-expanded={releasesDropdownOpen}
+										>
+											<span class="text-truncate" style="max-width: 140px;">{releasesScope.length === 0 ? 'None' : releasesScope.join(', ')}</span>
+										</button>
+										<!-- svelte-ignore a11y_click_events_have_key_events -->
+										<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+										<ul class="dropdown-menu p-3 w-100 shadow {releasesDropdownOpen ? 'show' : ''}" onclick={(e) => e.stopPropagation()}>
+											<li>
+												<div class="form-check">
+													<input class="form-check-input" type="checkbox" id="releases-read" value="read" bind:group={releasesScope} />
+													<label class="form-check-label small" for="releases-read">Read</label>
+												</div>
+											</li>
+											<li>
+												<div class="form-check">
+													<input class="form-check-input" type="checkbox" id="releases-create" value="create" bind:group={releasesScope} />
+													<label class="form-check-label small" for="releases-create">Create</label>
+												</div>
+											</li>
+											<li>
+												<div class="form-check">
+													<input class="form-check-input" type="checkbox" id="releases-write" value="write" bind:group={releasesScope} />
+													<label class="form-check-label small" for="releases-write">Write</label>
+												</div>
+											</li>
+											<li>
+												<div class="form-check">
+													<input class="form-check-input" type="checkbox" id="releases-delete" value="delete" bind:group={releasesScope} />
+													<label class="form-check-label small" for="releases-delete">Delete</label>
+												</div>
+											</li>
+										</ul>
+									</div>
+								</div>
+							</div>
+						{/if}
 					</div>
 
 					<button type="submit" class="btn btn-primary w-100 fw-bold" disabled={creating}>
