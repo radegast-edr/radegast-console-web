@@ -149,6 +149,11 @@ vi.mock('$lib/api', () => ({
 		adminDeleteDevice: vi.fn(),
 		adminListPacks: vi.fn(),
 		adminDeletePack: vi.fn(),
+		adminGetAlertStats: vi.fn(),
+		adminGetAlertRuleIds: vi.fn(),
+		adminGetAlertRuleContent: vi.fn(),
+		adminGetDeviceStats: vi.fn(),
+		adminGetDeviceFilterOptions: vi.fn(),
 		getBackendUrl: vi.fn().mockReturnValue('http://localhost:8000/'),
 		downloadReleaseUrl: vi.fn().mockReturnValue('http://localhost:8000/download'),
 		client: {
@@ -209,6 +214,25 @@ describe('Route Pages Load Verification', () => {
 		vi.mocked(api.adminListUsers).mockResolvedValue([{ id: 1, email: 'admin@example.com', role: 'admin', verified: true }] as any);
 		vi.mocked(api.adminListDevices).mockResolvedValue([{ id: 1, name: 'Device A', last_seen: '2026-06-04T05:00:00Z' }] as any);
 		vi.mocked(api.adminListPacks).mockResolvedValue([{ id: 1, name: 'Pack A', description: 'Desc' }] as any);
+		vi.mocked(api.adminGetAlertStats).mockResolvedValue({
+			severity_distribution: { high: 2 },
+			resolution_distribution: { true_positive: 2 },
+			rule_distribution: { 'sigma::test_rule': 2 },
+			rule_type_distribution: { sigma: 2 }
+		} as any);
+		vi.mocked(api.adminGetAlertRuleIds).mockResolvedValue(['test_rule'] as any);
+		vi.mocked(api.adminGetDeviceStats).mockResolvedValue({
+			agent_distribution: { 'python 0.6.0': 1 },
+			rustinel_distribution: { '0.3.0': 1 },
+			os_distribution: { linux: 1 },
+			health_distribution: { healthy: 1 },
+			online_distribution: { online: 1 }
+		} as any);
+		vi.mocked(api.adminGetDeviceFilterOptions).mockResolvedValue({
+			agent_versions: ['python 0.6.0'],
+			rustinel_versions: ['0.3.0'],
+			os_list: ['linux']
+		} as any);
 		vi.mocked(api.getAuthConfig).mockResolvedValue({ turnstile_site_key: null } as any);
 		vi.mocked(api.listVersions).mockResolvedValue([{ id: 1, pack_id: 1, version: '1.0.0', released: '2026-06-04T05:00:00Z' }] as any);
 		vi.mocked(api.listEnabledPacks).mockResolvedValue([{ id: 1, pack_version_id: 1, autoupdate: true, pack_name: 'Pack A' }] as any);

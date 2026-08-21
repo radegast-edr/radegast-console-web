@@ -581,16 +581,30 @@ export const api = {
 			})
 		),
 
-	adminGetDeviceStats: (exclude_offline = false, exclude_no_version = false) =>
+	adminGetDeviceStats: (params?: {
+		online_status?: string[];
+		health_status?: string[];
+		agent_version?: string[];
+		rustinel_version?: string[];
+		os?: string[];
+	}) =>
 		call(
 			callOp('get_admin_device_stats_api_v1_admin_stats_devices_get', {
 				params: {
 					query: {
-						exclude_offline,
-						exclude_no_version
+						...(params?.online_status?.length ? { online_status: params.online_status } : {}),
+						...(params?.health_status?.length ? { health_status: params.health_status } : {}),
+						...(params?.agent_version?.length ? { agent_version: params.agent_version } : {}),
+						...(params?.rustinel_version?.length ? { rustinel_version: params.rustinel_version } : {}),
+						...(params?.os?.length ? { os: params.os } : {})
 					}
 				}
 			})
+		),
+
+	adminGetDeviceFilterOptions: () =>
+		call(
+			callOp('get_admin_device_filter_options_api_v1_admin_stats_devices_options_get', {})
 		),
 
 	getAuthConfig: () =>

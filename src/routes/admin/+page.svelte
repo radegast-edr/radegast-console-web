@@ -22,13 +22,16 @@
 		rule_distribution: Record<string, number>;
 		rule_type_distribution: Record<string, number>;
 	} | null>(null);
-	let deviceStats = $state<{ agent_distribution: Record<string, number>; rustinel_distribution: Record<string, number>; os_distribution: Record<string, number> } | null>(null);
+	let deviceStats = $state<{
+		agent_distribution: Record<string, number>;
+		rustinel_distribution: Record<string, number>;
+		os_distribution: Record<string, number>;
+		health_distribution: Record<string, number>;
+		online_distribution: Record<string, number>;
+	} | null>(null);
 
 	let alertFromTime = $state<string | null>(null);
 	let alertToTime = $state<string | null>(null);
-
-	let excludeOffline = $state(false);
-	let excludeNoVersion = $state(false);
 
 	// Alert filter state
 	let filterSeverity = $state<string[]>([]);
@@ -42,6 +45,23 @@
 	let showSeverityDropdown = $state(false);
 	let showRuleTypeDropdown = $state(false);
 	let showResolutionDropdown = $state(false);
+
+	// Device filter state
+	let filterOnlineStatus = $state<string[]>([]);
+	let filterHealthStatus = $state<string[]>([]);
+	let filterAgentVersion = $state<string[]>([]);
+	let filterRustinelVersion = $state<string[]>([]);
+	let filterOs = $state<string[]>([]);
+
+	let availableAgentVersions = $state<string[]>([]);
+	let availableRustinelVersions = $state<string[]>([]);
+	let availableOsList = $state<string[]>([]);
+
+	let showOnlineDropdown = $state(false);
+	let showHealthDropdown = $state(false);
+	let showAgentDropdown = $state(false);
+	let showRustinelDropdown = $state(false);
+	let showOsDropdown = $state(false);
 
 	let showRuleModal = $state(false);
 	let modalRuleType = $state('');
@@ -95,7 +115,13 @@
 
 	async function loadDeviceStats() {
 		try {
-			deviceStats = await api.adminGetDeviceStats(excludeOffline, excludeNoVersion);
+			deviceStats = await api.adminGetDeviceStats({
+				online_status: filterOnlineStatus,
+				health_status: filterHealthStatus,
+				agent_version: filterAgentVersion,
+				rustinel_version: filterRustinelVersion,
+				os: filterOs
+			});
 		} catch (e) {
 			showError((e as Error).message);
 		}
@@ -104,6 +130,17 @@
 	async function loadAvailableRuleIds() {
 		try {
 			availableRuleIds = await api.adminGetAlertRuleIds();
+		} catch (e) {
+			showError((e as Error).message);
+		}
+	}
+
+	async function loadDeviceFilterOptions() {
+		try {
+			const res = await api.adminGetDeviceFilterOptions();
+			availableAgentVersions = res.agent_versions;
+			availableRustinelVersions = res.rustinel_versions;
+			availableOsList = res.os_list;
 		} catch (e) {
 			showError((e as Error).message);
 		}
@@ -123,6 +160,20 @@
 		loadAlertStats();
 	}
 
+	function toggleDeviceFilter(
+		arr: string[],
+		value: string,
+		setter: (v: string[]) => void
+	) {
+		const idx = arr.indexOf(value);
+		if (idx >= 0) {
+			setter([...arr.slice(0, idx), ...arr.slice(idx + 1)]);
+		} else {
+			setter([...arr, value]);
+		}
+		loadDeviceStats();
+	}
+
 	function removeRuleIdFilter(value: string) {
 		filterRuleId = filterRuleId.filter((v) => v !== value);
 		loadAlertStats();
@@ -133,16 +184,45 @@
 		showRuleTypeDropdown = false;
 		showResolutionDropdown = false;
 		ruleIdDropdownOpen = false;
+		showOnlineDropdown = false;
+		showHealthDropdown = false;
+		showAgentDropdown = false;
+		showRustinelDropdown = false;
+		showOsDropdown = false;
 	}
 
-	function toggleFilterDropdown(dropdownName: 'severity' | 'ruletype' | 'resolution') {
-		const wasOpen = dropdownName === 'severity' ? showSeverityDropdown :
-		                dropdownName === 'ruletype' ? showRuleTypeDropdown : showResolutionDropdown;
+	type FilterDropdownName =
+		| 'severity'
+		| 'ruletype'
+		| 'resolution'
+		| 'online'
+		| 'health'
+		| 'agent'
+		| 'rustinel'
+		| 'os';
+
+	function toggleFilterDropdown(dropdownName: FilterDropdownName) {
+		const isOpenMap: Record<FilterDropdownName, boolean> = {
+			severity: showSeverityDropdown,
+			ruletype: showRuleTypeDropdown,
+			resolution: showResolutionDropdown,
+			online: showOnlineDropdown,
+			health: showHealthDropdown,
+			agent: showAgentDropdown,
+			rustinel: showRustinelDropdown,
+			os: showOsDropdown
+		};
+		const wasOpen = isOpenMap[dropdownName];
 		closeAllFilterDropdowns();
 		if (!wasOpen) {
 			if (dropdownName === 'severity') showSeverityDropdown = true;
-			if (dropdownName === 'ruletype') showRuleTypeDropdown = true;
-			if (dropdownName === 'resolution') showResolutionDropdown = true;
+			else if (dropdownName === 'ruletype') showRuleTypeDropdown = true;
+			else if (dropdownName === 'resolution') showResolutionDropdown = true;
+			else if (dropdownName === 'online') showOnlineDropdown = true;
+			else if (dropdownName === 'health') showHealthDropdown = true;
+			else if (dropdownName === 'agent') showAgentDropdown = true;
+			else if (dropdownName === 'rustinel') showRustinelDropdown = true;
+			else if (dropdownName === 'os') showOsDropdown = true;
 		}
 	}
 
@@ -175,6 +255,7 @@
 		loadAlertStats();
 		loadDeviceStats();
 		loadAvailableRuleIds();
+		loadDeviceFilterOptions();
 	}
 
 	async function loadAll(): Promise<void> {
@@ -732,30 +813,179 @@
 			<div class="card h-100 border-0 shadow-sm bg-body-tertiary">
 				<div class="card-body p-4">
 					<h5 class="card-title fw-bold mb-3">Device Stats</h5>
-					<div class="mb-4">
-						<div class="form-check mb-2">
-							<input
-								class="form-check-input"
-								type="checkbox"
-								id="excludeOffline"
-								bind:checked={excludeOffline}
-								onchange={loadDeviceStats}
-							/>
-							<label class="form-check-label small" for="excludeOffline">
-								Exclude offline devices (inactive > 10m)
-							</label>
+					<div class="row g-2 mb-3">
+						<!-- Online Status Dropdown -->
+						<div class="col-md-6 col-12 filter-dropdown-container dropdown position-relative">
+							<span class="form-label small fw-bold mb-1 d-block">Online Status</span>
+							<button
+								type="button"
+								class="btn btn-outline-secondary btn-sm w-100 d-flex align-items-center justify-content-between dropdown-toggle {showOnlineDropdown ? 'show' : ''}"
+								onclick={() => toggleFilterDropdown('online')}
+								aria-expanded={showOnlineDropdown}
+							>
+								<span class="text-truncate">
+									{#if filterOnlineStatus.length > 0}
+										{filterOnlineStatus.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}
+									{:else}
+										All Statuses
+									{/if}
+								</span>
+							</button>
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<div class="dropdown-menu w-100 p-2 shadow-sm {showOnlineDropdown ? 'show' : ''}" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
+								{#each [['online', 'Online'], ['offline', 'Offline']] as [val, label]}
+									<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
+										<input
+											type="checkbox"
+											checked={filterOnlineStatus.includes(val)}
+											onchange={() => toggleDeviceFilter(filterOnlineStatus, val, (v) => (filterOnlineStatus = v))}
+										/>
+										<span class="small">{label}</span>
+									</label>
+								{/each}
+							</div>
 						</div>
-						<div class="form-check">
-							<input
-								class="form-check-input"
-								type="checkbox"
-								id="excludeNoVersion"
-								bind:checked={excludeNoVersion}
-								onchange={loadDeviceStats}
-							/>
-							<label class="form-check-label small" for="excludeNoVersion">
-								Exclude devices with unreported version
-							</label>
+
+						<!-- Health Status Dropdown -->
+						<div class="col-md-6 col-12 filter-dropdown-container dropdown position-relative">
+							<span class="form-label small fw-bold mb-1 d-block">Health Status</span>
+							<button
+								type="button"
+								class="btn btn-outline-secondary btn-sm w-100 d-flex align-items-center justify-content-between dropdown-toggle {showHealthDropdown ? 'show' : ''}"
+								onclick={() => toggleFilterDropdown('health')}
+								aria-expanded={showHealthDropdown}
+							>
+								<span class="text-truncate">
+									{#if filterHealthStatus.length > 0}
+										{filterHealthStatus.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}
+									{:else}
+										All Health Statuses
+									{/if}
+								</span>
+							</button>
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<div class="dropdown-menu w-100 p-2 shadow-sm {showHealthDropdown ? 'show' : ''}" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
+								{#each [['healthy', 'Healthy'], ['unhealthy', 'Unhealthy'], ['unknown', 'Unknown']] as [val, label]}
+									<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
+										<input
+											type="checkbox"
+											checked={filterHealthStatus.includes(val)}
+											onchange={() => toggleDeviceFilter(filterHealthStatus, val, (v) => (filterHealthStatus = v))}
+										/>
+										<span class="small">{label}</span>
+									</label>
+								{/each}
+							</div>
+						</div>
+					</div>
+
+					<div class="row g-2 mb-4">
+						<!-- Agent Version Dropdown -->
+						<div class="col-md-4 col-12 filter-dropdown-container dropdown position-relative">
+							<span class="form-label small fw-bold mb-1 d-block">Agent Version</span>
+							<button
+								type="button"
+								class="btn btn-outline-secondary btn-sm w-100 d-flex align-items-center justify-content-between dropdown-toggle {showAgentDropdown ? 'show' : ''}"
+								onclick={() => toggleFilterDropdown('agent')}
+								aria-expanded={showAgentDropdown}
+							>
+								<span class="text-truncate">
+									{#if filterAgentVersion.length > 0}
+										{filterAgentVersion.join(', ')}
+									{:else}
+										All Agent Versions
+									{/if}
+								</span>
+							</button>
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<div class="dropdown-menu w-100 p-2 shadow-sm {showAgentDropdown ? 'show' : ''}" style="max-height: 250px; overflow-y: auto;" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
+								{#if availableAgentVersions.length === 0}
+									<div class="dropdown-item text-muted small">No versions available</div>
+								{:else}
+									{#each availableAgentVersions as ver}
+										<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
+											<input
+												type="checkbox"
+												checked={filterAgentVersion.includes(ver)}
+												onchange={() => toggleDeviceFilter(filterAgentVersion, ver, (v) => (filterAgentVersion = v))}
+											/>
+											<span class="small text-truncate">{ver}</span>
+										</label>
+									{/each}
+								{/if}
+							</div>
+						</div>
+
+						<!-- Rustinel Version Dropdown -->
+						<div class="col-md-4 col-12 filter-dropdown-container dropdown position-relative">
+							<span class="form-label small fw-bold mb-1 d-block">Rustinel Version</span>
+							<button
+								type="button"
+								class="btn btn-outline-secondary btn-sm w-100 d-flex align-items-center justify-content-between dropdown-toggle {showRustinelDropdown ? 'show' : ''}"
+								onclick={() => toggleFilterDropdown('rustinel')}
+								aria-expanded={showRustinelDropdown}
+							>
+								<span class="text-truncate">
+									{#if filterRustinelVersion.length > 0}
+										{filterRustinelVersion.join(', ')}
+									{:else}
+										All Rustinel Versions
+									{/if}
+								</span>
+							</button>
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<div class="dropdown-menu w-100 p-2 shadow-sm {showRustinelDropdown ? 'show' : ''}" style="max-height: 250px; overflow-y: auto;" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
+								{#if availableRustinelVersions.length === 0}
+									<div class="dropdown-item text-muted small">No versions available</div>
+								{:else}
+									{#each availableRustinelVersions as ver}
+										<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
+											<input
+												type="checkbox"
+												checked={filterRustinelVersion.includes(ver)}
+												onchange={() => toggleDeviceFilter(filterRustinelVersion, ver, (v) => (filterRustinelVersion = v))}
+											/>
+											<span class="small text-truncate">{ver}</span>
+										</label>
+									{/each}
+								{/if}
+							</div>
+						</div>
+
+						<!-- OS Dropdown -->
+						<div class="col-md-4 col-12 filter-dropdown-container dropdown position-relative">
+							<span class="form-label small fw-bold mb-1 d-block">OS</span>
+							<button
+								type="button"
+								class="btn btn-outline-secondary btn-sm w-100 d-flex align-items-center justify-content-between dropdown-toggle {showOsDropdown ? 'show' : ''}"
+								onclick={() => toggleFilterDropdown('os')}
+								aria-expanded={showOsDropdown}
+							>
+								<span class="text-truncate">
+									{#if filterOs.length > 0}
+										{filterOs.join(', ')}
+									{:else}
+										All OS
+									{/if}
+								</span>
+							</button>
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<div class="dropdown-menu w-100 p-2 shadow-sm {showOsDropdown ? 'show' : ''}" style="max-height: 250px; overflow-y: auto;" onclick={(e) => e.stopPropagation()} role="menu" tabindex="-1">
+								{#if availableOsList.length === 0}
+									<div class="dropdown-item text-muted small">No OS available</div>
+								{:else}
+									{#each availableOsList as osItem}
+										<label class="dropdown-item d-flex align-items-center gap-2" style="cursor: pointer;">
+											<input
+												type="checkbox"
+												checked={filterOs.includes(osItem)}
+												onchange={() => toggleDeviceFilter(filterOs, osItem, (v) => (filterOs = v))}
+											/>
+											<span class="small text-truncate">{osItem}</span>
+										</label>
+									{/each}
+								{/if}
+							</div>
 						</div>
 					</div>
 
@@ -765,7 +995,7 @@
 
 						<h6 class="fw-bold mb-3">Agent Version Distribution</h6>
 						{#if totalAgentDevices === 0}
-							<p class="text-muted small">No matching devices.</p>
+							<p class="text-muted small mb-4">No matching devices.</p>
 						{:else}
 							<div class="d-flex flex-column gap-3 mb-4">
 								{#each Object.entries(deviceStats.agent_distribution).sort((a, b) => b[1] - a[1]) as [ver, count]}
@@ -785,9 +1015,9 @@
 
 						<h6 class="fw-bold mb-3">Rustinel Version Distribution</h6>
 						{#if totalRustinelDevices === 0}
-							<p class="text-muted small">No matching devices.</p>
+							<p class="text-muted small mb-4">No matching devices.</p>
 						{:else}
-							<div class="d-flex flex-column gap-3">
+							<div class="d-flex flex-column gap-3 mb-4">
 								{#each Object.entries(deviceStats.rustinel_distribution).sort((a, b) => b[1] - a[1]) as [ver, count]}
 									{@const pct = totalRustinelDevices > 0 ? Math.round((count / totalRustinelDevices) * 100) : 0}
 									<div>
@@ -804,11 +1034,11 @@
 						{/if}
 
 						{@const totalOsDevices = Object.values(deviceStats.os_distribution).reduce((a, b) => a + b, 0)}
-						<h6 class="fw-bold mb-3 mt-4">OS Distribution</h6>
+						<h6 class="fw-bold mb-3">OS Distribution</h6>
 						{#if totalOsDevices === 0}
-							<p class="text-muted small">No matching devices.</p>
+							<p class="text-muted small mb-4">No matching devices.</p>
 						{:else}
-							<div class="d-flex flex-column gap-3">
+							<div class="d-flex flex-column gap-3 mb-4">
 								{#each Object.entries(deviceStats.os_distribution).sort((a, b) => b[1] - a[1]) as [osName, count]}
 									{@const pct = totalOsDevices > 0 ? Math.round((count / totalOsDevices) * 100) : 0}
 									<div>
@@ -818,6 +1048,50 @@
 										</div>
 										<div class="progress" style="height: 6px;">
 											<div class="progress-bar bg-info" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
+						{@const totalHealthDevices = Object.values(deviceStats.health_distribution).reduce((a, b) => a + b, 0)}
+						<h6 class="fw-bold mb-3">Health Status Distribution</h6>
+						{#if totalHealthDevices === 0}
+							<p class="text-muted small mb-4">No matching devices.</p>
+						{:else}
+							<div class="d-flex flex-column gap-3 mb-4">
+								{#each [['healthy', 'Healthy', 'bg-success'], ['unhealthy', 'Unhealthy', 'bg-danger'], ['unknown', 'Unknown', 'bg-secondary']] as [hStatus, label, barColor]}
+									{@const count = deviceStats.health_distribution[hStatus] || 0}
+									{@const pct = totalHealthDevices > 0 ? Math.round((count / totalHealthDevices) * 100) : 0}
+									<div>
+										<div class="d-flex justify-content-between mb-1">
+											<span class="fw-semibold small">{label}</span>
+											<span class="text-muted small">{count} ({pct}%)</span>
+										</div>
+										<div class="progress" style="height: 6px;">
+											<div class="progress-bar {barColor}" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
+						{@const totalOnlineDevices = Object.values(deviceStats.online_distribution).reduce((a, b) => a + b, 0)}
+						<h6 class="fw-bold mb-3">Online Status Distribution</h6>
+						{#if totalOnlineDevices === 0}
+							<p class="text-muted small">No matching devices.</p>
+						{:else}
+							<div class="d-flex flex-column gap-3">
+								{#each [['online', 'Online', 'bg-success'], ['offline', 'Offline', 'bg-secondary']] as [oStatus, label, barColor]}
+									{@const count = deviceStats.online_distribution[oStatus] || 0}
+									{@const pct = totalOnlineDevices > 0 ? Math.round((count / totalOnlineDevices) * 100) : 0}
+									<div>
+										<div class="d-flex justify-content-between mb-1">
+											<span class="fw-semibold small">{label}</span>
+											<span class="text-muted small">{count} ({pct}%)</span>
+										</div>
+										<div class="progress" style="height: 6px;">
+											<div class="progress-bar {barColor}" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
 										</div>
 									</div>
 								{/each}

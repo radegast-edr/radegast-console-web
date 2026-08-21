@@ -1783,6 +1783,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/stats/devices/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Admin Device Filter Options */
+        get: operations["get_admin_device_filter_options_api_v1_admin_stats_devices_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/stats/devices": {
         parameters: {
             query?: never;
@@ -2095,6 +2112,15 @@ export interface components {
              */
             email_type: "downtime_maintenance" | "news_updates";
         };
+        /** AdminDeviceFilterOptionsResponse */
+        AdminDeviceFilterOptionsResponse: {
+            /** Agent Versions */
+            agent_versions: string[];
+            /** Rustinel Versions */
+            rustinel_versions: string[];
+            /** Os List */
+            os_list: string[];
+        };
         /** AdminDeviceStatsResponse */
         AdminDeviceStatsResponse: {
             /** Agent Distribution */
@@ -2107,6 +2133,14 @@ export interface components {
             };
             /** Os Distribution */
             os_distribution: {
+                [key: string]: number;
+            };
+            /** Health Distribution */
+            health_distribution: {
+                [key: string]: number;
+            };
+            /** Online Distribution */
+            online_distribution: {
                 [key: string]: number;
             };
         };
@@ -6689,11 +6723,34 @@ export interface operations {
             };
         };
     };
+    get_admin_device_filter_options_api_v1_admin_stats_devices_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDeviceFilterOptionsResponse"];
+                };
+            };
+        };
+    };
     get_admin_device_stats_api_v1_admin_stats_devices_get: {
         parameters: {
             query?: {
-                exclude_offline?: boolean;
-                exclude_no_version?: boolean;
+                online_status?: string[] | null;
+                health_status?: string[] | null;
+                agent_version?: string[] | null;
+                rustinel_version?: string[] | null;
+                os?: string[] | null;
             };
             header?: never;
             path?: never;
