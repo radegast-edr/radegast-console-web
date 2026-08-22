@@ -78,7 +78,16 @@
 	);
 
 	onMount(async () => {
-		if ($user?.role !== 'admin') {
+		let currentUser = $user;
+		if (!currentUser) {
+			try {
+				currentUser = await api.me();
+				user.set(currentUser);
+			} catch {
+				// not logged in
+			}
+		}
+		if (currentUser?.role !== 'admin') {
 			goto(`${base}/`);
 			return;
 		}
