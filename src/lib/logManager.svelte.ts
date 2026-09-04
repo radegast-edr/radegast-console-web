@@ -9,6 +9,15 @@ export interface DecryptionResult {
 	error?: string;
 }
 
+export interface HuntProgress {
+	active: boolean;
+	interrupted: boolean;
+	pagesFetched: number;
+	totalFetched: number;
+	earliestFetched: string | null;
+	latestFetched: string | null;
+}
+
 export class LogManager {
 	logs = $state<Log[]>([]);
 	decryptionState = $state<Record<string | number, DecryptionResult>>({});
@@ -18,6 +27,16 @@ export class LogManager {
 	isSearching = $state(false);
 	knownLogIds = new Set<number>();
 	isInitialLoad = true;
+
+	huntProgress = $state<HuntProgress>({
+		active: false,
+		interrupted: false,
+		pagesFetched: 0,
+		totalFetched: 0,
+		earliestFetched: null,
+		latestFetched: null
+	});
+	lastSearchQuery = '';
 
 	currentPage = $state(1);
 	totalPages = $state(1);
@@ -125,6 +144,7 @@ export class LogManager {
 	}
 
 	async runFilter(searchQuery: string) {
+		this.lastSearchQuery = searchQuery;
 		if (!searchQuery.trim()) {
 			this.filteredLogs = this.logs;
 			this.searchError = '';
@@ -221,13 +241,57 @@ export class LogManager {
 		}
 	}
 
-	async performHuntSearch(fromTime: string | null, toTime: string | null, min_level: LogSeverity | null = null) {
+	get earliestFetched(): string | null {
+		return this.huntProgress.earliestFetched;
+	}
+
+	get latestFetched(): string | null {
+		return this.huntProgress.latestFetched;
+	}
+
+	interruptHunt() {
+		this.huntProgress = {
+			...this.huntProgress,
+			active: false,
+			interrupted: true
+		};
+		this.loading = false;
+		this.isSearching = false;
+	}
+
+	async performHuntSearch(
+		fromTime: string | null,
+		toTime: string | null,
+		min_level: LogSeverity | null = null,
+		query: string | null = null
+	) {
+		if (this.isSearching) {
+			this.interruptHunt();
+		}
+
 		this.isSearching = true;
 		this.loading = true;
 		this.currentPage = 1;
 
+		this.huntProgress = {
+			active: true,
+			interrupted: false,
+			pagesFetched: 0,
+			totalFetched: 0,
+			earliestFetched: null,
+			latestFetched: null
+		};
+
+		this.logs = [];
+		this.filteredLogs = [];
+
 		const fromUtc = fromTime ? new Date(fromTime).toISOString() : null;
 		const toUtc = toTime ? new Date(toTime).toISOString() : null;
+
+		let earliestMs: number | null = null;
+		let latestMs: number | null = null;
+		let earliestTime: string | null = null;
+		let latestTime: string | null = null;
 
 		try {
 			let allLogs: Log[] = [];
@@ -235,12 +299,37 @@ export class LogManager {
 			const newDecryptionState = { ...this.decryptionState };
 
 			while (true) {
+				if (this.huntProgress.interrupted) {
+					break;
+				}
+
 				const logsData = await api.listLogs(page, this.limit, null, fromUtc, toUtc, min_level);
+
+				if (this.huntProgress.interrupted) {
+					break;
+				}
+
 				if (!logsData || logsData.length === 0) {
 					break;
 				}
 
 				allLogs = allLogs.concat(logsData);
+
+				for (const log of logsData) {
+					if (log.time) {
+						const t = new Date(log.time).getTime();
+						if (!isNaN(t)) {
+							if (earliestMs === null || t < earliestMs) {
+								earliestMs = t;
+								earliestTime = log.time;
+							}
+							if (latestMs === null || t > latestMs) {
+								latestMs = t;
+								latestTime = log.time;
+							}
+						}
+					}
+				}
 
 				if (this.privateKey) {
 					for (const log of logsData) {
@@ -258,6 +347,25 @@ export class LogManager {
 							newDecryptionState[log.id] = { success: false, error: (e as Error).message };
 						}
 					}
+				}
+
+				this.logs = [...allLogs];
+				this.decryptionState = { ...newDecryptionState };
+				this.totalLogs = allLogs.length;
+
+				this.huntProgress = {
+					active: true,
+					interrupted: false,
+					pagesFetched: page,
+					totalFetched: allLogs.length,
+					earliestFetched: earliestTime,
+					latestFetched: latestTime
+				};
+
+				await this.runFilter(query ?? this.lastSearchQuery ?? '');
+
+				if (this.huntProgress.interrupted) {
+					break;
 				}
 
 				if (logsData.length < this.limit) {
@@ -285,10 +393,17 @@ export class LogManager {
 			this.decryptionState = newDecryptionState;
 			this.totalLogs = allLogs.length;
 			this.totalPages = 1;
+			await this.runFilter(query ?? this.lastSearchQuery ?? '');
 		} catch (e) {
-			console.error("performHuntSearch error:", e);
-			throw e;
+			if (!this.huntProgress.interrupted) {
+				console.error("performHuntSearch error:", e);
+				throw e;
+			}
 		} finally {
+			this.huntProgress = {
+				...this.huntProgress,
+				active: false
+			};
 			this.loading = false;
 			this.isSearching = false;
 			this.isInitialLoad = false;

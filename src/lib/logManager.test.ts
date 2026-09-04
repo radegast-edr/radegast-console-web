@@ -90,5 +90,68 @@ describe('LogManager Logic', () => {
 		expect(api.listLogs).toHaveBeenNthCalledWith(2, 2, 2, null, expect.any(String), expect.any(String), 'informational');
 		expect(logManager.logs.length).toBe(3);
 		expect(logManager.logs.map(l => l.id)).toEqual([1, 2, 3]);
+		expect(logManager.huntProgress.pagesFetched).toBe(2);
+		expect(logManager.huntProgress.totalFetched).toBe(3);
+		expect(logManager.huntProgress.earliestFetched).toBe('2026-06-03T10:00:00Z');
+		expect(logManager.huntProgress.latestFetched).toBe('2026-06-03T12:00:00Z');
+		expect(logManager.earliestFetched).toBe('2026-06-03T10:00:00Z');
+		expect(logManager.latestFetched).toBe('2026-06-03T12:00:00Z');
+	});
+
+	it('allows interrupting the hunt search and retains already fetched logs', async () => {
+		const logManager = new LogManager(null);
+		logManager.limit = 1;
+
+		const page1Logs = [
+			{ id: 1, device_id: 1, time: '2026-06-03T10:00:00Z', severity: 'low', content: 'c1', seen: false, signature: 's1' }
+		];
+		const page2Logs = [
+			{ id: 2, device_id: 1, time: '2026-06-03T11:00:00Z', severity: 'low', content: 'c2', seen: false, signature: 's2' }
+		];
+
+		vi.mocked(api.listLogs).mockImplementation(async (page) => {
+			if (page === 1) {
+				return page1Logs as any;
+			}
+			// Interrupt before returning page 2
+			logManager.interruptHunt();
+			return page2Logs as any;
+		});
+
+		await logManager.performHuntSearch('2026-06-03T00:00', '2026-06-04T00:00', 'informational');
+
+		// Page 1 was processed, then during/after page 2 interrupt was triggered
+		expect(logManager.huntProgress.interrupted).toBe(true);
+		expect(logManager.loading).toBe(false);
+		expect(logManager.isSearching).toBe(false);
+		expect(logManager.logs.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it('updates logs progressively on each page fetch', async () => {
+		const logManager = new LogManager(null);
+		logManager.limit = 2;
+
+		const page1Logs = [
+			{ id: 1, device_id: 1, time: '2026-06-03T10:00:00Z', severity: 'low', content: 'c1', seen: false, signature: 's1' },
+			{ id: 2, device_id: 1, time: '2026-06-03T11:00:00Z', severity: 'low', content: 'c2', seen: false, signature: 's2' }
+		];
+		const page2Logs = [
+			{ id: 3, device_id: 1, time: '2026-06-03T12:00:00Z', severity: 'low', content: 'c3', seen: false, signature: 's3' }
+		];
+
+		const logCountsOnFetch: number[] = [];
+		vi.mocked(api.listLogs).mockImplementation(async (page) => {
+			if (page === 1) {
+				return page1Logs as any;
+			}
+			logCountsOnFetch.push(logManager.logs.length);
+			return page2Logs as any;
+		});
+
+		await logManager.performHuntSearch('2026-06-03T00:00', '2026-06-04T00:00', 'informational');
+
+		// When page 2 was requested, page 1 logs (2 items) were already in logManager.logs!
+		expect(logCountsOnFetch).toEqual([2]);
+		expect(logManager.logs.length).toBe(3);
 	});
 });

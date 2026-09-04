@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import Icon from '@iconify/svelte';
 	import { api, type Group, type Team, type ExclusionCreate } from '$lib/api';
 	import { showError, showFlash } from '$lib/store';
 	import { decryptExclusion, encryptExclusion } from '$lib/exclusionHelpers';
 	import { initAgeWasm, getStoredPrivateKey } from '$lib/crypto';
 	import { LogManager } from '$lib/logManager.svelte';
-	import { toLocalISOString, toUTCISOString } from '$lib/utils';
+	import { formatFullDateTime, toLocalISOString, toUTCISOString } from '$lib/utils';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import Modal from '$lib/components/Modal.svelte';
@@ -22,9 +23,9 @@
 
 	const getDefaultFromTime = () => {
 		const now = new Date();
-		const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+		const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
 		const pad = (num: number) => String(num).padStart(2, '0');
-		return `${yesterday.getFullYear()}-${pad(yesterday.getMonth()+1)}-${pad(yesterday.getDate())}T${pad(yesterday.getHours())}:${pad(yesterday.getMinutes())}`;
+		return `${fifteenMinutesAgo.getFullYear()}-${pad(fifteenMinutesAgo.getMonth()+1)}-${pad(fifteenMinutesAgo.getDate())}T${pad(fifteenMinutesAgo.getHours())}:${pad(fifteenMinutesAgo.getMinutes())}`;
 	};
 
 	const getDefaultToTime = () => {
@@ -91,12 +92,23 @@
 	async function performHunt() {
 		if (!logManager) return;
 		try {
-			await logManager.performHuntSearch(fromTime, toTime, "informational");
-			await logManager.runFilter(searchQuery);
+			await logManager.performHuntSearch(fromTime, toTime, "informational", searchQuery);
 		} catch (e) {
 			showError('Hunt search failed: ' + (e as Error).message);
 		}
 	}
+
+	function interruptHunt() {
+		if (logManager) {
+			logManager.interruptHunt();
+		}
+	}
+
+	onDestroy(() => {
+		if (logManager) {
+			logManager.interruptHunt();
+		}
+	});
 
 	async function startExclusionFromHunt(log: any, alertObj: any): Promise<void> {
 		selectedLog = log;
@@ -318,7 +330,7 @@
 </div>
 
 {#if logManager}
-	<div class="card mb-4 border-0 shadow-sm" style="border-radius: 12px; background: var(--bs-body-bg);">
+	<div class="card mb-4 border-0 shadow-sm" style="background: var(--bs-body-bg);">
 		<div class="card-body p-4">
 			<div class="row g-3">
 				<div class="col-md-7">
@@ -331,7 +343,9 @@
 						bind:value={searchQuery}
 					/>
 					{#if logManager.searchError}
-						<div class="text-danger small mt-1">⚠️ {logManager.searchError}</div>
+						<div class="text-danger small mt-1 d-flex align-items-center gap-1">
+							<Icon icon="lucide:alert-triangle" /> {logManager.searchError}
+						</div>
 					{/if}
 				</div>
 				<div class="col-md-2">
@@ -343,17 +357,84 @@
 					<input id="hunt-end-time" type="datetime-local" class="form-control" bind:value={toTime} />
 				</div>
 				<div class="col-md-1 d-flex align-items-end">
-					<button class="btn btn-primary w-100 fw-bold" onclick={performHunt} disabled={logManager.loading}>
-						{#if logManager.loading}
-							<Spinner inline size="sm" color="light" />
-						{:else}
+					{#if logManager.huntProgress.active}
+						<button
+							class="btn btn-danger w-100 fw-bold d-flex align-items-center justify-content-center gap-1"
+							onclick={interruptHunt}
+							title="Interrupt search"
+						>
+							<Icon icon="lucide:square" style="font-size: 0.75rem;" /> Stop
+						</button>
+					{:else}
+						<button class="btn btn-primary w-100 fw-bold" onclick={performHunt}>
 							Search
-						{/if}
-					</button>
+						</button>
+					{/if}
 				</div>
 			</div>
 		</div>
 	</div>
+
+	{#if logManager.huntProgress.active}
+		<div class="card mb-3 border-0 bg-body-secondary p-3 shadow-sm" data-testid="hunt-progress">
+			<div class="d-flex align-items-center gap-2 mb-2">
+				<Spinner inline size="sm" />
+				<span class="fw-bold">Searching encrypted telemetry...</span>
+				{#if logManager.huntProgress.pagesFetched > 0}
+					<span class="badge bg-secondary-subtle text-secondary-emphasis">
+						Page {logManager.huntProgress.pagesFetched}
+					</span>
+					<span class="text-body-secondary small">
+						({logManager.logs.length} event{logManager.logs.length === 1 ? '' : 's'} fetched)
+					</span>
+				{/if}
+			</div>
+			<div class="row g-2 small text-body-secondary pt-2 border-top border-secondary-subtle">
+				<div class="col-sm-6">
+					<span class="fw-semibold text-body">Earliest fetched:</span>
+					<span class="font-monospace ms-1" data-testid="earliest-fetched">
+						{logManager.huntProgress.earliestFetched ? formatFullDateTime(logManager.huntProgress.earliestFetched) : '—'}
+					</span>
+				</div>
+				<div class="col-sm-6">
+					<span class="fw-semibold text-body">Latest fetched:</span>
+					<span class="font-monospace ms-1" data-testid="latest-fetched">
+						{logManager.huntProgress.latestFetched ? formatFullDateTime(logManager.huntProgress.latestFetched) : '—'}
+					</span>
+				</div>
+			</div>
+		</div>
+	{:else if logManager.huntProgress.interrupted}
+		<div class="alert alert-warning d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 shadow-sm border-0 py-2 gap-2" data-testid="hunt-interrupted">
+			<div class="d-flex align-items-center gap-2">
+				<Icon icon="lucide:alert-triangle" class="fs-5 flex-shrink-0" />
+				<div>
+					<strong>Search interrupted.</strong> Showing results fetched before stopping.
+				</div>
+			</div>
+			<div class="d-flex flex-wrap gap-3 small text-body-secondary">
+				<div>
+					<span class="fw-semibold text-body">Earliest fetched:</span>
+					<span class="font-monospace ms-1">{logManager.huntProgress.earliestFetched ? formatFullDateTime(logManager.huntProgress.earliestFetched) : '—'}</span>
+				</div>
+				<div>
+					<span class="fw-semibold text-body">Latest fetched:</span>
+					<span class="font-monospace ms-1">{logManager.huntProgress.latestFetched ? formatFullDateTime(logManager.huntProgress.latestFetched) : '—'}</span>
+				</div>
+			</div>
+		</div>
+	{:else if logManager.huntProgress.pagesFetched > 0 && logManager.logs.length > 0}
+		<div class="d-flex flex-wrap gap-3 mb-2 px-1 small text-body-secondary">
+			<div>
+				<span class="fw-semibold text-body">Earliest fetched:</span>
+				<span class="font-monospace ms-1">{formatFullDateTime(logManager.huntProgress.earliestFetched)}</span>
+			</div>
+			<div>
+				<span class="fw-semibold text-body">Latest fetched:</span>
+				<span class="font-monospace ms-1">{formatFullDateTime(logManager.huntProgress.latestFetched)}</span>
+			</div>
+		</div>
+	{/if}
 
 	<div class="d-flex justify-content-between align-items-center mb-2 px-1">
 		<div class="text-muted small fw-semibold">
@@ -370,7 +451,7 @@
 		{#each logManager.filteredLogs as log}
 			{@const alertObj = logManager.getAlertObject(log)}
 			<div class="col-12">
-				<div class="card mb-1 border-0 shadow-sm" style="border-radius: 8px;">
+				<div class="card mb-1 border-0 shadow-sm">
 					<div class="card-body p-3 bg-dark text-light font-monospace small rounded">
 						<div class="d-flex justify-content-between mb-2">
 							<span class="text-info fw-bold">{new Date(log.time).toLocaleString()}</span>
@@ -394,8 +475,10 @@
 				</div>
 			</div>
 		{:else}
-			{#if logManager.loading}
-				<Spinner centered text="Searching encrypted telemetry..." py={5} />
+			{#if logManager.huntProgress.active}
+				<div class="text-center p-5 text-muted">
+					<Spinner centered text="Searching encrypted telemetry..." py={3} />
+				</div>
 			{:else}
 				<div class="text-center p-5 text-muted">No telemetry found matching the query.</div>
 			{/if}

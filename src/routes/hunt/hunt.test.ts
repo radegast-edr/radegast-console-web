@@ -203,6 +203,75 @@ describe('Hunt URL Hash Shareable State', () => {
 			expect(screen.getByText(/Found 101 matching events/i)).toBeInTheDocument();
 		});
 	});
+
+	it('defaults fromTime to 15 minutes before toTime when no hash params', async () => {
+		window.location.hash = '';
+		vi.mocked(api.listLogs).mockResolvedValue([]);
+		vi.mocked(api.listDevices).mockResolvedValue([]);
+
+		render(Hunt);
+
+		await waitFor(() => {
+			const fromInput = screen.getByLabelText('Start Time') as HTMLInputElement;
+			const toInput = screen.getByLabelText('End Time') as HTMLInputElement;
+			const fromMs = new Date(fromInput.value).getTime();
+			const toMs = new Date(toInput.value).getTime();
+			const diffMinutes = Math.round((toMs - fromMs) / (60 * 1000));
+			expect(diffMinutes).toBe(15);
+		});
+	});
+
+	it('displays progress with earliest and latest fetched timestamps', async () => {
+		window.location.hash = '';
+		const log1 = makeLog({ id: 1, time: '2026-06-03T10:00:00Z' });
+		const log2 = makeLog({ id: 2, time: '2026-06-03T12:00:00Z' });
+
+		vi.mocked(api.listLogs).mockResolvedValueOnce([log1, log2] as any);
+		vi.mocked(api.listDevices).mockResolvedValue([]);
+
+		render(Hunt);
+
+		await waitFor(() => {
+			expect(screen.getByText(/Earliest fetched:/i)).toBeInTheDocument();
+			expect(screen.getByText(/Latest fetched:/i)).toBeInTheDocument();
+			expect(screen.getByText(/Found 2 matching events/i)).toBeInTheDocument();
+		});
+	});
+
+	it('allows user to interrupt search and displays interrupted message', async () => {
+		window.location.hash = '';
+		const page1 = Array.from({ length: 100 }, (_, i) => makeLog({ id: i + 1, time: '2026-06-03T10:00:00Z' }));
+
+		let resolvePage2: (val: any) => void;
+		const page2Promise = new Promise((resolve) => {
+			resolvePage2 = resolve;
+		});
+
+		vi.mocked(api.listLogs)
+			.mockResolvedValueOnce(page1 as any)
+			.mockImplementationOnce(() => page2Promise as any);
+		vi.mocked(api.listDevices).mockResolvedValue([]);
+
+		render(Hunt);
+
+		// Wait until page 1 has rendered and Stop button appears
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument();
+		});
+
+		// User clicks Stop
+		const stopBtn = screen.getByRole('button', { name: /stop/i });
+		await fireEvent.click(stopBtn);
+
+		resolvePage2!([]);
+
+		await waitFor(() => {
+			expect(screen.getByTestId('hunt-interrupted')).toBeInTheDocument();
+			expect(screen.getByText(/Search interrupted/i)).toBeInTheDocument();
+			// Results from page 1 are preserved
+			expect(screen.getByText(/Found 100 matching events/i)).toBeInTheDocument();
+		});
+	});
 });
 
 
