@@ -44,11 +44,14 @@
     "@iconify/svelte": "^5.2.1",
     "bootstrap": "^5.3.0",
     "hack-font": "^3.3.0",
-    "js-yaml": "^5.1.0",
+    "js-yaml": "^5.4.1",
     "jsonata": "^2.2.1",
     "openapi-fetch": "^0.17.0",
     "quill": "^2.0.3",
     "shepherd.js": "^13.0.0"
+  },
+  "overrides": {
+    "cookie": "^0.7.2",
+    "deepmerge-ts": "^8.0.0"
   }
-
 }
