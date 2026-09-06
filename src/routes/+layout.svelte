@@ -53,7 +53,7 @@
 	let { children } = $props<{ children: Snippet }>();
 
 	// Routes that are fully public (no auth needed)
-	const PUBLIC_PREFIXES = ['/login', '/register', '/verify', '/terms', '/privacy', '/reset-password', '/unsubscribe'];
+	const PUBLIC_PREFIXES = ['/login', '/register', '/verify', '/terms', '/privacy', '/reset-password', '/unsubscribe', '/delete-account'];
 
 	// Automatic key generation states
 	let generatingKeys = $state(false);

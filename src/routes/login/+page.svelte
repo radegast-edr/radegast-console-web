@@ -21,7 +21,7 @@
 		error = '';
 		try {
 			const pubKey = await getPublicKeyForLogin(email);
-			const res = await api.login(email, password, pubKey) as { status?: string; mfa_token?: string; methods?: string[] };
+			const res = await api.login(email, password, pubKey) as { status?: string; mfa_token?: string; methods?: string[]; deletion_cancelled?: boolean };
 
 			if (res && res.status === 'mfa_required') {
 				mfaToken = res.mfa_token || '';

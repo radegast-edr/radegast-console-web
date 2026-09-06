@@ -76,6 +76,51 @@
 	let modalMessage = $state('');
 	let confirmCallback = $state<(() => void) | null>(null);
 
+	// Account self-deletion state
+	let showDeleteConfirmModal1 = $state(false);
+	let showDeleteConfirmModal2 = $state(false);
+	let showDeleteConflictModal = $state(false);
+	let deleteConflictReasons = $state<string[]>([]);
+	let deleteGraceDays = $state(14);
+	let accountDeletionLoading = $state(false);
+
+	function openDeleteAccountDialog(): void {
+		showDeleteConfirmModal1 = true;
+	}
+
+	async function proceedWithAccountDeletionRequest(): Promise<void> {
+		showDeleteConfirmModal1 = false;
+		accountDeletionLoading = true;
+		try {
+			const res = await api.requestAccountDeletion() as { message: string; grace_days: number };
+			deleteGraceDays = res.grace_days || 14;
+			if ($user) {
+				$user.deletion_requested_at = new Date().toISOString();
+			}
+			showDeleteConfirmModal2 = true;
+		} catch (e: any) {
+			if (e.detail && Array.isArray(e.detail.reasons)) {
+				deleteConflictReasons = e.detail.reasons;
+				showDeleteConflictModal = true;
+			} else {
+				showError(e.message || 'Failed to request account deletion');
+			}
+		} finally {
+			accountDeletionLoading = false;
+		}
+	}
+
+	async function handleLogoutAfterDeletionRequest(): Promise<void> {
+		showDeleteConfirmModal2 = false;
+		try {
+			await api.logout();
+		} catch (e) {
+			console.warn('Logout request failed:', e);
+		}
+		$user = null;
+		goto(`${base}/login`);
+	}
+
 	function openConfirmModal(title: string, message: string, callback: () => void): void {
 		modalTitle = title;
 		modalMessage = message;
@@ -1030,6 +1075,45 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- Danger Zone Card -->
+	<div class="col-12 mb-4">
+		<div class="card border-danger">
+			<div class="card-header bg-danger bg-opacity-10 py-3">
+				<h5 class="mb-0 text-danger d-flex align-items-center gap-2">
+					<AlertTriangleIcon style="width: 18px; height: 18px;" />
+					Danger Zone
+				</h5>
+			</div>
+			<div class="card-body">
+				{#if $user?.deletion_scheduled_at}
+					<div class="alert alert-warning mb-3">
+						<strong>Account deletion is currently scheduled for:</strong> {new Date($user.deletion_scheduled_at).toUTCString()}.
+						Logging in will automatically cancel this deletion.
+					</div>
+				{:else if $user?.deletion_requested_at}
+					<div class="alert alert-info mb-3">
+						<strong>Account deletion confirmation is pending.</strong>
+						Please check your email and click the confirmation link to begin the grace period. Logging in again at any time will cancel the deletion.
+					</div>
+				{/if}
+				<h6 class="fw-bold text-danger">Delete Account</h6>
+				<p class="text-body-secondary small mb-3">
+					Permanently delete your account and all associated unshared data.
+					Once deleted, your account cannot be recovered.
+				</p>
+				<button
+					type="button"
+					class="btn btn-outline-danger d-flex align-items-center gap-2"
+					onclick={openDeleteAccountDialog}
+					disabled={accountDeletionLoading}
+				>
+					<AlertTriangleIcon style="width: 16px; height: 16px;" />
+					{accountDeletionLoading ? 'Processing…' : 'Delete My Account'}
+				</button>
+			</div>
+		</div>
+	</div>
 </div>
 
 
@@ -1045,6 +1129,96 @@
 		</button>
 		<button type="button" class="btn btn-warning px-4 fw-semibold text-dark" onclick={confirmCallback}>
 			Yes
+		</button>
+	</div>
+</Modal>
+
+<Modal
+	show={showDeleteConfirmModal1}
+	title="Delete Account Confirmation"
+	onClose={() => { showDeleteConfirmModal1 = false; }}
+>
+	<p class="mb-3 text-body">
+		Are you sure you want to delete your account?
+	</p>
+	<p class="mb-4 text-body-secondary small">
+		You will receive an email containing a confirmation link that you need to click to proceed with the deletion.
+	</p>
+	<div class="d-flex justify-content-end gap-2">
+		<button
+			type="button"
+			class="btn btn-outline-secondary px-4 fw-semibold"
+			onclick={() => { showDeleteConfirmModal1 = false; }}
+		>
+			No
+		</button>
+		<button
+			type="button"
+			class="btn btn-danger px-4 fw-semibold"
+			onclick={proceedWithAccountDeletionRequest}
+			disabled={accountDeletionLoading}
+		>
+			{accountDeletionLoading ? 'Sending…' : 'Yes'}
+		</button>
+	</div>
+</Modal>
+
+<Modal
+	show={showDeleteConfirmModal2}
+	title="Confirmation Email Sent"
+	onClose={() => { showDeleteConfirmModal2 = false; }}
+>
+	<div class="alert alert-info small mb-3">
+		A confirmation email has been sent to your email address. You need to click on the link in that email to proceed with scheduling the account deletion.
+	</div>
+	<p class="mb-3 text-body">
+		After confirming via email, your account will enter a <strong>{deleteGraceDays}-day grace period</strong>.
+		If you log in again within the next {deleteGraceDays} days, your account deletion will be canceled.
+	</p>
+	<p class="mb-4 text-body-secondary small">
+		To complete this step, you will now be logged out. Do you want to log out now?
+	</p>
+	<div class="d-flex justify-content-end gap-2">
+		<button
+			type="button"
+			class="btn btn-outline-secondary px-4 fw-semibold"
+			onclick={() => { showDeleteConfirmModal2 = false; }}
+		>
+			No
+		</button>
+		<button
+			type="button"
+			class="btn btn-primary px-4 fw-semibold"
+			onclick={handleLogoutAfterDeletionRequest}
+		>
+			Yes
+		</button>
+	</div>
+</Modal>
+
+<Modal
+	show={showDeleteConflictModal}
+	title="Cannot Delete Account"
+	onClose={() => { showDeleteConflictModal = false; }}
+>
+	<p class="text-body mb-3">
+		Your account deletion cannot be initiated because other users rely on resources that only you administer:
+	</p>
+	<ul class="text-danger small mb-4">
+		{#each deleteConflictReasons as reason}
+			<li class="mb-1">{reason}</li>
+		{/each}
+	</ul>
+	<p class="text-body-secondary small mb-4">
+		Please promote another member to admin or remove dependent members before requesting account deletion.
+	</p>
+	<div class="d-flex justify-content-end">
+		<button
+			type="button"
+			class="btn btn-outline-secondary px-4 fw-semibold"
+			onclick={() => { showDeleteConflictModal = false; }}
+		>
+			Close
 		</button>
 	</div>
 </Modal>

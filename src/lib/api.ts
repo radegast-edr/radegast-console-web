@@ -147,6 +147,8 @@ export type APIKeyCreatedResponse = components['schemas']['APIKeyCreatedResponse
 export type Exclusion = components['schemas']['ExclusionResponse'];
 export type ExclusionCreate = components['schemas']['ExclusionCreate'];
 export type LogSeverity = components["schemas"]["LogSeverity"];
+export type AccountDeletionStatus = components['schemas']['AccountDeletionStatusResponse'];
+export type AccountDeletionConfirm = components['schemas']['AccountDeletionConfirmResponse'];
 
 
 // ---------------------------------------------------------------------------
@@ -213,6 +215,15 @@ export const api = {
 
 	updateNotifications: (body: NotificationSettings) =>
 		call(callOp('update_notifications_api_v1_user_notifications_put', { body })),
+
+	requestAccountDeletion: () =>
+		call(callOp('request_account_deletion_api_v1_user_delete_account_request_post', {})),
+
+	confirmAccountDeletion: (token: string) =>
+		call(callOp('confirm_account_deletion_api_v1_user_delete_account_confirm_post', { params: { query: { token } } })),
+
+	getAccountDeletionStatus: () =>
+		call(callOp('get_account_deletion_status_api_v1_user_delete_account_status_get', {})),
 
 	// Teams
 	listTeams: () =>

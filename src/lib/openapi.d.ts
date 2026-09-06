@@ -638,6 +638,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/user/delete-account/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Account Deletion
+         * @description Initiate account self-deletion. Validates that no teams, groups, devices, or packs
+         *     will be orphaned or left without administrators. If safe, records request timestamp
+         *     and sends confirmation email.
+         */
+        post: operations["request_account_deletion_api_v1_user_delete_account_request_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user/delete-account/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Account Deletion
+         * @description Confirm account deletion using the signed token from the confirmation email.
+         *     Sets the scheduled deletion date based on the configured grace period.
+         */
+        post: operations["confirm_account_deletion_api_v1_user_delete_account_confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user/delete-account/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Account Deletion Status
+         * @description Get current account deletion status and grace period details.
+         */
+        get: operations["get_account_deletion_status_api_v1_user_delete_account_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/": {
         parameters: {
             query?: never;
@@ -1966,6 +2029,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agewasm/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Agewasm Static */
+        get: operations["agewasm_static_agewasm__path__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -2080,6 +2160,27 @@ export interface components {
              * @default []
              */
             releases: ("read" | "create" | "write" | "delete")[];
+        };
+        /** AccountDeletionConfirmResponse */
+        AccountDeletionConfirmResponse: {
+            /** Message */
+            message: string;
+            /**
+             * Deletion Scheduled At
+             * Format: date-time
+             */
+            deletion_scheduled_at: string;
+            /** Grace Days */
+            grace_days: number;
+        };
+        /** AccountDeletionStatusResponse */
+        AccountDeletionStatusResponse: {
+            /** Deletion Requested */
+            deletion_requested: boolean;
+            /** Deletion Scheduled At */
+            deletion_scheduled_at?: string | null;
+            /** Grace Days */
+            grace_days: number;
         };
         /** AdminAlertStatsResponse */
         AdminAlertStatsResponse: {
@@ -3092,6 +3193,10 @@ export interface components {
              * @default false
              */
             onboarding_completed: boolean;
+            /** Deletion Requested At */
+            deletion_requested_at?: string | null;
+            /** Deletion Scheduled At */
+            deletion_scheduled_at?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -4250,6 +4355,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    request_account_deletion_api_v1_user_delete_account_request_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    confirm_account_deletion_api_v1_user_delete_account_confirm_post: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDeletionConfirmResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_account_deletion_status_api_v1_user_delete_account_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDeletionStatusResponse"];
                 };
             };
         };
@@ -7017,6 +7193,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    agewasm_static_agewasm__path__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
