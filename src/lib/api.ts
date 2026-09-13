@@ -146,6 +146,8 @@ export type APIKeyResponse = components['schemas']['APIKeyResponse'];
 export type APIKeyCreatedResponse = components['schemas']['APIKeyCreatedResponse'];
 export type Exclusion = components['schemas']['ExclusionResponse'];
 export type ExclusionCreate = components['schemas']['ExclusionCreate'];
+export type PreventionAllowlist = components['schemas']['PreventionAllowlistResponse'];
+export type PreventionAllowlistCreate = components['schemas']['PreventionAllowlistCreate'];
 export type LogSeverity = components["schemas"]["LogSeverity"];
 export type AccountDeletionStatus = components['schemas']['AccountDeletionStatusResponse'];
 export type AccountDeletionConfirm = components['schemas']['AccountDeletionConfirmResponse'];
@@ -341,6 +343,16 @@ export const api = {
 
 	getExclusion: (exclusion_id: number) =>
 		call(callOp('get_exclusion_api_v1_exclusions__exclusion_id__get', { params: { path: { exclusion_id } } })),
+
+	// Prevention Allowlist
+	listPreventionAllowlist: (group_id: number) =>
+		call(callOp('list_group_entries_api_v1_prevention_allowlist_groups__group_id__get', { params: { path: { group_id } } })),
+
+	createPreventionAllowlistEntry: (group_id: number, data: PreventionAllowlistCreate) =>
+		call(callOp('create_entry_api_v1_prevention_allowlist_groups__group_id__post', { params: { path: { group_id } }, body: data })),
+
+	deletePreventionAllowlistEntry: (entry_id: number) =>
+		call(callOp('delete_entry_api_v1_prevention_allowlist__entry_id__delete', { params: { path: { entry_id } } })),
 
 	// Packs
 	listPacks: () =>

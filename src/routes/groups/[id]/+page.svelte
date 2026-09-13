@@ -3,8 +3,9 @@
 	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
 	import { decryptExclusionsList, encryptExclusion } from '$lib/exclusionHelpers';
+	import { decryptAllowlistEntries, encryptAllowlistEntry } from '$lib/preventionAllowlistHelpers';
 	import { page } from '$app/stores';
-	import { api, type GroupDetail, type Team, type TeamMember, type Device, type EnabledPack, type Pack, type PackVersion, type Exclusion, type ExclusionCreate } from '$lib/api';
+	import { api, type GroupDetail, type Team, type TeamMember, type Device, type EnabledPack, type Pack, type PackVersion, type Exclusion, type ExclusionCreate, type PreventionAllowlist } from '$lib/api';
 	import { showFlash, showError, triggerKeyRefresh, user } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
@@ -14,11 +15,17 @@
 	import { goto } from '$app/navigation';
 	import { refreshGroupKeys } from '$lib/groupHelpers';
 
-	let group = $state<(GroupDetail & { devices: Device[]; teams: Team[]; exclusions: Exclusion[]; public_key?: string | null; private_key?: string | null; invitations?: any[] }) | null>(null);
+	let group = $state<(GroupDetail & { devices: Device[]; teams: Team[]; exclusions: Exclusion[]; prevention_allowlists?: PreventionAllowlist[]; public_key?: string | null; private_key?: string | null; invitations?: any[] }) | null>(null);
 	let allTeams = $state<Team[]>([]);
 	let allDevices = $state<Device[]>([]);
 	let addTeamId = $state('');
 	let addDeviceId = $state('');
+
+	// Prevention Allowlist State
+	let showAllowlistModal = $state(false);
+	let allowlistEntryType = $state<'path' | 'image'>('path');
+	let allowlistValue = $state('');
+	let allowlistDescription = $state('');
 
 	// Exclusion Management State
 	let showExclusionModal = $state(false);
@@ -241,6 +248,11 @@
 			// Decrypt exclusions if encrypted
 			if (g.exclusions) {
 				g.exclusions = await decryptExclusionsList(g.exclusions, g.private_key, me.id);
+			}
+
+			// Decrypt prevention allowlists
+			if (g.prevention_allowlists) {
+				g.prevention_allowlists = await decryptAllowlistEntries(g.prevention_allowlists, g.private_key, me.id);
 			}
 
 			// Load members for all linked teams
@@ -546,6 +558,50 @@
 			await api.deleteExclusion(exclusionId);
 			showFlash('Exclusion deleted');
 			
+			if (group) {
+				await loadGroup(group.id);
+			}
+		} catch (e) {
+			showError((e as Error).message);
+		}
+	}
+
+	// Prevention Allowlist Functions
+	async function saveAllowlistEntry(): Promise<void> {
+		if (!group || !allowlistValue.trim()) {
+			showError('Value is required');
+			return;
+		}
+		try {
+			const { value: encValue, description: encDesc } = await encryptAllowlistEntry(
+				allowlistValue.trim(),
+				allowlistDescription.trim() || null,
+				group.public_key
+			);
+
+			await api.createPreventionAllowlistEntry(Number(group.id), {
+				entry_type: allowlistEntryType,
+				value: encValue,
+				description: encDesc
+			});
+
+			showAllowlistModal = false;
+			showFlash('Prevention allowlist entry added');
+			allowlistValue = '';
+			allowlistDescription = '';
+			allowlistEntryType = 'path';
+			await loadGroup(group.id);
+		} catch (e) {
+			showError((e as Error).message);
+		}
+	}
+
+	async function deleteAllowlistEntry(entryId: number, e: MouseEvent): Promise<void> {
+		e.stopPropagation();
+		if (!await askConfirm('Are you sure you want to delete this prevention allowlist entry?')) return;
+		try {
+			await api.deletePreventionAllowlistEntry(entryId);
+			showFlash('Entry deleted');
 			if (group) {
 				await loadGroup(group.id);
 			}
@@ -914,6 +970,63 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- Prevention Allowlist section -->
+	<div class="card mb-4">
+		<div class="card-header d-flex justify-content-between align-items-center">
+			<h5 class="mb-0">Prevention Allowlist</h5>
+			{#if hasPackWrite}
+				<button class="btn btn-sm btn-primary" onclick={() => (showAllowlistModal = true)}>Add Entry</button>
+			{/if}
+		</div>
+		<div class="card-body">
+			<p class="text-muted small">
+				Processes matching these entries will never be terminated by Active Response, even if they trigger a detection rule.
+			</p>
+			{#if (group.prevention_allowlists ?? []).length === 0}
+				<p class="text-muted mb-0">No prevention allowlist entries configured for this group.</p>
+			{:else}
+				<table class="table table-sm mb-0 align-middle">
+					<thead>
+						<tr>
+							<th>Type</th>
+							<th>Value</th>
+							<th>Description</th>
+							{#if hasPackWrite}
+								<th></th>
+							{/if}
+						</tr>
+					</thead>
+					<tbody>
+						{#each group.prevention_allowlists as entry}
+							<tr>
+								<td>
+									{#if entry.entry_type === 'image'}
+										<span class="badge bg-secondary">Image</span>
+									{:else}
+										<span class="badge bg-body-secondary text-body">Path</span>
+									{/if}
+								</td>
+								<td><code class="small">{entry.value}</code></td>
+								<td>{entry.description || '-'}</td>
+								{#if hasPackWrite}
+									<td class="text-end">
+										<button
+											class="btn btn-sm btn-outline-danger"
+											onclick={(e) => deleteAllowlistEntry(entry.id, e)}
+											title="Delete"
+										>
+											<Icon icon="lucide:trash-2" />
+										</button>
+									</td>
+								{/if}
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			{/if}
+		</div>
+	</div>
 	{/if}
 
 	<!-- Exclusions section -->
@@ -1105,6 +1218,57 @@
 				<button class="btn btn-danger btn-sm" onclick={confirmEnableResponse}>Enable Active Response</button>
 			</div>
 		</div>
+	</Modal>
+
+	<!-- Prevention Allowlist Modal -->
+	<Modal show={showAllowlistModal} title="Add Prevention Allowlist Entry" onClose={() => (showAllowlistModal = false)}>
+		<form onsubmit={(e) => { e.preventDefault(); saveAllowlistEntry(); }}>
+			<div class="mb-3">
+				<label for="allowlistType" class="form-label">Type</label>
+				<select class="form-select" id="allowlistType" bind:value={allowlistEntryType}>
+					<option value="path">Path Prefix</option>
+					<option value="image">Image Name</option>
+				</select>
+				<div class="form-text mt-1 small text-body-secondary">
+					{#if allowlistEntryType === 'path'}
+						Directory prefix — processes with executable paths starting with this prefix will not be terminated. Example: <code>/usr/local/bin/</code> or <code>C:\Program Files\</code>
+					{:else}
+						Process image name or basename — processes matching this image will not be terminated. Example: <code>sshd</code> or <code>svchost.exe</code>
+					{/if}
+				</div>
+			</div>
+			<div class="mb-3">
+				<label for="allowlistValue" class="form-label">
+					{allowlistEntryType === 'path' ? 'Path Prefix' : 'Image Name'}
+				</label>
+				<input
+					type="text"
+					class="form-control"
+					id="allowlistValue"
+					bind:value={allowlistValue}
+					placeholder={allowlistEntryType === 'path' ? '/usr/local/bin/' : 'my-daemon'}
+					required
+				/>
+			</div>
+			<div class="mb-3">
+				<label for="allowlistDesc" class="form-label">Description (Optional)</label>
+				<textarea
+					class="form-control"
+					id="allowlistDesc"
+					rows={2}
+					bind:value={allowlistDescription}
+					placeholder="Why this entry is allowlisted..."
+				></textarea>
+			</div>
+			<div class="d-flex gap-2 justify-content-end">
+				<button type="button" class="btn btn-outline-secondary btn-sm" onclick={() => (showAllowlistModal = false)}>
+					Cancel
+				</button>
+				<button type="submit" class="btn btn-primary btn-sm" disabled={!allowlistValue.trim()}>
+					Add Entry
+				</button>
+			</div>
+		</form>
 	</Modal>
 {:else}
 	<Spinner centered text="Loading group details..." py={5} />

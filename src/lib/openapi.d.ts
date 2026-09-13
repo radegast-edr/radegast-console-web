@@ -1318,6 +1318,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/prevention-allowlist/groups/{group_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Group Entries
+         * @description List all prevention allowlist entries for a specific device group.
+         */
+        get: operations["list_group_entries_api_v1_prevention_allowlist_groups__group_id__get"];
+        put?: never;
+        /**
+         * Create Entry
+         * @description Create a new prevention allowlist entry for a device group.
+         */
+        post: operations["create_entry_api_v1_prevention_allowlist_groups__group_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prevention-allowlist/device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Device Entries
+         * @description Device endpoint: Returns all prevention allowlist entries for the groups this device belongs to.
+         */
+        get: operations["get_device_entries_api_v1_prevention_allowlist_device_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prevention-allowlist/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Entry
+         * @description Delete a prevention allowlist entry.
+         */
+        delete: operations["delete_entry_api_v1_prevention_allowlist__entry_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/packs/": {
         parameters: {
             query?: never;
@@ -2404,6 +2468,8 @@ export interface components {
             devices: components["schemas"]["DeviceResponse"][];
             /** Exclusions */
             exclusions: components["schemas"]["ExclusionResponse"][];
+            /** Prevention Allowlists */
+            prevention_allowlists: components["schemas"]["PreventionAllowlistResponse"][];
             /** Public Key */
             public_key?: string | null;
             /** Private Key */
@@ -3008,6 +3074,39 @@ export interface components {
             email: string;
             /** Turnstile Token */
             turnstile_token?: string | null;
+        };
+        /** PreventionAllowlistCreate */
+        PreventionAllowlistCreate: {
+            /**
+             * Entry Type
+             * @enum {string}
+             */
+            entry_type: "path" | "image";
+            /** Value */
+            value: string;
+            /** Description */
+            description?: string | null;
+        };
+        /** PreventionAllowlistResponse */
+        PreventionAllowlistResponse: {
+            /** Id */
+            id: number;
+            /** Device Group Id */
+            device_group_id: number;
+            /**
+             * Entry Type
+             * @enum {string}
+             */
+            entry_type: "path" | "image";
+            /** Value */
+            value: string;
+            /** Description */
+            description: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** PublicKeyAddRequest */
         PublicKeyAddRequest: {
@@ -5803,6 +5902,123 @@ export interface operations {
             header?: never;
             path: {
                 exclusion_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_group_entries_api_v1_prevention_allowlist_groups__group_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreventionAllowlistResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_entry_api_v1_prevention_allowlist_groups__group_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreventionAllowlistCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreventionAllowlistResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_device_entries_api_v1_prevention_allowlist_device_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    delete_entry_api_v1_prevention_allowlist__entry_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: number;
             };
             cookie?: never;
         };
