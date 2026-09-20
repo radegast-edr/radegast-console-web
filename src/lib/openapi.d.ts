@@ -2025,6 +2025,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/releases/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Public Releases
+         * @description List all available rustinel releases. No authentication required.
+         */
+        get: operations["list_public_releases_api_v1_public_releases__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/releases/{version}/{os_name}/{arch}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Public Release
+         * @description Download a specific release zip. No authentication required.
+         */
+        get: operations["download_public_release_api_v1_public_releases__version___os_name___arch__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard/": {
         parameters: {
             query?: never;
@@ -5384,6 +5424,11 @@ export interface operations {
         parameters: {
             query: {
                 os: string;
+                "rustinel-version"?: string;
+                "agent-autoupdate"?: boolean | null;
+                "agent-send-severity"?: boolean | null;
+                "agent-send-rule-id"?: boolean | null;
+                "agent-healthcheck"?: boolean | null;
             };
             header?: never;
             path?: never;
@@ -7290,6 +7335,59 @@ export interface operations {
         };
     };
     download_release_api_v1_releases__version___os_name___arch__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version: string;
+                os_name: string;
+                arch: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_public_releases_api_v1_public_releases__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    download_public_release_api_v1_public_releases__version___os_name___arch__download_get: {
         parameters: {
             query?: never;
             header?: never;
