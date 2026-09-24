@@ -392,6 +392,35 @@ describe('Route Pages Load Verification', () => {
 		});
 	});
 
+	it('renders Devices page with devices sorted by status (unhealthy -> healthy -> offline) then name (a->z)', async () => {
+		const now = new Date();
+		const recent = new Date(now.getTime() - 2 * 60 * 1000).toISOString();
+		const old = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
+
+		vi.mocked(api.listDevices).mockResolvedValue([
+			{ id: 1, name: 'Zebra Offline', last_seen: old, healthy: false } as any,
+			{ id: 2, name: 'Charlie Healthy', last_seen: recent, healthy: true } as any,
+			{ id: 3, name: 'Zebra Unhealthy', last_seen: recent, healthy: false } as any,
+			{ id: 4, name: 'Bravo Online', last_seen: recent, healthy: null } as any,
+			{ id: 5, name: 'Alpha Unhealthy', last_seen: recent, healthy: false } as any,
+			{ id: 6, name: 'Alpha Offline', last_seen: old, healthy: true } as any
+		]);
+
+		render(Devices);
+		await waitFor(() => {
+			expect(screen.getByText('Devices')).toBeInTheDocument();
+		});
+
+		const rows = screen.getAllByRole('row');
+		const rowTexts = rows.slice(1).map((r) => r.textContent);
+		expect(rowTexts[0]).toContain('Alpha Unhealthy');
+		expect(rowTexts[1]).toContain('Zebra Unhealthy');
+		expect(rowTexts[2]).toContain('Bravo Online');
+		expect(rowTexts[3]).toContain('Charlie Healthy');
+		expect(rowTexts[4]).toContain('Alpha Offline');
+		expect(rowTexts[5]).toContain('Zebra Offline');
+	});
+
 	it('renders DeviceDetail page', async () => {
 		render(DeviceDetail);
 		await waitFor(() => {

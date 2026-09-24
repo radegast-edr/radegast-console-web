@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { isDeviceActive, formatFullDateTime, matchesJsonata, mapSeverityToNumber, toLocalISOString, toUTCISOString } from './utils';
+import { isDeviceActive, formatFullDateTime, matchesJsonata, mapSeverityToNumber, toLocalISOString, toUTCISOString, getDeviceStatus, sortDevices } from './utils';
 
 describe('utils', () => {
 	describe('isDeviceActive', () => {
@@ -225,5 +225,101 @@ describe('utils', () => {
 			expect(toUTCISOString(localInput)).toBe(expectedUtc);
 		});
 	});
+
+	describe('getDeviceStatus', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-06-03T07:00:00Z'));
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('returns offline for null, undefined, or empty last_seen', () => {
+			expect(getDeviceStatus({ last_seen: null })).toBe('offline');
+			expect(getDeviceStatus({ last_seen: undefined })).toBe('offline');
+			expect(getDeviceStatus({ last_seen: '' })).toBe('offline');
+		});
+
+		it('returns offline if last_seen was more than 10 minutes ago, even if healthy is false', () => {
+			expect(getDeviceStatus({ last_seen: '2026-06-03T06:45:00Z', healthy: false })).toBe('offline');
+			expect(getDeviceStatus({ last_seen: '2026-06-03T06:45:00Z', healthy: true })).toBe('offline');
+			expect(getDeviceStatus({ last_seen: '2026-06-03T06:45:00Z', healthy: null })).toBe('offline');
+		});
+
+		it('returns unhealthy if device is active and healthy is false', () => {
+			expect(getDeviceStatus({ last_seen: '2026-06-03T06:55:00Z', healthy: false })).toBe('unhealthy');
+		});
+
+		it('returns healthy if device is active and healthy is true', () => {
+			expect(getDeviceStatus({ last_seen: '2026-06-03T06:55:00Z', healthy: true })).toBe('healthy');
+		});
+
+		it('returns healthy if device is active and healthy is null or undefined (online case)', () => {
+			expect(getDeviceStatus({ last_seen: '2026-06-03T06:55:00Z', healthy: null })).toBe('healthy');
+			expect(getDeviceStatus({ last_seen: '2026-06-03T06:55:00Z', healthy: undefined })).toBe('healthy');
+			expect(getDeviceStatus({ last_seen: '2026-06-03T06:55:00Z' })).toBe('healthy');
+		});
+	});
+
+	describe('sortDevices', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-06-03T07:00:00Z'));
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('returns empty array when given empty list', () => {
+			expect(sortDevices([])).toEqual([]);
+		});
+
+		it('does not mutate the original array', () => {
+			const original = [
+				{ id: 1, name: 'Zebra', last_seen: '2026-06-03T06:55:00Z', healthy: true },
+				{ id: 2, name: 'Alpha', last_seen: '2026-06-03T06:55:00Z', healthy: false }
+			];
+			const copy = [...original];
+			const sorted = sortDevices(original);
+			expect(original).toEqual(copy);
+			expect(sorted).not.toBe(original);
+		});
+
+		it('sorts first by status (unhealthy -> healthy -> offline), then by name (a->z)', () => {
+			const devices = [
+				{ id: 1, name: 'Zebra Offline', last_seen: '2026-06-03T05:00:00Z', healthy: false },
+				{ id: 2, name: 'Charlie Healthy', last_seen: '2026-06-03T06:55:00Z', healthy: true },
+				{ id: 3, name: 'Zebra Unhealthy', last_seen: '2026-06-03T06:55:00Z', healthy: false },
+				{ id: 4, name: 'Bravo Online', last_seen: '2026-06-03T06:55:00Z', healthy: null },
+				{ id: 5, name: 'Alpha Unhealthy', last_seen: '2026-06-03T06:55:00Z', healthy: false },
+				{ id: 6, name: 'Alpha Offline', last_seen: '2026-06-03T05:00:00Z', healthy: true }
+			];
+
+			const sorted = sortDevices(devices);
+			expect(sorted.map((d) => d.name)).toEqual([
+				'Alpha Unhealthy', // unhealthy
+				'Zebra Unhealthy', // unhealthy
+				'Bravo Online',    // healthy (online)
+				'Charlie Healthy', // healthy
+				'Alpha Offline',   // offline
+				'Zebra Offline'    // offline
+			]);
+		});
+
+		it('breaks ties using device id if names and statuses are identical', () => {
+			const devices = [
+				{ id: 10, name: 'SameName', last_seen: '2026-06-03T06:55:00Z', healthy: true },
+				{ id: 3, name: 'SameName', last_seen: '2026-06-03T06:55:00Z', healthy: true },
+				{ id: 7, name: 'SameName', last_seen: '2026-06-03T06:55:00Z', healthy: true }
+			];
+
+			const sorted = sortDevices(devices);
+			expect(sorted.map((d) => d.id)).toEqual([3, 7, 10]);
+		});
+	});
 });
+
 

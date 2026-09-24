@@ -172,3 +172,46 @@ export function toUTCISOString(localStr: string | null | undefined): string {
 	if (isNaN(date.getTime())) return '';
 	return date.toISOString();
 }
+
+export type DeviceStatus = 'unhealthy' | 'healthy' | 'offline';
+
+export function getDeviceStatus(device: {
+	last_seen?: string | Date | null;
+	healthy?: boolean | null;
+}): DeviceStatus {
+	if (!isDeviceActive(device.last_seen)) {
+		return 'offline';
+	}
+	if (device.healthy === false) {
+		return 'unhealthy';
+	}
+	return 'healthy';
+}
+
+export function sortDevices<
+	T extends {
+		name: string;
+		last_seen?: string | Date | null;
+		healthy?: boolean | null;
+		id?: number | string;
+	}
+>(devices: T[]): T[] {
+	const statusRank: Record<DeviceStatus, number> = {
+		unhealthy: 0,
+		healthy: 1,
+		offline: 2
+	};
+
+	return [...devices].sort((a, b) => {
+		const rankA = statusRank[getDeviceStatus(a)];
+		const rankB = statusRank[getDeviceStatus(b)];
+		if (rankA !== rankB) {
+			return rankA - rankB;
+		}
+		const nameComp = (a.name || '').localeCompare(b.name || '');
+		if (nameComp !== 0) {
+			return nameComp;
+		}
+		return Number(a.id ?? 0) - Number(b.id ?? 0);
+	});
+}

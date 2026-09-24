@@ -5,10 +5,11 @@
 	import { api, type Device } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
-	import { isDeviceActive, formatFullDateTime } from '$lib/utils';
+	import { isDeviceActive, formatFullDateTime, sortDevices } from '$lib/utils';
 	import AgentSetupInstructions from '$lib/components/AgentSetupInstructions.svelte';
 
 	let devices = $state<Device[]>([]);
+	let sortedDevices = $derived(sortDevices(devices));
 	let showCreate = $state(false);
 	let newDeviceName = $state('');
 	let newDeviceToken = $state('');
@@ -109,7 +110,7 @@
 		</tr>
 	</thead>
 	<tbody>
-		{#each devices as device}
+		{#each sortedDevices as device (device.id)}
 			<tr>
 				<td>
 					<a href="{base}/devices/{device.id}">{device.name}</a>

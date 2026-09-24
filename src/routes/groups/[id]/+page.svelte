@@ -9,7 +9,7 @@
 	import { showFlash, showError, triggerKeyRefresh, user } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
-	import { isDeviceActive } from '$lib/utils';
+	import { isDeviceActive, sortDevices } from '$lib/utils';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import { initAgeWasm, generateKeypair, encrypt, decrypt, getStoredPrivateKey, getStoredPublicKey } from '$lib/crypto';
 	import { goto } from '$app/navigation';
@@ -793,7 +793,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each group.devices as device}
+						{#each sortDevices(group.devices ?? []) as device (device.id)}
 							<tr>
 								<td><a href="{base}/devices/{device.id}">{device.name}</a></td>
 								<td>
