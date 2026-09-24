@@ -37,7 +37,7 @@
     "typescript-eslint": "^8.61.1",
     "unplugin-icons": "^23.0.1",
     "vite": "^6.0.0",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.11"
   },
   "dependencies": {
     "@fontsource/open-sans": "^5.2.7",
@@ -48,7 +48,7 @@
     "jsonata": "^2.2.1",
     "openapi-fetch": "^0.17.0",
     "quill": "^2.0.3",
-    "shepherd.js": "^13.0.0"
+    "shepherd.js": "^15.3.0"
   },
   "overrides": {
     "cookie": "^0.7.2",
