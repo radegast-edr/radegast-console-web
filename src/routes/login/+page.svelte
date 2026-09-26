@@ -5,6 +5,7 @@
 	import { goto } from '$app/navigation';
 	import { getPublicKeyForLogin } from '$lib/crypto';
 	import { page } from '$app/stores';
+	import Icon from '@iconify/svelte';
 
 	let email = $state('');
 	let password = $state('');
@@ -165,15 +166,28 @@
 				<a href="{base}/reset-password" class="text-secondary">Forgot password?</a>
 			</p>
 		{:else if step === 'mfa'}
-			<div class="card p-3 shadow-sm border-0 bg-light">
-				<h5 class="fw-bold text-center mb-3">🔒 MFA Verification</h5>
+			<div class="card p-4 shadow-sm bg-body-tertiary">
+				<h5 class="fw-bold text-center mb-3 d-flex align-items-center justify-content-center gap-2">
+					<Icon icon="lucide:shield-check" class="text-primary" />
+					<span>MFA Verification</span>
+				</h5>
 				<p class="text-muted small text-center mb-4">Your account is secured with Multi-Factor Authentication. Please select a verification method.</p>
 
 				{#if mfaMethods.length > 1}
 					<div class="btn-group w-100 mb-4" role="group">
 						{#each mfaMethods as method}
 							<input type="radio" class="btn-check" name="mfamethod" id="btnradio_{method}" autocomplete="off" checked={selectedMethod === method} onclick={() => selectedMethod = method} />
-							<label class="btn btn-outline-secondary btn-sm" for="btnradio_{method}">{method.toUpperCase()}</label>
+							<label class="btn btn-outline-secondary btn-sm d-flex align-items-center justify-content-center gap-1" for="btnradio_{method}">
+								{#if method === 'hardware_token'}
+									<Icon icon="lucide:key" />
+									<span>Passkey / Security Key</span>
+								{:else if method === 'otp'}
+									<Icon icon="lucide:smartphone" />
+									<span>Authenticator App</span>
+								{:else}
+									<span>{method.toUpperCase()}</span>
+								{/if}
+							</label>
 						{/each}
 					</div>
 				{/if}
@@ -190,14 +204,16 @@
 					</form>
 				{:else if selectedMethod === 'hardware_token'}
 					<div class="text-center py-2">
-						<button class="btn btn-primary w-100" onclick={handleHardwareTokenAuth} disabled={mfaLoading}>
-							{mfaLoading ? 'Awaiting Device…' : 'Authenticate with Hardware token'}
+						<button class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2" onclick={handleHardwareTokenAuth} disabled={mfaLoading}>
+							<Icon icon="lucide:key" />
+							<span>{mfaLoading ? 'Awaiting Device…' : 'Authenticate with Passkey / Security Key'}</span>
 						</button>
 					</div>
 				{/if}
 
-				<button class="btn btn-link btn-sm text-decoration-none mt-3" onclick={() => step = 'credentials'}>
-					&larr; Back to login
+				<button class="btn btn-link btn-sm text-decoration-none mt-3 d-inline-flex align-items-center gap-1 p-0" onclick={() => step = 'credentials'}>
+					<Icon icon="lucide:arrow-left" />
+					<span>Back to login</span>
 				</button>
 			</div>
 		{/if}

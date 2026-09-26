@@ -15,11 +15,13 @@
 
 	let turnstileSiteKey = $state<string | null>(null);
 	let turnstileToken = $state<string | null>(null);
+	let registrationMessage = $state<string | null>(null);
 
 	onMount(async () => {
 		try {
-			const config = await api.getAuthConfig() as { turnstile_site_key?: string | null };
+			const config = await api.getAuthConfig();
 			turnstileSiteKey = config.turnstile_site_key || null;
+			registrationMessage = config.registration_message || null;
 			if (turnstileSiteKey) {
 				const checkTurnstile = setInterval(() => {
 					if ((window as any).turnstile) {
@@ -137,13 +139,13 @@
 						<div id="cf-turnstile-container"></div>
 					</div>
 				{/if}
-				<div class="mb-3 d-flex justify-content-center">
-					<div class="alert alert-warning">
-						Radegast is currently in open beta.
-						What is currently available is fully functional and we are actively working on improving the experience.
-						Primarily, current detection packs are a demo of how the detection system works and we are working on improving them and adding more.
+				{#if registrationMessage}
+					<div class="mb-3 d-flex justify-content-center">
+						<div class="alert alert-warning text-break" style="white-space: pre-line;">
+							{registrationMessage}
+						</div>
 					</div>
-				</div>
+				{/if}
 				<button type="submit" class="btn btn-primary w-100">Register</button>
 			</form>
 			<p class="mt-3 text-center">

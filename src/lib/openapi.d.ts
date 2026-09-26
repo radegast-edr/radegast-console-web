@@ -2364,6 +2364,13 @@ export interface components {
             /** Api Keys Enabled */
             api_keys_enabled: boolean;
         };
+        /** AuthConfigResponse */
+        AuthConfigResponse: {
+            /** Turnstile Site Key */
+            turnstile_site_key?: string | null;
+            /** Registration Message */
+            registration_message?: string | null;
+        };
         /** Body_login_for_access_token_api_v1_auth_token_post */
         Body_login_for_access_token_api_v1_auth_token_post: {
             /** Grant Type */
@@ -3654,7 +3661,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["AuthConfigResponse"];
                 };
             };
         };
@@ -5425,6 +5432,7 @@ export interface operations {
             query: {
                 os: string;
                 "rustinel-version"?: string;
+                "rustinel-autoupdate"?: boolean | null;
                 "agent-autoupdate"?: boolean | null;
                 "agent-send-severity"?: boolean | null;
                 "agent-send-rule-id"?: boolean | null;

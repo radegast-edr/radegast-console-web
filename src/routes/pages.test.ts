@@ -63,6 +63,7 @@ vi.mock('$lib/crypto', () => ({
 	encrypt: vi.fn().mockReturnValue('fake_encrypted_data'),
 	generateKeypair: vi.fn().mockReturnValue({ publicKey: 'pub', privateKey: 'priv' }),
 	storePrivateKey: vi.fn().mockResolvedValue(undefined),
+	getPublicKeyForLogin: vi.fn().mockResolvedValue('fake_public_key'),
 	aesEncrypt: vi.fn().mockResolvedValue('encrypted_key')
 }));
 
@@ -91,6 +92,8 @@ vi.mock('$lib/api', () => ({
 		getNotifications: vi.fn(),
 		updateNotifications: vi.fn(),
 		getMfaSettings: vi.fn(),
+		getMfaHardwareTokenAssertionOptions: vi.fn(),
+		verifyMfa: vi.fn(),
 		listTeams: vi.fn(),
 		createTeam: vi.fn(),
 		getTeam: vi.fn(),
@@ -233,7 +236,11 @@ describe('Route Pages Load Verification', () => {
 			rustinel_versions: ['0.3.0'],
 			os_list: ['linux']
 		} as any);
-		vi.mocked(api.getAuthConfig).mockResolvedValue({ turnstile_site_key: null } as any);
+		vi.mocked(api.getAuthConfig).mockResolvedValue({ turnstile_site_key: null, registration_message: null } as any);
+		vi.mocked(api.getMfaHardwareTokenAssertionOptions).mockResolvedValue({
+			options: { challenge: 'Y2hhbGxlbmdl' },
+			assertion_token: 'test_assertion_token'
+		} as any);
 		vi.mocked(api.listVersions).mockResolvedValue([{ id: 1, pack_id: 1, version: '1.0.0', released: '2026-06-04T05:00:00Z' }] as any);
 		vi.mocked(api.listEnabledPacks).mockResolvedValue([{ id: 1, pack_version_id: 1, autoupdate: true, pack_name: 'Pack A' }] as any);
 		vi.mocked(api.verifyEmail).mockResolvedValue({ message: 'Verified' } as any);
@@ -477,6 +484,37 @@ describe('Route Pages Load Verification', () => {
 		});
 	});
 
+	it('renders Login page and supports MFA passkey / hardware token flow with dark mode compatible container', async () => {
+		vi.mocked(api.login).mockResolvedValueOnce({
+			status: 'mfa_required',
+			mfa_token: 'test-mfa-token',
+			methods: ['hardware_token', 'otp']
+		} as any);
+		render(Login);
+		await waitFor(() => {
+			expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument();
+		});
+
+		const emailInput = screen.getByLabelText(/Email/i);
+		const passwordInput = screen.getByLabelText(/^Password/i);
+		const loginBtn = screen.getByRole('button', { name: 'Login' });
+
+		await fireEvent.input(emailInput, { target: { value: 'user@example.com' } });
+		await fireEvent.input(passwordInput, { target: { value: 'secretpass' } });
+		await fireEvent.click(loginBtn);
+
+		await waitFor(() => {
+			expect(screen.getByText('MFA Verification')).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: /Authenticate with Passkey \/ Security Key/i })).toBeInTheDocument();
+			expect(screen.getByText('Passkey / Security Key')).toBeInTheDocument();
+		});
+
+		const card = screen.getByText('MFA Verification').closest('.card');
+		expect(card).not.toBeNull();
+		expect(card?.classList.contains('bg-light')).toBe(false);
+		expect(card?.classList.contains('bg-body-tertiary')).toBe(true);
+	});
+
 	it('renders Packs page', async () => {
 		render(Packs);
 		await waitFor(() => {
@@ -537,10 +575,22 @@ describe('Route Pages Load Verification', () => {
 		});
 	});
 
-	it('renders Register page', async () => {
+	it('renders Register page without registration message by default', async () => {
 		render(Register);
 		await waitFor(() => {
 			expect(screen.getByRole('heading', { name: 'Register' })).toBeInTheDocument();
+			expect(screen.queryByText(/Radegast is currently in open beta/i)).not.toBeInTheDocument();
+		});
+	});
+
+	it('renders Register page with registration message when configured', async () => {
+		vi.mocked(api.getAuthConfig).mockResolvedValueOnce({
+			turnstile_site_key: null,
+			registration_message: 'Beta testers only: welcome!'
+		} as any);
+		render(Register);
+		await waitFor(() => {
+			expect(screen.getByText('Beta testers only: welcome!')).toBeInTheDocument();
 		});
 	});
 

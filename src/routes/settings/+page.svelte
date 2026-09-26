@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import KeyIcon from '~icons/lucide/key';
+	import LockIcon from '~icons/lucide/lock';
 	import CompassIcon from '~icons/lucide/compass';
 	import DownloadIcon from '~icons/lucide/download';
 	import AlertTriangleIcon from '~icons/lucide/alert-triangle';
@@ -899,9 +900,9 @@
 										</button>
 									{/if}
 								{:else if otpSetupActive && otpSetupData}
-									<div class="mb-3 p-3 bg-light rounded text-center">
+									<div class="mb-3 p-3 bg-body-secondary rounded text-center">
 										<p class="small fw-semibold mb-2">1. Scan QR code or enter manual secret key:</p>
-										<div class="bg-white p-2 border d-inline-block mb-3">
+										<div class="bg-body p-2 border d-inline-block mb-3">
 											<code class="d-block text-break small p-2" style="max-width: 250px; margin: 0 auto; white-space: normal;">{otpSetupData.provisioning_uri}</code>
 										</div>
 										<p class="small text-muted mb-2">Secret: <code>{otpSetupData.secret}</code></p>
@@ -938,13 +939,15 @@
 											{#each mfaSettings.hardware_tokens as tk}
 												<div class="list-group-item d-flex justify-content-between align-items-center p-2">
 													<div class="d-flex align-items-center gap-2">
-														<span class="fs-6">🔑</span>
+														<KeyIcon style="width: 16px; height: 16px;" class="text-body-secondary" />
 														<span class="small fw-semibold">{tk.name}</span>
 													</div>
 													{#if !(['hardware_token', 'token'].includes(mfaSettings.required_level) && mfaSettings.hardware_tokens.length === 1)}
 														<button class="btn btn-sm btn-outline-danger py-0 px-2 fs-6" onclick={() => deleteHardwareToken(tk.id)} title="Delete device">&times;</button>
 													{:else}
-														<span class="text-muted small" title="Required — cannot delete last hardware token">🔒</span>
+														<span class="text-muted small d-inline-flex align-items-center" title="Required — cannot delete last hardware token">
+															<LockIcon style="width: 14px; height: 14px;" />
+														</span>
 													{/if}
 												</div>
 											{/each}
@@ -955,7 +958,7 @@
 								</div>
 
 								{#if hardwareTokenSetupActive}
-									<div class="mb-3 p-3 bg-light rounded text-center">
+									<div class="mb-3 p-3 bg-body-secondary rounded text-center">
 										<div class="mb-3" style="max-width: 250px; margin: 0 auto;">
 											<label for="tokenNameInput" class="form-label small fw-bold">Enter device name:</label>
 											<input type="text" id="tokenNameInput" class="form-control form-control-sm text-center" placeholder="e.g. Work security key" bind:value={hardwareTokenName} />
