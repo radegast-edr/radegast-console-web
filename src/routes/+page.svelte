@@ -108,8 +108,12 @@
 				devices = devicesRes;
 				unreadCount = resCounts.unread;
 				hasPrivateKey = !!(await getStoredPrivateKey(me.id));
-			} catch {
-				goto(`${base}/login`);
+			} catch (err: any) {
+				if (err?.status >= 500 || err?.name === 'TypeError' || err?.message?.includes('NetworkError') || err?.message?.includes('Failed to fetch')) {
+					goto(`${base}/server-error`);
+				} else if (err?.status === 401 || err?.status === 403 || !err?.status) {
+					goto(`${base}/login`);
+				}
 			} finally {
 				isLoading = false;
 			}

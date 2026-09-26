@@ -36,23 +36,54 @@ BACKEND_URL = BACKEND_URL.replace(/\/api\/v1\/?$/, '').replace(/\/+$/, '');
 
 export const client = createClient<paths>({ baseUrl: BACKEND_URL, credentials: 'include' });
 
-// Middleware: redirect to /login on 401, throw readable errors on all failures
+export class ApiError extends Error {
+	status: number;
+	detail?: unknown;
+
+	constructor(message: string, status: number, detail?: unknown) {
+		super(message);
+		this.name = 'ApiError';
+		this.status = status;
+		this.detail = detail;
+	}
+}
+
+// Middleware: redirect to /login on 401/403, /server-error on 5xx/network error, throw typed ApiError
 // noinspection JSUnusedGlobalSymbols
 const errorMiddleware: Middleware = {
 	async onResponse({ response, request }) {
-		if (response.status === 401 && !request.url.endsWith('/auth/login')) {
+		const isAuthLogin = request.url.endsWith('/auth/login');
+		const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+		const isServerErrorPage = currentPath.includes('/server-error');
+
+		// 401 Unauthorized or 403 Forbidden: unauthenticated session
+		if ((response.status === 401 || response.status === 403) && !isAuthLogin) {
 			await goto(`${base}/login`);
-			throw new Error('Not authenticated');
+			throw new ApiError(response.status === 401 ? 'Not authenticated' : 'Forbidden', response.status);
 		}
+
+		// 5xx Server Errors: drop to server error page
+		if (response.status >= 500 && !isServerErrorPage) {
+			await goto(`${base}/server-error?status=${response.status}`);
+			throw new ApiError(`Server error (${response.status})`, response.status);
+		}
+
 		if (!response.ok) {
 			const error = await response.json().catch(() => ({ detail: response.statusText }));
 			interface PydanticErrorDetail { msg?: string; }
 			const detail = Array.isArray(error.detail)
 				? (error.detail as PydanticErrorDetail[]).map((e) => e.msg || JSON.stringify(e)).join('; ')
 				: error.detail;
-			throw new Error(detail || 'Request failed');
+			throw new ApiError(detail || 'Request failed', response.status, detail);
 		}
 		return response;
+	},
+	async onError() {
+		const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+		const isServerErrorPage = currentPath.includes('/server-error');
+		if (!isServerErrorPage) {
+			await goto(`${base}/server-error?status=network_error`);
+		}
 	}
 };
 client.use(errorMiddleware);

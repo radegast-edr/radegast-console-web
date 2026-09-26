@@ -29,6 +29,11 @@ import Terms from './terms/+page.svelte';
 import Unsubscribe from './unsubscribe/+page.svelte';
 import Verify from './verify/+page.svelte';
 import ResetPassword from './reset-password/+page.svelte';
+import ServerError from './server-error/+page.svelte';
+import ErrorBoundary from './+error.svelte';
+import Layout from './+layout.svelte';
+import { goto } from '$app/navigation';
+import { ApiError } from '$lib/api';
 
 // Mock SvelteKit stores & navigation
 vi.mock('$app/paths', () => ({
@@ -50,7 +55,9 @@ vi.mock('$app/stores', () => ({
 vi.mock('$app/state', () => ({
 	page: {
 		url: new URL('http://localhost/?token=test_token'),
-		params: { id: '1', version: '1.0.0' }
+		params: { id: '1', version: '1.0.0' },
+		status: 500,
+		error: { message: 'Server error occurred' }
 	}
 }));
 
@@ -131,6 +138,7 @@ vi.mock('$lib/api', () => ({
 		deletePack: vi.fn(),
 		getPack: vi.fn(),
 		listVersions: vi.fn(),
+		listGroupsNeedingRefresh: vi.fn().mockResolvedValue([]),
 		listEnabledPacks: vi.fn(),
 		enablePack: vi.fn(),
 		disablePack: vi.fn(),
@@ -164,6 +172,16 @@ vi.mock('$lib/api', () => ({
 			PUT: vi.fn(),
 			PATCH: vi.fn()
 		}
+	},
+	ApiError: class MockApiError extends Error {
+		status: number;
+		detail?: unknown;
+		constructor(message: string, status: number, detail?: unknown) {
+			super(message);
+			this.name = 'ApiError';
+			this.status = status;
+			this.detail = detail;
+		}
 	}
 }));
 
@@ -174,6 +192,8 @@ vi.mock('$lib/store', () => {
 		user: writable(null),
 		loading: writable(false),
 		flash: writable(null),
+		triggerKeyRefresh: writable(0),
+		showOnboarding: writable(false),
 		showFlash: vi.fn(),
 		showError: vi.fn()
 	};
@@ -746,6 +766,66 @@ describe('Route Pages Load Verification', () => {
 		render(ResetPassword);
 		await waitFor(() => {
 			expect(screen.getByText('Reset Password')).toBeInTheDocument();
+		});
+	});
+
+	it('renders ServerError page', async () => {
+		render(ServerError);
+		await waitFor(() => {
+			expect(screen.getByRole('heading', { name: /Server Error/i })).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
+			expect(screen.getByRole('link', { name: /Dashboard/i })).toBeInTheDocument();
+			expect(screen.getByRole('link', { name: /Go to Login/i })).toBeInTheDocument();
+		});
+	});
+
+	it('renders ErrorBoundary (+error.svelte) page', async () => {
+		render(ErrorBoundary);
+		await waitFor(() => {
+			expect(screen.getByText(/500 - Server Error/i)).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
+		});
+	});
+
+	it('redirects to /login when api.me fails with 401 unauthenticated in Layout', async () => {
+		vi.mocked(goto).mockClear();
+		vi.mocked(api.me).mockRejectedValueOnce(new ApiError('Not authenticated', 401));
+		render(Layout, {
+			props: {
+				children: (() => {}) as any
+			}
+		});
+		await waitFor(() => {
+			expect(goto).toHaveBeenCalledWith(expect.stringContaining('/login'));
+			expect(goto).not.toHaveBeenCalledWith(expect.stringContaining('/server-error'));
+		});
+	});
+
+	it('redirects to /server-error when api.me fails with 500 in Layout', async () => {
+		vi.mocked(goto).mockClear();
+		vi.mocked(api.me).mockRejectedValueOnce(new ApiError('Internal Server Error', 500));
+		render(Layout, {
+			props: {
+				children: (() => {}) as any
+			}
+		});
+		await waitFor(() => {
+			expect(goto).toHaveBeenCalledWith(expect.stringContaining('/server-error'));
+			expect(goto).not.toHaveBeenCalledWith(expect.stringContaining('/login'));
+		});
+	});
+
+	it('redirects to /server-error when api.me fails with network error in Layout', async () => {
+		vi.mocked(goto).mockClear();
+		vi.mocked(api.me).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+		render(Layout, {
+			props: {
+				children: (() => {}) as any
+			}
+		});
+		await waitFor(() => {
+			expect(goto).toHaveBeenCalledWith(expect.stringContaining('/server-error'));
+			expect(goto).not.toHaveBeenCalledWith(expect.stringContaining('/login'));
 		});
 	});
 });

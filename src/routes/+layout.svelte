@@ -53,7 +53,7 @@
 	let { children } = $props<{ children: Snippet }>();
 
 	// Routes that are fully public (no auth needed)
-	const PUBLIC_PREFIXES = ['/login', '/register', '/verify', '/terms', '/privacy', '/reset-password', '/unsubscribe', '/delete-account'];
+	const PUBLIC_PREFIXES = ['/login', '/register', '/verify', '/terms', '/privacy', '/reset-password', '/unsubscribe', '/delete-account', '/server-error'];
 
 	// Automatic key generation states
 	let generatingKeys = $state(false);
@@ -71,11 +71,15 @@
 		try {
 			const me = await api.me();
 			$user = me;
-		} catch {
-			const nextPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
-			const search = page.url.search;
-			const target = encodeURIComponent(`${nextPath}${search}`);
-			goto(`${base}/login?next=${target}`);
+		} catch (err: any) {
+			if (err?.status >= 500 || err?.name === 'TypeError' || err?.message?.includes('NetworkError') || err?.message?.includes('Failed to fetch')) {
+				goto(`${base}/server-error`);
+			} else if (err?.status === 401 || err?.status === 403 || !err?.status) {
+				const nextPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+				const search = page.url.search;
+				const target = encodeURIComponent(`${nextPath}${search}`);
+				goto(`${base}/login?next=${target}`);
+			}
 		}
 	});
 
