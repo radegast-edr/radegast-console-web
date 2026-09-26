@@ -4,7 +4,7 @@
 	import { page } from '$app/state';
 	import { api, type DeviceDetail, type Group } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
-	import { isDeviceActive, formatFullDateTime } from '$lib/utils';
+	import { isDeviceActive, formatFullDateTime, formatBytes } from '$lib/utils';
 	import AgentSetupInstructions from '$lib/components/AgentSetupInstructions.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import { initAgeWasm, decrypt, encrypt, getStoredPrivateKey, getStoredPublicKey } from '$lib/crypto';
@@ -181,6 +181,8 @@
 			Rustinel: <span class="badge bg-info text-dark">{device.rustinel_version ?? 'N/A'}</span>
 			<span class="mx-2">|</span>
 			OS: <span class="badge bg-info text-dark">{device.os ?? 'N/A'}</span>
+			<span class="mx-2">|</span>
+			Space used: <span class="badge bg-secondary font-monospace">{formatBytes(device.total_space_used)}</span>
 		</p>
 	</div>
 

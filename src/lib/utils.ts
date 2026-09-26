@@ -215,3 +215,19 @@ export function sortDevices<
 		return Number(a.id ?? 0) - Number(b.id ?? 0);
 	});
 }
+
+export function formatBytes(bytes: number | null | undefined): string {
+	if (bytes === null || bytes === undefined || isNaN(bytes) || bytes <= 0) {
+		return '0 B';
+	}
+	const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+	const k = 1024;
+	const i = Math.floor(Math.log(bytes) / Math.log(k));
+	const idx = Math.min(i, units.length - 1);
+	if (idx === 0) {
+		return `${bytes} B`;
+	}
+	const val = bytes / Math.pow(k, idx);
+	const formatted = val < 10 ? val.toFixed(1) : val.toFixed(0);
+	return `${formatted} ${units[idx]}`;
+}

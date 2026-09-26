@@ -8,12 +8,95 @@
 	import WysiwygEditor from '$lib/components/WysiwygEditor.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import Modal from '$lib/components/Modal.svelte';
+	import { formatBytes } from '$lib/utils';
+	import Icon from '@iconify/svelte';
 
 	let users = $state<UserInfo[]>([]);
 	let devices = $state<Device[]>([]);
 	let packs = $state<Pack[]>([]);
 	let activeTab = $state<'users' | 'devices' | 'packs' | 'stats' | 'broadcast'>('users');
 	let resetPasswordResult = $state<{ email: string } | null>(null);
+
+	let totalDevicesSpace = $derived(devices.reduce((acc, d) => acc + (d.total_space_used || 0), 0));
+
+	type DeviceSortColumn = 'id' | 'name' | 'space_used';
+	let deviceSortColumn = $state<DeviceSortColumn>('id');
+	let deviceSortAsc = $state(true);
+
+	function toggleDeviceSort(column: DeviceSortColumn) {
+		if (deviceSortColumn === column) {
+			deviceSortAsc = !deviceSortAsc;
+		} else {
+			deviceSortColumn = column;
+			deviceSortAsc = column !== 'space_used';
+		}
+	}
+
+	let sortedAdminDevices = $derived(
+		[...devices].sort((a, b) => {
+			let result = 0;
+			if (deviceSortColumn === 'id') {
+				result = Number(a.id) - Number(b.id);
+			} else if (deviceSortColumn === 'name') {
+				result = (a.name || '').localeCompare(b.name || '');
+			} else if (deviceSortColumn === 'space_used') {
+				result = (a.total_space_used || 0) - (b.total_space_used || 0);
+			}
+			return deviceSortAsc ? result : -result;
+		})
+	);
+
+	type UserSortColumn = 'id' | 'email' | 'role';
+	let userSortColumn = $state<UserSortColumn>('id');
+	let userSortAsc = $state(true);
+
+	function toggleUserSort(column: UserSortColumn) {
+		if (userSortColumn === column) {
+			userSortAsc = !userSortAsc;
+		} else {
+			userSortColumn = column;
+			userSortAsc = true;
+		}
+	}
+
+	let sortedAdminUsers = $derived(
+		[...users].sort((a, b) => {
+			let result = 0;
+			if (userSortColumn === 'id') {
+				result = Number(a.id) - Number(b.id);
+			} else if (userSortColumn === 'email') {
+				result = (a.email || '').localeCompare(b.email || '');
+			} else if (userSortColumn === 'role') {
+				result = (a.role || '').localeCompare(b.role || '');
+			}
+			return userSortAsc ? result : -result;
+		})
+	);
+
+	type PackSortColumn = 'id' | 'name';
+	let packSortColumn = $state<PackSortColumn>('id');
+	let packSortAsc = $state(true);
+
+	function togglePackSort(column: PackSortColumn) {
+		if (packSortColumn === column) {
+			packSortAsc = !packSortAsc;
+		} else {
+			packSortColumn = column;
+			packSortAsc = true;
+		}
+	}
+
+	let sortedAdminPacks = $derived(
+		[...packs].sort((a, b) => {
+			let result = 0;
+			if (packSortColumn === 'id') {
+				result = Number(a.id) - Number(b.id);
+			} else if (packSortColumn === 'name') {
+				result = (a.name || '').localeCompare(b.name || '');
+			}
+			return packSortAsc ? result : -result;
+		})
+	);
 
 	// Stats tab state
 	let alertStats = $state<{
@@ -414,8 +497,8 @@
 
 {#if activeTab === 'users'}
 	{#if resetPasswordResult}
-		<div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-4" role="alert" style="border-radius: 12px; padding: 1.25rem;">
-			<h6 class="fw-bold mb-1">🔑 Password Reset Successful</h6>
+		<div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-4" role="alert" style="padding: 1.25rem;">
+			<h6 class="fw-bold mb-1"><Icon icon="lucide:key" class="me-1 align-text-bottom" /> Password Reset Successful</h6>
 			<p class="mb-0 small text-dark-emphasis">
 				The password for <strong>{resetPasswordResult.email}</strong> has been reset. The user was emailed the new password.
 			</p>
@@ -426,16 +509,55 @@
 	<table class="table table-hover align-middle">
 		<thead>
 			<tr>
-				<th>ID</th>
-				<th>Email</th>
-				<th>Role</th>
+				<th>
+					<button
+						type="button"
+						class="btn btn-link text-decoration-none p-0 fw-bold text-body d-inline-flex align-items-center gap-1"
+						onclick={() => toggleUserSort('id')}
+					>
+						ID
+						{#if userSortColumn === 'id'}
+							<Icon icon={userSortAsc ? 'lucide:arrow-up' : 'lucide:arrow-down'} width="14" height="14" />
+						{:else}
+							<Icon icon="lucide:arrow-up-down" width="12" height="12" class="text-body-secondary opacity-50" />
+						{/if}
+					</button>
+				</th>
+				<th>
+					<button
+						type="button"
+						class="btn btn-link text-decoration-none p-0 fw-bold text-body d-inline-flex align-items-center gap-1"
+						onclick={() => toggleUserSort('email')}
+					>
+						Email
+						{#if userSortColumn === 'email'}
+							<Icon icon={userSortAsc ? 'lucide:arrow-up' : 'lucide:arrow-down'} width="14" height="14" />
+						{:else}
+							<Icon icon="lucide:arrow-up-down" width="12" height="12" class="text-body-secondary opacity-50" />
+						{/if}
+					</button>
+				</th>
+				<th>
+					<button
+						type="button"
+						class="btn btn-link text-decoration-none p-0 fw-bold text-body d-inline-flex align-items-center gap-1"
+						onclick={() => toggleUserSort('role')}
+					>
+						Role
+						{#if userSortColumn === 'role'}
+							<Icon icon={userSortAsc ? 'lucide:arrow-up' : 'lucide:arrow-down'} width="14" height="14" />
+						{:else}
+							<Icon icon="lucide:arrow-up-down" width="12" height="12" class="text-body-secondary opacity-50" />
+						{/if}
+					</button>
+				</th>
 				<th>Verified</th>
 				<th>Configured MFA</th>
 				<th>Actions</th>
 			</tr>
 		</thead>
 		<tbody>
-			{#each users as u}
+			{#each sortedAdminUsers as u (u.id)}
 				<tr>
 					<td>{u.id}</td>
 					<td>{u.email}</td>
@@ -470,16 +592,59 @@
 		</tbody>
 	</table>
 {:else if activeTab === 'devices'}
+	<div class="d-flex justify-content-between align-items-center mb-3">
+		<span class="text-body-secondary small">Total database space used: <strong class="text-body font-monospace">{formatBytes(totalDevicesSpace)}</strong></span>
+	</div>
 	<table class="table table-hover align-middle">
 		<thead>
 			<tr>
-				<th>ID</th>
-				<th>Name</th>
+				<th>
+					<button
+						type="button"
+						class="btn btn-link text-decoration-none p-0 fw-bold text-body d-inline-flex align-items-center gap-1"
+						onclick={() => toggleDeviceSort('id')}
+					>
+						ID
+						{#if deviceSortColumn === 'id'}
+							<Icon icon={deviceSortAsc ? 'lucide:arrow-up' : 'lucide:arrow-down'} width="14" height="14" />
+						{:else}
+							<Icon icon="lucide:arrow-up-down" width="12" height="12" class="text-body-secondary opacity-50" />
+						{/if}
+					</button>
+				</th>
+				<th>
+					<button
+						type="button"
+						class="btn btn-link text-decoration-none p-0 fw-bold text-body d-inline-flex align-items-center gap-1"
+						onclick={() => toggleDeviceSort('name')}
+					>
+						Name
+						{#if deviceSortColumn === 'name'}
+							<Icon icon={deviceSortAsc ? 'lucide:arrow-up' : 'lucide:arrow-down'} width="14" height="14" />
+						{:else}
+							<Icon icon="lucide:arrow-up-down" width="12" height="12" class="text-body-secondary opacity-50" />
+						{/if}
+					</button>
+				</th>
+				<th>
+					<button
+						type="button"
+						class="btn btn-link text-decoration-none p-0 fw-bold text-body d-inline-flex align-items-center gap-1"
+						onclick={() => toggleDeviceSort('space_used')}
+					>
+						Space Used
+						{#if deviceSortColumn === 'space_used'}
+							<Icon icon={deviceSortAsc ? 'lucide:arrow-up' : 'lucide:arrow-down'} width="14" height="14" />
+						{:else}
+							<Icon icon="lucide:arrow-up-down" width="12" height="12" class="text-body-secondary opacity-50" />
+						{/if}
+					</button>
+				</th>
 				<th>Actions</th>
 			</tr>
 		</thead>
 		<tbody>
-			{#each devices as d}
+			{#each sortedAdminDevices as d (d.id)}
 				<tr>
 					<td>{d.id}</td>
 					<td>
@@ -488,6 +653,7 @@
 							<span class="badge bg-danger ms-2" title="Unsigned device! Signing key is not set.">Unsigned</span>
 						{/if}
 					</td>
+					<td><span class="font-monospace small">{formatBytes(d.total_space_used)}</span></td>
 					<td>
 						<button class="btn btn-sm btn-outline-danger" onclick={() => deleteDevice(d.id)}
 							>Delete</button
@@ -501,14 +667,40 @@
 	<table class="table table-hover align-middle">
 		<thead>
 			<tr>
-				<th>ID</th>
-				<th>Name</th>
+				<th>
+					<button
+						type="button"
+						class="btn btn-link text-decoration-none p-0 fw-bold text-body d-inline-flex align-items-center gap-1"
+						onclick={() => togglePackSort('id')}
+					>
+						ID
+						{#if packSortColumn === 'id'}
+							<Icon icon={packSortAsc ? 'lucide:arrow-up' : 'lucide:arrow-down'} width="14" height="14" />
+						{:else}
+							<Icon icon="lucide:arrow-up-down" width="12" height="12" class="text-body-secondary opacity-50" />
+						{/if}
+					</button>
+				</th>
+				<th>
+					<button
+						type="button"
+						class="btn btn-link text-decoration-none p-0 fw-bold text-body d-inline-flex align-items-center gap-1"
+						onclick={() => togglePackSort('name')}
+					>
+						Name
+						{#if packSortColumn === 'name'}
+							<Icon icon={packSortAsc ? 'lucide:arrow-up' : 'lucide:arrow-down'} width="14" height="14" />
+						{:else}
+							<Icon icon="lucide:arrow-up-down" width="12" height="12" class="text-body-secondary opacity-50" />
+						{/if}
+					</button>
+				</th>
 				<th>Description</th>
 				<th>Actions</th>
 			</tr>
 		</thead>
 		<tbody>
-			{#each packs as p}
+			{#each sortedAdminPacks as p (p.id)}
 				<tr>
 					<td>{p.id}</td>
 					<td>

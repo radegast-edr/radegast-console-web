@@ -285,6 +285,46 @@ describe('Route Pages Load Verification', () => {
 		});
 	});
 
+	it('renders Admin page and sorts devices by column', async () => {
+		vi.mocked(api.adminListDevices).mockResolvedValue([
+			{ id: 1, name: 'Device Alpha', total_space_used: 1000, last_seen: '2026-06-04T05:00:00Z' },
+			{ id: 2, name: 'Device Beta', total_space_used: 5000, last_seen: '2026-06-04T05:00:00Z' }
+		] as any);
+
+		render(Admin);
+		await waitFor(() => {
+			expect(screen.getByText('Admin Panel')).toBeInTheDocument();
+		});
+
+		const devicesTab = screen.getByRole('button', { name: /Devices/ });
+		await fireEvent.click(devicesTab);
+
+		await waitFor(() => {
+			expect(screen.getByText('Total database space used:')).toBeInTheDocument();
+			expect(screen.getByText('Device Alpha')).toBeInTheDocument();
+			expect(screen.getByText('Device Beta')).toBeInTheDocument();
+		});
+
+		// By default sorted by ID ascending: Alpha (id:1) then Beta (id:2)
+		const rowsBefore = screen.getAllByRole('row');
+		expect(rowsBefore[1]).toHaveTextContent('Device Alpha');
+		expect(rowsBefore[2]).toHaveTextContent('Device Beta');
+
+		// Click Space Used header to sort by space_used descending
+		const spaceUsedHeader = screen.getByRole('button', { name: /Space Used/ });
+		await fireEvent.click(spaceUsedHeader);
+
+		const rowsAfterDesc = screen.getAllByRole('row');
+		expect(rowsAfterDesc[1]).toHaveTextContent('Device Beta');
+		expect(rowsAfterDesc[2]).toHaveTextContent('Device Alpha');
+
+		// Click Space Used header again to sort ascending
+		await fireEvent.click(spaceUsedHeader);
+		const rowsAfterAsc = screen.getAllByRole('row');
+		expect(rowsAfterAsc[1]).toHaveTextContent('Device Alpha');
+		expect(rowsAfterAsc[2]).toHaveTextContent('Device Beta');
+	});
+
 	it('renders Alerts page and verifies basic EDR seen behavior on click', async () => {
 		const mockUser = {
 			id: 1,

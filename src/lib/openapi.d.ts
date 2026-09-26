@@ -2495,6 +2495,11 @@ export interface components {
             rustinel_version?: string | null;
             /** Os */
             os?: string | null;
+            /**
+             * Total Space Used
+             * @default 0
+             */
+            total_space_used: number;
             /** Groups */
             groups: components["schemas"]["DeviceGroupResponse"][];
         };
@@ -2630,6 +2635,11 @@ export interface components {
             rustinel_version?: string | null;
             /** Os */
             os?: string | null;
+            /**
+             * Total Space Used
+             * @default 0
+             */
+            total_space_used: number;
         };
         /** DeviceSetEncryptionKey */
         DeviceSetEncryptionKey: {
@@ -2899,6 +2909,11 @@ export interface components {
             rule_type?: string | null;
             triggered_rule?: components["schemas"]["TriggeredRuleResponse"] | null;
             excluded_by?: components["schemas"]["ExclusionRefResponse"] | null;
+            /**
+             * Bytes Used
+             * @default 0
+             */
+            bytes_used: number;
         };
         /**
          * LogSeverity

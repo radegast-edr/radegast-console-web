@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { isDeviceActive, formatFullDateTime, matchesJsonata, mapSeverityToNumber, toLocalISOString, toUTCISOString, getDeviceStatus, sortDevices } from './utils';
+import { isDeviceActive, formatFullDateTime, matchesJsonata, mapSeverityToNumber, toLocalISOString, toUTCISOString, getDeviceStatus, sortDevices, formatBytes } from './utils';
 
 describe('utils', () => {
 	describe('isDeviceActive', () => {
@@ -318,6 +318,40 @@ describe('utils', () => {
 
 			const sorted = sortDevices(devices);
 			expect(sorted.map((d) => d.id)).toEqual([3, 7, 10]);
+		});
+	});
+
+	describe('formatBytes', () => {
+		it('returns 0 B for null, undefined, NaN, and non-positive numbers', () => {
+			expect(formatBytes(null)).toBe('0 B');
+			expect(formatBytes(undefined)).toBe('0 B');
+			expect(formatBytes(NaN)).toBe('0 B');
+			expect(formatBytes(0)).toBe('0 B');
+			expect(formatBytes(-100)).toBe('0 B');
+		});
+
+		it('formats bytes correctly', () => {
+			expect(formatBytes(1)).toBe('1 B');
+			expect(formatBytes(512)).toBe('512 B');
+			expect(formatBytes(1023)).toBe('1023 B');
+		});
+
+		it('formats kilobytes correctly', () => {
+			expect(formatBytes(1024)).toBe('1.0 KB');
+			expect(formatBytes(1536)).toBe('1.5 KB');
+			expect(formatBytes(10240)).toBe('10 KB');
+			expect(formatBytes(102400)).toBe('100 KB');
+		});
+
+		it('formats megabytes correctly', () => {
+			expect(formatBytes(1024 * 1024)).toBe('1.0 MB');
+			expect(formatBytes(5 * 1024 * 1024)).toBe('5.0 MB');
+			expect(formatBytes(150 * 1024 * 1024)).toBe('150 MB');
+		});
+
+		it('formats gigabytes correctly', () => {
+			expect(formatBytes(1024 * 1024 * 1024)).toBe('1.0 GB');
+			expect(formatBytes(2.5 * 1024 * 1024 * 1024)).toBe('2.5 GB');
 		});
 	});
 });
