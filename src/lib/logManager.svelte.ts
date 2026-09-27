@@ -1,6 +1,6 @@
 import {api, type Log, type Device, type LogSeverity} from '$lib/api';
 import { decrypt } from '$lib/crypto';
-import { isDeviceActive, formatFullDateTime, preprocessQuery, matchesJsonata, mapSeverityToNumber } from '$lib/utils';
+import { isDeviceActive, formatFullDateTime, preprocessQuery, matchesJsonata, mapSeverityToNumber, calculateNextPageSize } from '$lib/utils';
 import jsonata from 'jsonata';
 
 export interface DecryptionResult {
@@ -59,7 +59,7 @@ export class LogManager {
 		this.deviceMap = new Map<number, Device>(devices.map(d => [d.id, d]));
 	}
 
-	getAlertObject(log: Log): any {
+	getAlertObject(log: Log, explicitDecState?: DecryptionResult): any {
 		const devObj = this.deviceMap.get(log.device_id);
 		const deviceName = devObj ? devObj.name : `Device #${log.device_id}`;
 		let status = 'offline';
@@ -84,7 +84,7 @@ export class LogManager {
 			cleanTime = cleanTime + 'Z';
 		}
 		const reported_timestamp = new Date(cleanTime).toISOString();
-		const decState = this.decryptionState[log.id];
+		const decState = explicitDecState !== undefined ? explicitDecState : this.decryptionState[log.id];
 		let severityVal: any = log.severity;
 		if (decState && decState.success && decState.parsed && typeof decState.parsed === 'object' && decState.parsed.severity !== undefined) {
 			severityVal = decState.parsed.severity;
@@ -284,6 +284,7 @@ export class LogManager {
 
 		this.logs = [];
 		this.filteredLogs = [];
+		this.decryptionState = {};
 
 		const fromUtc = fromTime ? new Date(fromTime).toISOString() : null;
 		const toUtc = toTime ? new Date(toTime).toISOString() : null;
@@ -293,17 +294,42 @@ export class LogManager {
 		let earliestTime: string | null = null;
 		let latestTime: string | null = null;
 
+		const trimmedQuery = (query ?? this.lastSearchQuery ?? '').trim();
+		this.lastSearchQuery = trimmedQuery;
+		let compiledExpr: any = null;
+		let isTextFallback = false;
+
+		if (trimmedQuery) {
+			try {
+				const processed = preprocessQuery(trimmedQuery);
+				compiledExpr = jsonata(processed);
+				this.searchError = '';
+			} catch {
+				isTextFallback = true;
+				this.searchError = '';
+			}
+		} else {
+			this.searchError = '';
+		}
+
 		try {
-			let allLogs: Log[] = [];
+			const matchingLogs: Log[] = [];
+			const newDecryptionState: Record<string | number, DecryptionResult> = {};
 			let page = 1;
-			const newDecryptionState = { ...this.decryptionState };
+			let offset = 0;
+			let totalExamined = 0;
+			let currentLimit = this.limit || 100;
+			let prevElapsedMs: number | null = null;
+			let prevLimit: number | null = null;
 
 			while (true) {
 				if (this.huntProgress.interrupted) {
 					break;
 				}
 
-				const logsData = await api.listLogs(page, this.limit, null, fromUtc, toUtc, min_level);
+				const startTime = performance.now();
+				const logsData = await api.listLogs(page, currentLimit, null, fromUtc, toUtc, min_level, offset);
+				const elapsedMs = performance.now() - startTime;
 
 				if (this.huntProgress.interrupted) {
 					break;
@@ -313,7 +339,8 @@ export class LogManager {
 					break;
 				}
 
-				allLogs = allLogs.concat(logsData);
+				totalExamined += logsData.length;
+				offset += logsData.length;
 
 				for (const log of logsData) {
 					if (log.time) {
@@ -331,9 +358,10 @@ export class LogManager {
 					}
 				}
 
-				if (this.privateKey) {
-					for (const log of logsData) {
-						if (newDecryptionState[log.id]) continue;
+				// Process each log in batch: decrypt, evaluate filter, only retain matches
+				for (const log of logsData) {
+					let decState: DecryptionResult | undefined = undefined;
+					if (this.privateKey) {
 						try {
 							const dec = decrypt(log.content, this.privateKey);
 							let parsed: any;
@@ -342,58 +370,83 @@ export class LogManager {
 							} catch {
 								parsed = dec;
 							}
-							newDecryptionState[log.id] = { success: true, parsed };
+							decState = { success: true, parsed };
 						} catch (e) {
-							newDecryptionState[log.id] = { success: false, error: (e as Error).message };
+							decState = { success: false, error: (e as Error).message };
+						}
+					}
+
+					const alertObj = this.getAlertObject(log, decState);
+					let isMatch = true;
+
+					if (trimmedQuery) {
+						if (compiledExpr) {
+							try {
+								const res = await compiledExpr.evaluate(alertObj);
+								isMatch = typeof res === 'boolean' ? res : !!res;
+							} catch {
+								isMatch = false;
+							}
+						} else if (isTextFallback) {
+							const queryLower = trimmedQuery.toLowerCase();
+							const alertStr = typeof alertObj.alert === 'object' ? JSON.stringify(alertObj.alert) : String(alertObj.alert);
+							const metaStr = JSON.stringify(alertObj.meta);
+							isMatch = alertStr.toLowerCase().includes(queryLower) || metaStr.toLowerCase().includes(queryLower);
+						}
+					}
+
+					if (isMatch) {
+						matchingLogs.push(log);
+						if (decState) {
+							newDecryptionState[log.id] = decState;
+						}
+						if (!this.isInitialLoad && !this.knownLogIds.has(log.id)) {
+							this.knownLogIds.add(log.id);
+							if (!log.seen && this.onNewAlert) {
+								this.onNewAlert(log, this.deviceMap.get(log.device_id));
+							}
 						}
 					}
 				}
 
-				this.logs = [...allLogs];
+				this.logs = [...matchingLogs];
+				this.filteredLogs = this.logs;
 				this.decryptionState = { ...newDecryptionState };
-				this.totalLogs = allLogs.length;
+				this.totalLogs = matchingLogs.length;
 
 				this.huntProgress = {
 					active: true,
 					interrupted: false,
 					pagesFetched: page,
-					totalFetched: allLogs.length,
+					totalFetched: totalExamined,
 					earliestFetched: earliestTime,
 					latestFetched: latestTime
 				};
 
-				await this.runFilter(query ?? this.lastSearchQuery ?? '');
-
-				if (this.huntProgress.interrupted) {
+				if (logsData.length < currentLimit) {
 					break;
 				}
 
-				if (logsData.length < this.limit) {
-					break;
+				if (this.limit >= 100) {
+					const nextLimit = calculateNextPageSize(currentLimit, elapsedMs, prevElapsedMs, prevLimit);
+					prevElapsedMs = elapsedMs;
+					prevLimit = currentLimit;
+					currentLimit = nextLimit;
 				}
 				page++;
 			}
 
-			if (!this.isInitialLoad) {
-				for (const log of allLogs) {
-					if (!this.knownLogIds.has(log.id)) {
-						this.knownLogIds.add(log.id);
-						if (!log.seen && this.onNewAlert) {
-							this.onNewAlert(log, this.deviceMap.get(log.device_id));
-						}
-					}
-				}
-			} else {
-				for (const log of allLogs) {
+			if (this.isInitialLoad) {
+				for (const log of matchingLogs) {
 					this.knownLogIds.add(log.id);
 				}
 			}
 
-			this.logs = allLogs;
+			this.logs = matchingLogs;
+			this.filteredLogs = matchingLogs;
 			this.decryptionState = newDecryptionState;
-			this.totalLogs = allLogs.length;
+			this.totalLogs = matchingLogs.length;
 			this.totalPages = 1;
-			await this.runFilter(query ?? this.lastSearchQuery ?? '');
 		} catch (e) {
 			if (!this.huntProgress.interrupted) {
 				console.error("performHuntSearch error:", e);

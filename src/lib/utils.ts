@@ -231,3 +231,56 @@ export function formatBytes(bytes: number | null | undefined): string {
 	const formatted = val < 10 ? val.toFixed(1) : val.toFixed(0);
 	return `${formatted} ${units[idx]}`;
 }
+
+/**
+ * Adaptively calculates the next page size between minLimit (default 100) and maxLimit (default 5000)
+ * based on how much faster or slower the next page was compared to the previous page.
+ *
+ * @param currentSize - The page size used in the current request.
+ * @param currentElapsedMs - The duration of the current request in milliseconds.
+ * @param prevElapsedMs - Optional duration of the previous request in milliseconds.
+ * @param prevSize - Optional page size used in the previous request.
+ * @param minLimit - Minimum allowed page size (default: 100).
+ * @param maxLimit - Maximum allowed page size (default: 5000).
+ */
+export function calculateNextPageSize(
+	currentSize: number,
+	currentElapsedMs: number,
+	prevElapsedMs?: number | null,
+	prevSize?: number | null,
+	minLimit: number = 100,
+	maxLimit: number = 5000
+): number {
+	const safeCurrElapsed = Math.max(currentElapsedMs, 10);
+	const safeCurrSize = Math.max(currentSize, 1);
+
+	// If no previous measurement exists (first request), probe upward with a moderate step
+	if (prevElapsedMs === null || prevElapsedMs === undefined || prevElapsedMs <= 0) {
+		const next = Math.round((currentSize * 1.5) / 50) * 50;
+		return Math.max(minLimit, Math.min(maxLimit, next));
+	}
+
+	const safePrevElapsed = Math.max(prevElapsedMs, 10);
+	const safePrevSize = Math.max(prevSize ?? currentSize, 1);
+
+	// Processing speed in items per millisecond
+	const currSpeed = safeCurrSize / safeCurrElapsed;
+	const prevSpeed = safePrevSize / safePrevElapsed;
+
+	// Ratio of how much faster (> 1) or slower (< 1) the next page was
+	const rawRatio = currSpeed / prevSpeed;
+
+	// If speed is virtually unchanged (within ±15%), gently probe higher
+	if (rawRatio >= 0.85 && rawRatio <= 1.15) {
+		const next = Math.round((currentSize * 1.1 + 25) / 50) * 50;
+		return Math.max(minLimit, Math.min(maxLimit, next));
+	}
+
+	// Clamp adaptation factor to prevent violent oscillations (between 0.5x and 2.0x)
+	const ratio = Math.max(0.5, Math.min(2.0, rawRatio));
+	const next = Math.round((currentSize * ratio) / 50) * 50;
+
+	return Math.max(minLimit, Math.min(maxLimit, next));
+}
+
+

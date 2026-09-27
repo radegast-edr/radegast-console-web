@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { isDeviceActive, formatFullDateTime, matchesJsonata, mapSeverityToNumber, toLocalISOString, toUTCISOString, getDeviceStatus, sortDevices, formatBytes } from './utils';
+import { isDeviceActive, formatFullDateTime, matchesJsonata, mapSeverityToNumber, toLocalISOString, toUTCISOString, getDeviceStatus, sortDevices, formatBytes, calculateNextPageSize } from './utils';
 
 describe('utils', () => {
 	describe('isDeviceActive', () => {
@@ -352,6 +352,57 @@ describe('utils', () => {
 		it('formats gigabytes correctly', () => {
 			expect(formatBytes(1024 * 1024 * 1024)).toBe('1.0 GB');
 			expect(formatBytes(2.5 * 1024 * 1024 * 1024)).toBe('2.5 GB');
+		});
+	});
+
+	describe('calculateNextPageSize', () => {
+		it('probes upward on the first request when there is no previous latency', () => {
+			expect(calculateNextPageSize(100, 1200)).toBe(150);
+			expect(calculateNextPageSize(200, 800)).toBe(300);
+		});
+
+		it('scales up when the next page is faster than the previous page even on high-load servers (> 600ms)', () => {
+			// High load server: prev was 2000ms, next was 1000ms for same size 100 -> 2x faster -> 200
+			expect(calculateNextPageSize(100, 1000, 2000, 100)).toBe(200);
+
+			// Prev was 3000ms, next was 2000ms for same size 200 -> 1.5x faster -> 300
+			expect(calculateNextPageSize(200, 2000, 3000, 200)).toBe(300);
+		});
+
+		it('scales up when throughput improves even if raw latency increased for a larger batch', () => {
+			// Prev: 100 items in 1000ms (10ms/item). Curr: 200 items in 1200ms (6ms/item).
+			// Speed ratio: (200/1200) / (100/1000) = 1.67x faster throughput -> 200 * 1.67 = 333 -> 350
+			expect(calculateNextPageSize(200, 1200, 1000, 100)).toBe(350);
+		});
+
+		it('scales down when the next page is slower than the previous page', () => {
+			// Prev was 1000ms, curr was 2000ms for same size 200 -> 0.5x slower -> 100
+			expect(calculateNextPageSize(200, 2000, 1000, 200)).toBe(100);
+
+			// High load server: prev was 2000ms, curr was 4000ms for same size 400 -> 0.5x slower -> 200
+			expect(calculateNextPageSize(400, 4000, 2000, 400)).toBe(200);
+		});
+
+		it('gently probes higher when speed is steady (within ±5%)', () => {
+			// Prev: 100 items in 1000ms, Curr: 100 items in 1000ms -> speed ratio 1.0 -> gently probes to 150
+			expect(calculateNextPageSize(100, 1000, 1000, 100)).toBe(150);
+
+			// Prev: 200 items in 1500ms, Curr: 200 items in 1500ms -> speed ratio 1.0 -> gently probes to 250
+			expect(calculateNextPageSize(200, 1500, 1500, 200)).toBe(250);
+		});
+
+		it('clamps page size to minimum 100 and maximum 5000', () => {
+			// Cannot go below 100
+			expect(calculateNextPageSize(100, 10000, 1000, 100)).toBe(100);
+
+			// Cannot exceed 5000
+			expect(calculateNextPageSize(4000, 500, 2000, 4000)).toBe(5000);
+			expect(calculateNextPageSize(5000, 500, 1000, 5000)).toBe(5000);
+		});
+
+		it('safely handles instant / 0ms responses without error', () => {
+			expect(calculateNextPageSize(100, 0, 0, 100)).toBe(150);
+			expect(calculateNextPageSize(100, 0, 1000, 100)).toBe(200);
 		});
 	});
 });

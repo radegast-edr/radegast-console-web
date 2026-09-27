@@ -456,6 +456,7 @@ export const api = {
 		from_time: string | null = null,
 		to_time: string | null = null,
 		min_level: LogSeverity | null = null,
+		offset: number | null = null,
 	) =>
 		call(
 			callOp('list_logs_api_v1_logs__get', {
@@ -466,7 +467,8 @@ export const api = {
 						...(device_id ? { device_id } : {}),
 						...(from_time ? { from_time } : {}),
 						...(to_time ? { to_time } : {}),
-						...(min_level ? { min_level } : {})
+						...(min_level ? { min_level } : {}),
+						...(offset !== null && offset !== undefined ? { offset } : {})
 					}
 				}
 			})

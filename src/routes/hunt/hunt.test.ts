@@ -272,6 +272,56 @@ describe('Hunt URL Hash Shareable State', () => {
 			expect(screen.getByText(/Found 100 matching events/i)).toBeInTheDocument();
 		});
 	});
+
+	it('re-runs the hunt search when the query changes', async () => {
+		window.location.hash = '';
+		const initialLogs = [makeLog({ id: 1, time: '2026-06-03T10:00:00Z' })];
+		const updatedLogs = [makeLog({ id: 2, time: '2026-06-03T11:00:00Z' })];
+
+		vi.mocked(api.listLogs)
+			.mockResolvedValueOnce(initialLogs as any)
+			.mockResolvedValueOnce(updatedLogs as any);
+		vi.mocked(api.listDevices).mockResolvedValue([]);
+
+		render(Hunt);
+
+		await waitFor(() => {
+			expect(api.listLogs).toHaveBeenCalledTimes(1);
+			expect(screen.getByText(/Found 1 matching event/i)).toBeInTheDocument();
+		});
+
+		const queryInput = screen.getByPlaceholderText('e.g., meta.device = "laptop" and alert.event_type = "process"');
+		await fireEvent.input(queryInput, { target: { value: 'meta.status = "online"' } });
+
+		// Wait for debounce (400ms) to trigger re-hunt
+		await waitFor(() => {
+			expect(api.listLogs).toHaveBeenCalledTimes(2);
+		}, { timeout: 2000 });
+	});
+
+	it('submits hunt search immediately on pressing Enter without waiting for debounce', async () => {
+		window.location.hash = '';
+		const initialLogs = [makeLog({ id: 1 })];
+		const nextLogs = [makeLog({ id: 2 })];
+
+		vi.mocked(api.listLogs)
+			.mockResolvedValueOnce(initialLogs as any)
+			.mockResolvedValueOnce(nextLogs as any);
+		vi.mocked(api.listDevices).mockResolvedValue([]);
+
+		render(Hunt);
+
+		await waitFor(() => {
+			expect(api.listLogs).toHaveBeenCalledTimes(1);
+		});
+
+		const queryInput = screen.getByPlaceholderText('e.g., meta.device = "laptop" and alert.event_type = "process"');
+		await fireEvent.input(queryInput, { target: { value: 'meta.device = "srv1"' } });
+		await fireEvent.keyDown(queryInput, { key: 'Enter' });
+
+		// Immediately called second time
+		expect(api.listLogs).toHaveBeenCalledTimes(2);
+	});
 });
 
 

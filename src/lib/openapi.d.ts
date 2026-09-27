@@ -6624,6 +6624,7 @@ export interface operations {
                 min_level?: components["schemas"]["LogSeverity"] | null;
                 page?: number;
                 limit?: number;
+                offset?: number | null;
             };
             header?: never;
             path?: never;

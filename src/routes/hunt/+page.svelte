@@ -12,6 +12,7 @@
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import Modal from '$lib/components/Modal.svelte';
+	import VirtualList from '$lib/components/VirtualList.svelte';
 
 	// Parse URL hash synchronously before Svelte state initialization
 	const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
@@ -89,8 +90,16 @@
 		}
 	});
 
+	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+	let lastExecutedQuery = initialQ || '';
+
 	async function performHunt() {
 		if (!logManager) return;
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
+			debounceTimer = null;
+		}
+		lastExecutedQuery = searchQuery;
 		try {
 			await logManager.performHuntSearch(fromTime, toTime, "informational", searchQuery);
 		} catch (e) {
@@ -252,11 +261,26 @@
 		}
 	}
 
+	// Re-run hunt from server when JSONata query changes (debounced by 400ms)
 	$effect(() => {
-		if (logManager) {
-			const _ = logManager.logs;
-			logManager.runFilter(searchQuery);
+		const currentQ = searchQuery;
+		if (!initialized || !logManager) return;
+		if (currentQ === lastExecutedQuery) return;
+
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
 		}
+
+		debounceTimer = setTimeout(() => {
+			lastExecutedQuery = currentQ;
+			performHunt();
+		}, 400);
+
+		return () => {
+			if (debounceTimer) {
+				clearTimeout(debounceTimer);
+			}
+		};
 	});
 
 	// Reactively update the URL hash when search inputs change
@@ -322,199 +346,239 @@
 	<title>Hunt Mode - Radegast</title>
 </svelte:head>
 
-<div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-3">
-	<div>
-		<h2 class="mb-0 fw-bold">Hunt Mode</h2>
-		<p class="text-muted mb-0">Query encrypted raw telemetry across the fleet.</p>
-	</div>
-</div>
-
-{#if logManager}
-	<div class="card mb-4 border-0 shadow-sm" style="background: var(--bs-body-bg);">
-		<div class="card-body p-4">
-			<div class="row g-3">
-				<div class="col-md-7">
-					<label for="hunt-query" class="form-label fw-bold">JSONata Text Query</label>
-					<input 
-						id="hunt-query"
-						type="text" 
-						class="form-control font-monospace" 
-						placeholder='e.g., meta.device = "laptop" and alert.event_type = "process"' 
-						bind:value={searchQuery}
-					/>
-					{#if logManager.searchError}
-						<div class="text-danger small mt-1 d-flex align-items-center gap-1">
-							<Icon icon="lucide:alert-triangle" /> {logManager.searchError}
-						</div>
-					{/if}
-				</div>
-				<div class="col-md-2">
-					<label for="hunt-start-time" class="form-label fw-bold">Start Time</label>
-					<input id="hunt-start-time" type="datetime-local" class="form-control" bind:value={fromTime} />
-				</div>
-				<div class="col-md-2">
-					<label for="hunt-end-time" class="form-label fw-bold">End Time</label>
-					<input id="hunt-end-time" type="datetime-local" class="form-control" bind:value={toTime} />
-				</div>
-				<div class="col-md-1 d-flex align-items-end">
-					{#if logManager.huntProgress.active}
-						<button
-							class="btn btn-danger w-100 fw-bold d-flex align-items-center justify-content-center gap-1"
-							onclick={interruptHunt}
-							title="Interrupt search"
-						>
-							<Icon icon="lucide:square" style="font-size: 0.75rem;" /> Stop
-						</button>
-					{:else}
-						<button class="btn btn-primary w-100 fw-bold" onclick={performHunt}>
-							Search
-						</button>
-					{/if}
-				</div>
-			</div>
+<div class="hunt-page-wrapper">
+	<div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2 flex-shrink-0">
+		<div>
+			<h2 class="h4 mb-0 fw-bold">Hunt Mode</h2>
+			<p class="text-muted mb-0 small">Query encrypted raw telemetry across the fleet.</p>
 		</div>
 	</div>
 
-	{#if logManager.huntProgress.active}
-		<div class="card mb-3 border-0 bg-body-secondary p-3 shadow-sm" data-testid="hunt-progress">
-			<div class="d-flex align-items-center gap-2 mb-2">
-				<Spinner inline size="sm" />
-				<span class="fw-bold">Searching encrypted telemetry...</span>
-				{#if logManager.huntProgress.pagesFetched > 0}
-					<span class="badge bg-secondary-subtle text-secondary-emphasis">
-						Page {logManager.huntProgress.pagesFetched}
-					</span>
-					<span class="text-body-secondary small">
-						({logManager.logs.length} event{logManager.logs.length === 1 ? '' : 's'} fetched)
-					</span>
-				{/if}
-			</div>
-			<div class="row g-2 small text-body-secondary pt-2 border-top border-secondary-subtle">
-				<div class="col-sm-6">
-					<span class="fw-semibold text-body">Earliest fetched:</span>
-					<span class="font-monospace ms-1" data-testid="earliest-fetched">
-						{logManager.huntProgress.earliestFetched ? formatFullDateTime(logManager.huntProgress.earliestFetched) : '—'}
-					</span>
-				</div>
-				<div class="col-sm-6">
-					<span class="fw-semibold text-body">Latest fetched:</span>
-					<span class="font-monospace ms-1" data-testid="latest-fetched">
-						{logManager.huntProgress.latestFetched ? formatFullDateTime(logManager.huntProgress.latestFetched) : '—'}
-					</span>
-				</div>
-			</div>
-		</div>
-	{:else if logManager.huntProgress.interrupted}
-		<div class="alert alert-warning d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 shadow-sm border-0 py-2 gap-2" data-testid="hunt-interrupted">
-			<div class="d-flex align-items-center gap-2">
-				<Icon icon="lucide:alert-triangle" class="fs-5 flex-shrink-0" />
-				<div>
-					<strong>Search interrupted.</strong> Showing results fetched before stopping.
-				</div>
-			</div>
-			<div class="d-flex flex-wrap gap-3 small text-body-secondary">
-				<div>
-					<span class="fw-semibold text-body">Earliest fetched:</span>
-					<span class="font-monospace ms-1">{logManager.huntProgress.earliestFetched ? formatFullDateTime(logManager.huntProgress.earliestFetched) : '—'}</span>
-				</div>
-				<div>
-					<span class="fw-semibold text-body">Latest fetched:</span>
-					<span class="font-monospace ms-1">{logManager.huntProgress.latestFetched ? formatFullDateTime(logManager.huntProgress.latestFetched) : '—'}</span>
-				</div>
-			</div>
-		</div>
-	{:else if logManager.huntProgress.pagesFetched > 0 && logManager.logs.length > 0}
-		<div class="d-flex flex-wrap gap-3 mb-2 px-1 small text-body-secondary">
-			<div>
-				<span class="fw-semibold text-body">Earliest fetched:</span>
-				<span class="font-monospace ms-1">{formatFullDateTime(logManager.huntProgress.earliestFetched)}</span>
-			</div>
-			<div>
-				<span class="fw-semibold text-body">Latest fetched:</span>
-				<span class="font-monospace ms-1">{formatFullDateTime(logManager.huntProgress.latestFetched)}</span>
-			</div>
-		</div>
-	{/if}
-
-	<div class="d-flex justify-content-between align-items-center mb-2 px-1">
-		<div class="text-muted small fw-semibold">
-			Found {logManager.filteredLogs.length} matching event{logManager.filteredLogs.length === 1 ? '' : 's'}
-		</div>
-		{#if logManager.filteredLogs.length > 0}
-			<button class="btn btn-sm btn-outline-secondary fw-bold" onclick={exportToJsonl}>
-				Export JSONL
-			</button>
-		{/if}
-	</div>
-
-	<div class="row g-2">
-		{#each logManager.filteredLogs as log}
-			{@const alertObj = logManager.getAlertObject(log)}
-			<div class="col-12">
-				<div class="card mb-1 border-0 shadow-sm">
-					<div class="card-body p-3 bg-dark text-light font-monospace small rounded">
-						<div class="d-flex justify-content-between mb-2">
-							<span class="text-info fw-bold">{new Date(log.time).toLocaleString()}</span>
-							<span class="text-warning fw-bold">
-								Device ID: {log.device_id} | Device: {alertObj.meta.device}
-								{#if alertObj.meta.rule_id}
-									<button class="btn btn-link btn-sm text-success p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem;" onclick={() => openRuleModal(log)}>[show rule]</button>
-								{/if}
-								{#if alertObj.meta.pack?.id}
-									<a href="{base}/packs/{alertObj.meta.pack.id}" class="btn btn-link btn-sm text-primary p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem; text-decoration: none;">[show pack]</a>
-								{/if}
-								{#if alertObj.meta.excluded_by}
-									<button class="btn btn-link btn-sm text-info p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem;" onclick={() => startExclusionFromHunt(log, alertObj)}>[show exclusion]</button>
-								{:else}
-									<button class="btn btn-link btn-sm text-danger p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem;" onclick={() => startExclusionFromHunt(log, alertObj)}>[exclude]</button>
-								{/if}
-							</span>
-						</div>
-						<pre class="m-0" style="white-space: pre-wrap; word-break: break-all;">{@html syntaxHighlightJson(JSON.stringify(alertObj, null, 2))}</pre>
+	{#if logManager}
+		<div class="card mb-2 border-0 shadow-sm flex-shrink-0" style="background: var(--bs-body-bg);">
+			<div class="card-body py-2 px-3">
+				<div class="row g-2 align-items-end">
+					<div class="col-md-6 col-lg-7">
+						<label for="hunt-query" class="form-label fw-bold small mb-1">JSONata Text Query</label>
+						<input 
+							id="hunt-query"
+							type="text" 
+							class="form-control form-control-sm font-monospace" 
+							placeholder='e.g., meta.device = "laptop" and alert.event_type = "process"' 
+							bind:value={searchQuery}
+							onkeydown={(e) => { if (e.key === 'Enter') performHunt(); }}
+						/>
+						{#if logManager.searchError}
+							<div class="text-danger small mt-1 d-flex align-items-center gap-1">
+								<Icon icon="lucide:alert-triangle" /> {logManager.searchError}
+							</div>
+						{/if}
+					</div>
+					<div class="col-6 col-md-2">
+						<label for="hunt-start-time" class="form-label fw-bold small mb-1">Start Time</label>
+						<input id="hunt-start-time" type="datetime-local" class="form-control form-control-sm" bind:value={fromTime} />
+					</div>
+					<div class="col-6 col-md-2">
+						<label for="hunt-end-time" class="form-label fw-bold small mb-1">End Time</label>
+						<input id="hunt-end-time" type="datetime-local" class="form-control form-control-sm" bind:value={toTime} />
+					</div>
+					<div class="col-12 col-md-2 col-lg-1">
+						{#if logManager.huntProgress.active}
+							<button
+								class="btn btn-danger btn-sm w-100 fw-bold d-flex align-items-center justify-content-center gap-1"
+								onclick={interruptHunt}
+								title="Interrupt search"
+							>
+								<Icon icon="lucide:square" style="font-size: 0.75rem;" /> Stop
+							</button>
+						{:else}
+							<button class="btn btn-primary btn-sm w-100 fw-bold" onclick={performHunt}>
+								Search
+							</button>
+						{/if}
 					</div>
 				</div>
 			</div>
-		{:else}
-			{#if logManager.huntProgress.active}
-				<div class="text-center p-5 text-muted">
-					<Spinner centered text="Searching encrypted telemetry..." py={3} />
+		</div>
+
+		{#if logManager.huntProgress.active}
+			<div class="card mb-2 border-0 bg-body-secondary py-2 px-3 shadow-sm flex-shrink-0" data-testid="hunt-progress">
+				<div class="d-flex align-items-center gap-2 mb-1">
+					<Spinner inline size="sm" />
+					<span class="fw-bold small">Searching encrypted telemetry...</span>
+					{#if logManager.huntProgress.pagesFetched > 0}
+						<span class="badge bg-secondary-subtle text-secondary-emphasis">
+							Page {logManager.huntProgress.pagesFetched}
+						</span>
+						<span class="text-body-secondary small">
+							({logManager.huntProgress.totalFetched} event{logManager.huntProgress.totalFetched === 1 ? '' : 's'} examined)
+						</span>
+					{/if}
 				</div>
-			{:else}
-				<div class="text-center p-5 text-muted">No telemetry found matching the query.</div>
-			{/if}
-		{/each}
-	</div>
-
-	<ExclusionModal
-		bind:show={showExclusionModal}
-		bind:name={exclusionName}
-		bind:query={exclusionQuery}
-		bind:description={exclusionDescription}
-		bind:exclusionType={exclusionType}
-		bind:encrypted={exclusionEncrypted}
-		title={editingExclusion ? 'Edit Exclusion' : 'Create Exclusion'}
-		isEditMode={!!editingExclusion}
-		groups={exclusionGroups}
-		bind:selectedGroupId={selectedGroupId}
-		alertObj={currentAlertObj}
-		onClose={() => { showExclusionModal = false; editingExclusion = null; }}
-		onSave={saveExclusionFromHunt}
-	/>
-
-	<!-- Triggered Rule Modal -->
-	{#if selectedLog?.triggered_rule}
-		<Modal
-			show={showTriggeredRuleModal}
-			title="Triggered Rule"
-			onClose={() => { showTriggeredRuleModal = false; }}
-		>
-			<div class="mb-2 d-flex gap-2 align-items-center">
-				<span class="badge bg-warning text-dark text-uppercase">{selectedLog.triggered_rule.rule_type}</span>
-				<span class="fw-bold text-body font-monospace small">{selectedLog.triggered_rule.rule_id}</span>
+				<div class="row g-2 small text-body-secondary pt-1 border-top border-secondary-subtle">
+					<div class="col-sm-6">
+						<span class="fw-semibold text-body">Earliest fetched:</span>
+						<span class="font-monospace ms-1" data-testid="earliest-fetched">
+							{logManager.huntProgress.earliestFetched ? formatFullDateTime(logManager.huntProgress.earliestFetched) : '—'}
+						</span>
+					</div>
+					<div class="col-sm-6">
+						<span class="fw-semibold text-body">Latest fetched:</span>
+						<span class="font-monospace ms-1" data-testid="latest-fetched">
+							{logManager.huntProgress.latestFetched ? formatFullDateTime(logManager.huntProgress.latestFetched) : '—'}
+						</span>
+					</div>
+				</div>
 			</div>
-			<pre class="p-3 rounded font-monospace mb-0" style="background-color: #282a36; color: #f8f8f2; white-space: pre-wrap; word-break: break-all; font-size: 0.82rem; border: 1px solid #44475a; max-height: 60vh; overflow-y: auto;">{selectedLog.triggered_rule.rule_content}</pre>
-		</Modal>
+		{:else if logManager.huntProgress.interrupted}
+			<div class="alert alert-warning d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-2 shadow-sm border-0 py-2 gap-2 flex-shrink-0" data-testid="hunt-interrupted">
+				<div class="d-flex align-items-center gap-2">
+					<Icon icon="lucide:alert-triangle" class="fs-5 flex-shrink-0" />
+					<div class="small">
+						<strong>Search interrupted.</strong> Showing results fetched before stopping.
+					</div>
+				</div>
+				<div class="d-flex flex-wrap gap-3 small text-body-secondary">
+					<div>
+						<span class="fw-semibold text-body">Earliest fetched:</span>
+						<span class="font-monospace ms-1">{logManager.huntProgress.earliestFetched ? formatFullDateTime(logManager.huntProgress.earliestFetched) : '—'}</span>
+					</div>
+					<div>
+						<span class="fw-semibold text-body">Latest fetched:</span>
+						<span class="font-monospace ms-1">{logManager.huntProgress.latestFetched ? formatFullDateTime(logManager.huntProgress.latestFetched) : '—'}</span>
+					</div>
+				</div>
+			</div>
+		{:else if logManager.huntProgress.pagesFetched > 0 && logManager.logs.length > 0}
+			<div class="d-flex flex-wrap gap-3 mb-2 px-1 small text-body-secondary flex-shrink-0">
+				<div>
+					<span class="fw-semibold text-body">Earliest fetched:</span>
+					<span class="font-monospace ms-1">{formatFullDateTime(logManager.huntProgress.earliestFetched)}</span>
+				</div>
+				<div>
+					<span class="fw-semibold text-body">Latest fetched:</span>
+					<span class="font-monospace ms-1">{formatFullDateTime(logManager.huntProgress.latestFetched)}</span>
+				</div>
+			</div>
+		{/if}
+
+		<div class="d-flex justify-content-between align-items-center mb-2 px-1 flex-shrink-0">
+			<div class="text-muted small fw-semibold">
+				Found {logManager.filteredLogs.length} matching event{logManager.filteredLogs.length === 1 ? '' : 's'}
+				{#if logManager.huntProgress.totalFetched > logManager.filteredLogs.length}
+					<span class="text-body-secondary fw-normal">({logManager.huntProgress.totalFetched} examined)</span>
+				{/if}
+			</div>
+			{#if logManager.filteredLogs.length > 0}
+				<button class="btn btn-sm btn-outline-secondary fw-bold py-0 px-2" onclick={exportToJsonl}>
+					Export JSONL
+				</button>
+			{/if}
+		</div>
+
+		<div class="hunt-results-container">
+			<VirtualList items={logManager.filteredLogs} estimatedItemHeight={180} containerHeight="100%">
+				{#snippet children(log)}
+					{@const alertObj = logManager?.getAlertObject(log)}
+					{#if alertObj}
+						<div class="card mb-2 border-0 shadow-sm">
+							<div class="card-body p-3 bg-dark text-light font-monospace small rounded">
+								<div class="d-flex justify-content-between mb-2">
+									<span class="text-info fw-bold">{new Date(log.time).toLocaleString()}</span>
+									<span class="text-warning fw-bold">
+										Device ID: {log.device_id} | Device: {alertObj.meta.device}
+										{#if alertObj.meta.rule_id}
+											<button class="btn btn-link btn-sm text-success p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem;" onclick={() => openRuleModal(log)}>[show rule]</button>
+										{/if}
+										{#if alertObj.meta.pack?.id}
+											<a href="{base}/packs/{alertObj.meta.pack.id}" class="btn btn-link btn-sm text-primary p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem; text-decoration: none;">[show pack]</a>
+										{/if}
+										{#if alertObj.meta.excluded_by}
+											<button class="btn btn-link btn-sm text-info p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem;" onclick={() => startExclusionFromHunt(log, alertObj)}>[show exclusion]</button>
+										{:else}
+											<button class="btn btn-link btn-sm text-danger p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem;" onclick={() => startExclusionFromHunt(log, alertObj)}>[exclude]</button>
+										{/if}
+									</span>
+								</div>
+								<pre class="m-0" style="white-space: pre-wrap; word-break: break-all;">{@html syntaxHighlightJson(JSON.stringify(alertObj, null, 2))}</pre>
+							</div>
+						</div>
+					{/if}
+				{/snippet}
+				{#snippet empty()}
+					{#if logManager?.huntProgress.active}
+						<div class="text-center p-5 text-muted">
+							<Spinner centered text="Searching encrypted telemetry..." py={3} />
+						</div>
+					{:else}
+						<div class="text-center p-5 text-muted">No telemetry found matching the query.</div>
+					{/if}
+				{/snippet}
+			</VirtualList>
+		</div>
+
+		<ExclusionModal
+			bind:show={showExclusionModal}
+			bind:name={exclusionName}
+			bind:query={exclusionQuery}
+			bind:description={exclusionDescription}
+			bind:exclusionType={exclusionType}
+			bind:encrypted={exclusionEncrypted}
+			title={editingExclusion ? 'Edit Exclusion' : 'Create Exclusion'}
+			isEditMode={!!editingExclusion}
+			groups={exclusionGroups}
+			bind:selectedGroupId={selectedGroupId}
+			alertObj={currentAlertObj}
+			onClose={() => { showExclusionModal = false; editingExclusion = null; }}
+			onSave={saveExclusionFromHunt}
+		/>
+
+		<!-- Triggered Rule Modal -->
+		{#if selectedLog?.triggered_rule}
+			<Modal
+				show={showTriggeredRuleModal}
+				title="Triggered Rule"
+				onClose={() => { showTriggeredRuleModal = false; }}
+			>
+				<div class="mb-2 d-flex gap-2 align-items-center">
+					<span class="badge bg-warning text-dark text-uppercase">{selectedLog.triggered_rule.rule_type}</span>
+					<span class="fw-bold text-body font-monospace small">{selectedLog.triggered_rule.rule_id}</span>
+				</div>
+				<pre class="p-3 rounded font-monospace mb-0" style="background-color: #282a36; color: #f8f8f2; white-space: pre-wrap; word-break: break-all; font-size: 0.82rem; border: 1px solid #44475a; max-height: 60vh; overflow-y: auto;">{selectedLog.triggered_rule.rule_content}</pre>
+			</Modal>
+		{/if}
+	{:else}
+		<Spinner centered text="Loading crypto environment..." py={5} />
 	{/if}
-{:else}
-	<Spinner centered text="Loading crypto environment..." py={5} />
-{/if}
+</div>
+
+<style>
+	@media (min-width: 768px) {
+		.hunt-page-wrapper {
+			display: flex;
+			flex-direction: column;
+			height: calc(100vh - 48px);
+			max-height: calc(100vh - 48px);
+			overflow: hidden;
+		}
+		.hunt-results-container {
+			flex: 1 1 0;
+			min-height: 0;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+		}
+	}
+	@media (max-width: 767.98px) {
+		.hunt-page-wrapper {
+			display: flex;
+			flex-direction: column;
+		}
+		.hunt-results-container {
+			height: calc(100vh - 300px);
+			min-height: 350px;
+			display: flex;
+			flex-direction: column;
+		}
+	}
+</style>
