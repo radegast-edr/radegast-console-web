@@ -1,12 +1,15 @@
 <script lang="ts">
-	import { getPrimaryCategory } from '$lib/alertHelpers';
+	import { getPrimaryCategory, getAlertObject, getAlertField } from '$lib/alertHelpers';
 	import AlertHeader from '$lib/components/AlertHeader.svelte';
 	import RuleDescription from '$lib/components/RuleDescription.svelte';
+	import MatchDetails from '$lib/components/MatchDetails.svelte';
 	import RuleContext from '$lib/components/RuleContext.svelte';
 	import ProcessEvidence from '$lib/components/evidence/ProcessEvidence.svelte';
 	import FileEvidence from '$lib/components/evidence/FileEvidence.svelte';
 	import NetworkEvidence from '$lib/components/evidence/NetworkEvidence.svelte';
 	import RegistryEvidence from '$lib/components/evidence/RegistryEvidence.svelte';
+	import ScriptingEvidence from '$lib/components/evidence/ScriptingEvidence.svelte';
+	import PersistenceEvidence from '$lib/components/evidence/PersistenceEvidence.svelte';
 	import AlertContext from '$lib/components/AlertContext.svelte';
 	import AlertActions from '$lib/components/AlertActions.svelte';
 	import RawTelemetry from '$lib/components/RawTelemetry.svelte';
@@ -61,6 +64,40 @@
 
 	const category = $derived(typeof alert === 'object' && alert !== null ? getPrimaryCategory(alert) : 'unknown');
 	const isDecrypted = $derived(typeof alert === 'object' && alert !== null);
+
+	// Match debug details
+	const matchDetails = $derived(
+		isDecrypted ? (getAlertObject(alert, 'edr.match') as any) : undefined
+	);
+
+	// Specialized execution & persistence checks
+	const hasScripting = $derived(
+		isDecrypted && !!(
+			getAlertField(alert, 'edr.powershell.script_block_text') ||
+			getAlertField(alert, 'edr.powershell.payload') ||
+			getAlertField(alert, 'edr.powershell.data')
+		)
+	);
+
+	const hasPersistence = $derived(
+		isDecrypted && !!(
+			getAlertField(alert, 'service.name') ||
+			getAlertField(alert, 'edr.service.executable') ||
+			getAlertField(alert, 'edr.task.name') ||
+			getAlertField(alert, 'edr.wmi.operation') ||
+			getAlertField(alert, 'edr.wmi.query')
+		)
+	);
+
+	const hasStructuredEvidence = $derived(
+		category === 'process' ||
+		category === 'file' ||
+		category === 'network' ||
+		category === 'dns' ||
+		category === 'registry' ||
+		hasScripting ||
+		hasPersistence
+	);
 </script>
 
 {#if isDecrypted}
@@ -70,20 +107,36 @@
 	<!-- ② Rule Description -->
 	<RuleDescription {alert} />
 
-	<!-- ②b Rule Context -->
-	<RuleContext {triggeredRule} />
+	<!-- ②a Detection Match Explanation (if present) -->
+	{#if matchDetails}
+		<MatchDetails {matchDetails} />
+	{/if}
+
+	<!-- ②b Rule Context & Threat Intelligence -->
+	<RuleContext {triggeredRule} {alert} />
 
 	<!-- ③ Category-Specific Evidence -->
 	{#if category === 'process'}
 		<ProcessEvidence {alert} />
 	{:else if category === 'file'}
 		<FileEvidence {alert} />
-	{:else if category === 'network'}
+	{:else if category === 'network' || category === 'dns'}
 		<NetworkEvidence {alert} />
 	{:else if category === 'registry'}
 		<RegistryEvidence {alert} />
-	{:else}
-		<!-- Unknown category: show raw telemetry expanded -->
+	{/if}
+
+	<!-- ③b Additional Specialized Evidence -->
+	{#if hasScripting}
+		<ScriptingEvidence {alert} />
+	{/if}
+
+	{#if hasPersistence}
+		<PersistenceEvidence {alert} />
+	{/if}
+
+	{#if !hasStructuredEvidence}
+		<!-- Unknown category with no specialized evidence: show raw telemetry expanded -->
 		<RawTelemetry {alert} initialExpanded={true} />
 	{/if}
 
@@ -162,8 +215,8 @@
 		</div>
 	{/if}
 
-	<!-- ⑦ Raw Telemetry (collapsed by default, unless already shown for unknown category) -->
-	{#if category !== 'unknown'}
+	<!-- ⑦ Raw Telemetry (collapsed by default when structured evidence exists) -->
+	{#if hasStructuredEvidence}
 		<RawTelemetry {alert} />
 	{/if}
 {:else}

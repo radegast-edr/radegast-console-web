@@ -3,6 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import { api } from '$lib/api';
 import { user } from '$lib/store';
 import { goto } from '$app/navigation';
+import { decrypt } from '$lib/crypto';
 import Alerts from './+page.svelte';
 
 vi.mock('$app/paths', () => ({
@@ -71,11 +72,13 @@ const makeLog = (overrides: Record<string, any> = {}) => ({
 	content: 'encrypted_content',
 	signature: 'sig',
 	seen: false,
-	severity: 'high',
+	severity: 'high' as const,
 	alert_resolution: null,
 	triage_note: null,
+	bytes_used: 100,
 	...overrides
 });
+
 
 describe('Alerts Page', () => {
 	beforeEach(() => {
@@ -705,5 +708,176 @@ describe('Alerts Page', () => {
 			});
 		});
 	});
+
+	describe('Rustinel New Alert Fields UI', () => {
+		it('displays deduplication repeat badge and banner when event.count > 0', async () => {
+			const alertWithDedup = {
+				'@timestamp': '2026-09-27T00:00:00Z',
+				'rule.name': 'Repeated Attack Rule',
+				'event.count': 4,
+				'edr.rule.engine': 'Sigma',
+				'edr.rule.severity': 'High'
+			};
+			vi.mocked(decrypt).mockReturnValue(JSON.stringify(alertWithDedup));
+			vi.mocked(api.listLogs).mockResolvedValue([makeLog({ id: 99, severity: 'high' })]);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			render(Alerts);
+
+			await waitFor(() => {
+				expect(screen.getByText('Repeated Attack Rule')).toBeInTheDocument();
+				expect(screen.getByText('+4 repeats')).toBeInTheDocument();
+			});
+
+			await fireEvent.click(screen.getByText('Repeated Attack Rule'));
+
+			await waitFor(() => {
+				expect(screen.getByText(/Aggregated Detections/i)).toBeInTheDocument();
+				expect(screen.getByText(/4 identical occurrences were suppressed/i)).toBeInTheDocument();
+			});
+		});
+
+		it('renders match explanation when edr.match is present', async () => {
+			const alertWithMatch = {
+				'@timestamp': '2026-09-27T00:00:00Z',
+				'rule.name': 'Match Debug Rule',
+				'edr.rule.engine': 'Sigma',
+				'edr.match': {
+					summary: "Field 'CommandLine' matched '*Invoke-WebRequest*'",
+					sigma: {
+						matches: [
+							{ field: 'CommandLine', matcher: 'contains', pattern: 'Invoke-WebRequest', value: 'pwsh -c Invoke-WebRequest' }
+						]
+					}
+				}
+			};
+			vi.mocked(decrypt).mockReturnValue(JSON.stringify(alertWithMatch));
+			vi.mocked(api.listLogs).mockResolvedValue([makeLog({ id: 101 })]);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			render(Alerts);
+
+			await waitFor(() => {
+				expect(screen.getByText('Match Debug Rule')).toBeInTheDocument();
+			});
+
+			await fireEvent.click(screen.getByText('Match Debug Rule'));
+
+			await waitFor(() => {
+				expect(screen.getByText('Detection Match Explanation')).toBeInTheDocument();
+				expect(screen.getByText("Field 'CommandLine' matched '*Invoke-WebRequest*'")).toBeInTheDocument();
+			});
+		});
+
+		it('renders native MITRE ATT&CK techniques without triggeredRule', async () => {
+			const alertWithAttack = {
+				'@timestamp': '2026-09-27T00:00:00Z',
+				'rule.name': 'Sigma ATT&CK Rule',
+				'threat.technique.id': ['T1059.001'],
+				'threat.tactic.name': ['Execution'],
+				'edr.sigma.status': 'stable'
+			};
+			vi.mocked(decrypt).mockReturnValue(JSON.stringify(alertWithAttack));
+			vi.mocked(api.listLogs).mockResolvedValue([makeLog({ id: 102, triggered_rule: null })]);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			render(Alerts);
+
+			await waitFor(() => {
+				expect(screen.getByText('Sigma ATT&CK Rule')).toBeInTheDocument();
+				// Left pane technique badge
+				expect(screen.getByText('T1059.001')).toBeInTheDocument();
+			});
+
+			await fireEvent.click(screen.getByText('Sigma ATT&CK Rule'));
+
+			await waitFor(() => {
+				expect(screen.getByText('Rule Intelligence')).toBeInTheDocument();
+				expect(screen.getByText('Execution')).toBeInTheDocument();
+			});
+		});
+
+		it('renders process hashes, integrity level, and container context', async () => {
+			const alertWithProcDetails = {
+				'@timestamp': '2026-09-27T00:00:00Z',
+				'rule.name': 'Process Detail Rule',
+				'event.category': ['process'],
+				'process.executable': '/usr/bin/container-proc',
+				'process.hash.sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+				'edr.process.integrity_level': 'System',
+				'container.id': '9a8b7c6d5e4f3a2b1c',
+				'container.runtime': 'docker'
+			};
+			vi.mocked(decrypt).mockReturnValue(JSON.stringify(alertWithProcDetails));
+			vi.mocked(api.listLogs).mockResolvedValue([makeLog({ id: 103 })]);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			render(Alerts);
+
+			await waitFor(() => {
+				expect(screen.getByText('Process Detail Rule')).toBeInTheDocument();
+			});
+
+			await fireEvent.click(screen.getByText('Process Detail Rule'));
+
+			await waitFor(() => {
+				expect(screen.getByText('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855')).toBeInTheDocument();
+				expect(screen.getAllByText('System').length).toBeGreaterThan(0);
+				expect(screen.getAllByText(/docker: 9a8b7c6d5e4f/i).length).toBeGreaterThan(0);
+			});
+		});
+
+		it('renders timestomping detection when edr.file.previous_created is present', async () => {
+			const alertWithTimestomp = {
+				'@timestamp': '2026-09-27T00:00:00Z',
+				'rule.name': 'Timestomp Rule',
+				'event.category': ['file'],
+				'file.path': 'C:\\temp\\payload.exe',
+				'file.created': '2026-09-27T00:00:00Z',
+				'edr.file.previous_created': '2020-01-01T00:00:00Z'
+			};
+			vi.mocked(decrypt).mockReturnValue(JSON.stringify(alertWithTimestomp));
+			vi.mocked(api.listLogs).mockResolvedValue([makeLog({ id: 104 })]);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			render(Alerts);
+
+			await waitFor(() => {
+				expect(screen.getByText('Timestomp Rule')).toBeInTheDocument();
+			});
+
+			await fireEvent.click(screen.getByText('Timestomp Rule'));
+
+			await waitFor(() => {
+				expect(screen.getByText(/Timestomping Detected/i)).toBeInTheDocument();
+			});
+		});
+
+		it('renders PowerShell scripting evidence when present', async () => {
+			const alertWithPowershell = {
+				'@timestamp': '2026-09-27T00:00:00Z',
+				'rule.name': 'PowerShell Rule',
+				'event.category': ['process'],
+				'edr.powershell.script_block_text': 'Write-Output "malicious script block"'
+			};
+			vi.mocked(decrypt).mockReturnValue(JSON.stringify(alertWithPowershell));
+			vi.mocked(api.listLogs).mockResolvedValue([makeLog({ id: 105 })]);
+			vi.mocked(api.getLogsCount).mockResolvedValue({ total_count: 1 });
+
+			render(Alerts);
+
+			await waitFor(() => {
+				expect(screen.getByText('PowerShell Rule')).toBeInTheDocument();
+			});
+
+			await fireEvent.click(screen.getByText('PowerShell Rule'));
+
+			await waitFor(() => {
+				expect(screen.getByText('PowerShell Script Execution')).toBeInTheDocument();
+				expect(screen.getByText('Write-Output "malicious script block"')).toBeInTheDocument();
+			});
+		});
+	});
 });
+
 

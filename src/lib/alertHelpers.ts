@@ -100,3 +100,47 @@ export function getAlertArray(alert: Record<string, unknown>, key: string): stri
 	if (!Array.isArray(val)) return undefined;
 	return val.map(String);
 }
+
+/** Get a boolean value from a flat alert object, or undefined if not present */
+export function getAlertBoolean(alert: Record<string, unknown>, key: string): boolean | undefined {
+	const val = alert[key];
+	if (val === undefined || val === null) return undefined;
+	if (typeof val === 'boolean') return val;
+	if (val === 'true') return true;
+	if (val === 'false') return false;
+	return undefined;
+}
+
+/** Get an object value from a flat alert object, or undefined if not present */
+export function getAlertObject(alert: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
+	const val = alert[key];
+	if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+		return val as Record<string, unknown>;
+	}
+	return undefined;
+}
+
+/** Format deduplication repeat count for badges */
+export function formatDedupCount(count: number | undefined): string | null {
+	if (count === undefined || count === null || count <= 0) return null;
+	return `+${count} repeats`;
+}
+
+/** Format YARA scan source label */
+export function getYaraSourceLabel(source: string | undefined): string | null {
+	if (!source) return null;
+	const s = source.toLowerCase();
+	if (s === 'process_memory') return 'Process Memory';
+	if (s === 'file') return 'File';
+	return source;
+}
+
+/** Map Windows Integrity Level to badge CSS class */
+export function getIntegrityBadgeClass(integrity: string | undefined): string {
+	const level = integrity?.toLowerCase();
+	if (level === 'system' || level === 'high') return 'bg-danger text-white';
+	if (level === 'medium') return 'bg-warning text-dark';
+	if (level === 'low') return 'bg-info text-white';
+	return 'bg-secondary text-white';
+}
+

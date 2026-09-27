@@ -719,7 +719,12 @@
 			<div class="alerts-list flex-grow-1 overflow-auto">
 				{#each logManager.filteredLogs as log}
 					{@const alertObj = logManager.getAlertObject(log)}
-					{@const ruleName = alertObj.alert?.['rule.name'] || alertObj.alert?.rule?.name || `An alert on ${alertObj.meta.device || 'Unknown Device'}`}
+					{@const alertData = typeof alertObj.alert === 'object' && alertObj.alert !== null ? alertObj.alert : {}}
+					{@const ruleName = alertData['rule.name'] || alertData?.rule?.name || `An alert on ${alertObj.meta.device || 'Unknown Device'}`}
+					{@const eventCount = alertData['event.count'] !== undefined ? Number(alertData['event.count']) : undefined}
+					{@const engine = alertData['edr.rule.engine'] || alertData?.edr?.rule?.engine}
+					{@const yaraSource = alertData['edr.yara.scan_source'] || alertData?.edr?.yara?.scan_source}
+					{@const techniques = Array.isArray(alertData['threat.technique.id']) ? alertData['threat.technique.id'] : []}
 					{@const isRead = ($user?.extended_edr_enabled ? (!!log.alert_resolution && log.alert_resolution !== 'none') : !!log.seen) || (log.severity && mapSeverityToNumber(log.severity) < mapSeverityToNumber($user?.notification_level))}
 					
 					<div 
@@ -738,7 +743,17 @@
 							</div>
 							<div class="d-flex justify-content-between align-items-center small">
 								<span class="opacity-75">{alertObj.meta.device}</span>
-								<div class="d-flex gap-1 align-items-center">
+								<div class="d-flex flex-wrap gap-1 align-items-center justify-content-end">
+									{#if eventCount && eventCount > 0}
+										<span class="badge bg-warning-subtle text-warning-emphasis border border-warning" title="{eventCount} duplicates suppressed">
+											+{eventCount} repeats
+										</span>
+									{/if}
+									{#if engine}
+										<span class="badge {selectedLog?.id === log.id ? 'bg-white text-dark' : 'bg-secondary-subtle text-secondary border'}" style="font-size: 0.65rem;">
+											{engine}{yaraSource === 'process_memory' ? ' (Mem)' : yaraSource === 'file' ? ' (File)' : ''}
+										</span>
+									{/if}
 									{#if alertObj.meta.excluded_by}
 										<a
 											href="{base}/groups/{alertObj.meta.excluded_by.group.id}"
@@ -761,6 +776,20 @@
 									{/if}
 								</div>
 							</div>
+							{#if techniques.length > 0}
+								<div class="d-flex flex-wrap gap-1 mt-1">
+									{#each techniques.slice(0, 2) as tech}
+										<span class="badge {selectedLog?.id === log.id ? 'bg-white text-danger' : 'bg-danger-subtle text-danger border border-danger-subtle'}" style="font-size: 0.65rem;">
+											{tech}
+										</span>
+									{/each}
+									{#if techniques.length > 2}
+										<span class="badge {selectedLog?.id === log.id ? 'bg-white text-dark' : 'bg-secondary-subtle text-secondary border'}" style="font-size: 0.65rem;">
+											+{techniques.length - 2}
+										</span>
+									{/if}
+								</div>
+							{/if}
 						</div>
 					</div>
 				{/each}
