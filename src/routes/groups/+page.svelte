@@ -4,7 +4,9 @@
 	import { api, type Group, type Team } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 
+	let loading = $state(true);
 	let groups = $state<Group[]>([]);
 	let showCreate = $state(false);
 	let newGroupName = $state('');
@@ -16,11 +18,14 @@
 	});
 
 	async function loadGroups(): Promise<void> {
+		loading = true;
 		try {
 			const data = await api.listGroups();
 			groups = data;
 		} catch (e) {
 			showError((e as Error).message);
+		} finally {
+			loading = false;
 		}
 	}
 
@@ -66,8 +71,10 @@
 	<button class="btn btn-primary" onclick={openCreateModal}>Add Group</button>
 </div>
 
-{#if groups.length === 0}
-	<p class="text-muted">No device groups found. Create one to get started.</p>
+{#if loading}
+	<Spinner centered text="Loading device groups..." py={5} />
+{:else if groups.length === 0}
+	<p class="text-body-secondary">No device groups found. Create one to get started.</p>
 {:else}
 	<table class="table table-hover align-middle">
 		<thead>

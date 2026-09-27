@@ -457,8 +457,14 @@ describe('Alerts Page', () => {
 
 			await fireEvent.click(screen.getByText('AI Analysis'));
 
-			// Check that window.open was called and modal is NOT shown
-			expect(window.open).toHaveBeenCalled();
+			// Check that window.open was called with container instructions and modal is NOT shown
+			expect(window.open).toHaveBeenCalledWith(
+				expect.stringMatching(/container/i),
+				'_blank'
+			);
+			const openedUrl = (window.open as any).mock.calls[0][0];
+			expect(decodeURIComponent(openedUrl)).toContain('container (e.g. Docker, Podman');
+			expect(decodeURIComponent(openedUrl)).toContain('scoping the exclusion query to the container context');
 			expect(screen.queryByText('Confirm AI Analysis')).toBeNull();
 		});
 

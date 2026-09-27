@@ -495,10 +495,33 @@ describe('Route Pages Load Verification', () => {
 		});
 	});
 
-	it('renders Groups page', async () => {
+	it('renders Groups page and shows loading spinner before resolving groups', async () => {
+		let resolveGroups: (val: any) => void;
+		vi.mocked(api.listGroups).mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveGroups = resolve;
+			})
+		);
+
 		render(Groups);
+		expect(screen.getByText('Loading device groups...')).toBeInTheDocument();
+
+		resolveGroups!([{ id: 1, name: 'Group A' }]);
+
 		await waitFor(() => {
-			expect(screen.getByText('Device Groups')).toBeInTheDocument();
+			expect(screen.queryByText('Loading device groups...')).not.toBeInTheDocument();
+			expect(screen.getByText('Group A')).toBeInTheDocument();
+		});
+	});
+
+	it('renders empty state when no device groups exist', async () => {
+		vi.mocked(api.listGroups).mockResolvedValueOnce([]);
+
+		render(Groups);
+
+		await waitFor(() => {
+			expect(screen.queryByText('Loading device groups...')).not.toBeInTheDocument();
+			expect(screen.getByText(/No device groups found\. Create one to get started\./i)).toBeInTheDocument();
 		});
 	});
 

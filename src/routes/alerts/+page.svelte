@@ -592,8 +592,9 @@
 		if (selectedLog.triggered_rule) {
 			ruleContext = `\n\nTriggered Rule:\nType: ${selectedLog.triggered_rule.rule_type}\nID: ${selectedLog.triggered_rule.rule_id}\nContent:\n${selectedLog.triggered_rule.rule_content}`;
 		}
-		const promptText = `Analyze if this alert is a true or false positive in plain non-technical language.
+		const promptText = `Analyze if this alert is a true or false positive in plain non-technical language. If the activity occurred inside a container (e.g. Docker, Podman, indicated by fields like \`container.id\` or \`container.runtime\`), take into account that containerized workloads and build processes often perform actions that may look suspicious but are benign and expected in container environments.
 							If you deem this alert to be a false positive, propose a JSONata query that could be used to exclude this alert in the future, and explain your reasoning for the proposed query. The query should depend on rule ID or rule name if available and should be a flat expression (e.g. \`rule.name\` = 'Disable Or Stop Services' and $contains(\`process.parent.command_line\`, "/usr/lib/snapd/snapd"). DO NOT FORGET THE BACKTICKS AROUND FIELD NAMES. If unsure, check the JSONata syntax at https://docs.jsonata.org/)
+							If the alert occurred within a container, you may suggest scoping the exclusion query to the container context (such as matching on \`container.runtime\`, \`container.id\`, or container image/process names) if appropriate.
 							The exclusion should match the alert (exclusions are always matching) and should be generic enough to cover similar use cases but not too generic to avoid over-permissive detections. If you cannot determine a good exclusion query, say "No good exclusion query can be determined".
 							\n\n${telemetry}${ruleContext}`;
 		
