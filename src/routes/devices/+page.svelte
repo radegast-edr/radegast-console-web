@@ -5,7 +5,7 @@
 	import { api, type Device } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
-	import { isDeviceActive, formatFullDateTime, sortDevices } from '$lib/utils';
+	import { isDeviceActive, formatFullDateTime, sortDevices, formatBytes } from '$lib/utils';
 	import AgentSetupInstructions from '$lib/components/AgentSetupInstructions.svelte';
 
 	let devices = $state<Device[]>([]);
@@ -106,6 +106,7 @@
 			<th>Agent Version</th>
 			<th>Rustinel Version</th>
 			<th>OS</th>
+			<th>Space Used</th>
 			<th>Actions</th>
 		</tr>
 	</thead>
@@ -135,6 +136,7 @@
 				<td>{device.agent_version ?? 'N/A'}</td>
 				<td>{device.rustinel_version ?? 'N/A'}</td>
 				<td>{device.os ?? 'N/A'}</td>
+				<td>{formatBytes(device.total_space_used)}</td>
 				<td>
 					<button
 						class="btn btn-sm btn-outline-danger"
@@ -143,7 +145,7 @@
 				</td>
 			</tr>
 		{:else}
-			<tr><td colspan="6" class="text-muted">No devices found</td></tr>
+			<tr><td colspan="7" class="text-muted">No devices found</td></tr>
 		{/each}
 	</tbody>
 </table>

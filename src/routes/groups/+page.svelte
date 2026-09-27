@@ -5,6 +5,7 @@
 	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
+	import { formatBytes } from '$lib/utils';
 
 	let loading = $state(true);
 	let groups = $state<Group[]>([]);
@@ -80,6 +81,7 @@
 		<thead>
 			<tr>
 				<th>Name</th>
+				<th>Space Used</th>
 				<th>Actions</th>
 			</tr>
 		</thead>
@@ -87,6 +89,7 @@
 			{#each groups as group}
 				<tr>
 					<td><a href="{base}/groups/{group.id}">{group.name}</a></td>
+					<td>{formatBytes(group.total_space_used)}</td>
 					<td><a href="{base}/groups/{group.id}" class="btn btn-sm btn-outline-primary">Manage</a></td>
 				</tr>
 			{/each}

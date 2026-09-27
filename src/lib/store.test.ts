@@ -34,7 +34,8 @@ describe('store', () => {
 			api_keys_enabled: false,
 			notification_level: 'medium',
 			ai_analysis_tool: 'lumo-guest',
-			onboarding_completed: false
+			onboarding_completed: false,
+			total_space_used: 0
 		});
 
 		expect(get(user)).toEqual(expect.objectContaining({ id: 1, email: 'test@example.com' }));

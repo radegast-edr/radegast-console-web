@@ -325,6 +325,53 @@ describe('Route Pages Load Verification', () => {
 		expect(rowsAfterAsc[2]).toHaveTextContent('Device Beta');
 	});
 
+	it('renders Admin page and sorts users by space used', async () => {
+		vi.mocked(api.adminListUsers).mockResolvedValue([
+			{ id: 1, email: 'user1@example.com', role: 'user', verified: true, total_space_used: 1024 },
+			{ id: 2, email: 'user2@example.com', role: 'admin', verified: true, total_space_used: 5120 }
+		] as any);
+
+		render(Admin);
+		await waitFor(() => {
+			expect(screen.getByText('Admin Panel')).toBeInTheDocument();
+			expect(screen.getByText(/Total user storage:/)).toBeInTheDocument();
+			expect(screen.getByText('user1@example.com')).toBeInTheDocument();
+			expect(screen.getByText('user2@example.com')).toBeInTheDocument();
+		});
+
+		// By default sorted by ID ascending: user1 (id:1) then user2 (id:2)
+		const rowsBefore = screen.getAllByRole('row');
+		expect(rowsBefore[1]).toHaveTextContent('user1@example.com');
+		expect(rowsBefore[2]).toHaveTextContent('user2@example.com');
+
+		// Click Space Used header in users table to sort descending
+		const spaceUsedButtons = screen.getAllByRole('button', { name: /Space Used/ });
+		await fireEvent.click(spaceUsedButtons[0]);
+
+		const rowsAfterDesc = screen.getAllByRole('row');
+		expect(rowsAfterDesc[1]).toHaveTextContent('user2@example.com');
+		expect(rowsAfterDesc[2]).toHaveTextContent('user1@example.com');
+	});
+
+	it('renders Admin page stats tab with user storage stats', async () => {
+		vi.mocked(api.adminListUsers).mockResolvedValue([
+			{ id: 1, email: 'heavyuser@example.com', role: 'user', verified: true, total_space_used: 20480 }
+		] as any);
+
+		render(Admin);
+		await waitFor(() => {
+			expect(screen.getByText('Admin Panel')).toBeInTheDocument();
+		});
+
+		const statsTab = screen.getByRole('button', { name: 'Stats' });
+		await fireEvent.click(statsTab);
+
+		await waitFor(() => {
+			expect(screen.getByText('User Storage & Quota Stats')).toBeInTheDocument();
+			expect(screen.getByText('heavyuser@example.com')).toBeInTheDocument();
+		});
+	});
+
 	it('renders Alerts page and verifies basic EDR seen behavior on click', async () => {
 		const mockUser = {
 			id: 1,
@@ -511,6 +558,7 @@ describe('Route Pages Load Verification', () => {
 		await waitFor(() => {
 			expect(screen.queryByText('Loading device groups...')).not.toBeInTheDocument();
 			expect(screen.getByText('Group A')).toBeInTheDocument();
+			expect(screen.getByText('Space Used')).toBeInTheDocument();
 		});
 	});
 
@@ -755,6 +803,8 @@ describe('Route Pages Load Verification', () => {
 		render(Settings);
 		await waitFor(() => {
 			expect(screen.getByText('User Settings')).toBeInTheDocument();
+			expect(screen.getByText('Storage Quota & Account')).toBeInTheDocument();
+			expect(screen.getByText('Space Used:')).toBeInTheDocument();
 			expect(screen.getByLabelText('Admin notifications')).toBeInTheDocument();
 		});
 	});
@@ -786,21 +836,44 @@ describe('Route Pages Load Verification', () => {
 		render(Settings);
 		await waitFor(() => {
 			expect(screen.getByText('User Settings')).toBeInTheDocument();
+			expect(screen.getByText('Storage Quota & Account')).toBeInTheDocument();
+			expect(screen.getByText('Space Used:')).toBeInTheDocument();
 			expect(screen.queryByLabelText('Admin notifications')).not.toBeInTheDocument();
 		});
 	});
 
-	it('renders Teams page', async () => {
+	it('renders Teams page and respects admin=write for space used', async () => {
+		vi.mocked(api.listTeams).mockResolvedValue([
+			{ id: 1, name: 'Team ReadOnly', permission_admin: null, total_space_used: 1024 },
+			{ id: 2, name: 'Team AdminWrite', permission_admin: 'write', total_space_used: 2048 }
+		] as any);
 		render(Teams);
 		await waitFor(() => {
 			expect(screen.getByText('Teams')).toBeInTheDocument();
+			expect(screen.getByText('Space Used')).toBeInTheDocument();
+			expect(screen.getByText('Team ReadOnly')).toBeInTheDocument();
+			expect(screen.getByText('Team AdminWrite')).toBeInTheDocument();
+			expect(screen.getByText('-')).toBeInTheDocument();
+			expect(screen.getByText('2.0 KB')).toBeInTheDocument();
 		});
 	});
 
-	it('renders TeamDetail page', async () => {
+	it('renders TeamDetail page without space used if admin permission is not write', async () => {
+		vi.mocked(api.getTeam).mockResolvedValue({ id: 1, name: 'Team A', permission_admin: 'read', total_space_used: 1024 } as any);
 		render(TeamDetail);
 		await waitFor(() => {
 			expect(screen.getByText('Members')).toBeInTheDocument();
+			expect(screen.queryByText(/Space used:/)).toBeNull();
+		});
+	});
+
+	it('renders TeamDetail page with space used if admin permission is write', async () => {
+		vi.mocked(api.getTeam).mockResolvedValue({ id: 1, name: 'Team A', permission_admin: 'write', total_space_used: 1024 } as any);
+		render(TeamDetail);
+		await waitFor(() => {
+			expect(screen.getByText('Members')).toBeInTheDocument();
+			expect(screen.getByText(/Space used:/)).toBeInTheDocument();
+			expect(screen.getByText('1.0 KB')).toBeInTheDocument();
 		});
 	});
 

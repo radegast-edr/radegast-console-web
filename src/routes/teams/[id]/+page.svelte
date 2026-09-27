@@ -7,6 +7,7 @@
 	import { showFlash, showError, triggerKeyRefresh } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
+	import { formatBytes } from '$lib/utils';
 	import { initAgeWasm, decrypt, encrypt, getStoredPrivateKey } from '$lib/crypto';
 
 	let team = $state<Team | null>(null);
@@ -148,14 +149,21 @@
 </script>
 
 {#if team}
-	<div class="d-flex align-items-center gap-2 mb-4">
-		{#if editingName}
-			<input class="form-control form-control-lg w-auto" bind:value={editName} />
-			<button class="btn btn-success btn-sm" onclick={saveName}>Save</button>
-			<button class="btn btn-outline-secondary btn-sm" onclick={() => (editingName = false)}>Cancel</button>
-		{:else}
-			<h2 class="mb-0">{team.name}</h2>
-			<button class="btn btn-outline-secondary btn-sm" onclick={startRename} title="Rename team">✎</button>
+	<div class="mb-4">
+		<div class="d-flex align-items-center gap-2">
+			{#if editingName}
+				<input class="form-control form-control-lg w-auto" bind:value={editName} />
+				<button class="btn btn-success btn-sm" onclick={saveName}>Save</button>
+				<button class="btn btn-outline-secondary btn-sm" onclick={() => (editingName = false)}>Cancel</button>
+			{:else}
+				<h2 class="mb-0">{team.name}</h2>
+				<button class="btn btn-outline-secondary btn-sm" onclick={startRename} title="Rename team">✎</button>
+			{/if}
+		</div>
+		{#if team.permission_admin === 'write'}
+			<p class="text-body-secondary mt-2 mb-0">
+				Space used: <span class="badge bg-secondary font-monospace">{formatBytes(team.total_space_used)}</span>
+			</p>
 		{/if}
 	</div>
 
@@ -195,8 +203,9 @@
 				</div>
 				<ul class="list-group list-group-flush">
 					{#each groups as group}
-						<li class="list-group-item">
+						<li class="list-group-item d-flex justify-content-between align-items-center">
 							<a href="{base}/groups/{group.id}">{group.name}</a>
+							<span class="badge bg-secondary font-monospace">{formatBytes(group.total_space_used)}</span>
 						</li>
 					{:else}
 						<li class="list-group-item text-muted">No groups</li>
@@ -218,6 +227,7 @@
 				<thead>
 					<tr>
 						<th>Device</th>
+						<th>Space Used</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -229,6 +239,7 @@
 									<span class="badge bg-danger ms-2" title="Unsigned device! Signing key is not set.">Unsigned</span>
 								{/if}
 							</td>
+							<td>{formatBytes(d.total_space_used)}</td>
 						</tr>
 					{/each}
 				</tbody>

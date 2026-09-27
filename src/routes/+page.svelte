@@ -5,7 +5,7 @@
 	import { user } from '$lib/store';
 	import { getStoredPrivateKey } from '$lib/crypto';
 	import { goto } from '$app/navigation';
-	import { mapSeverityToNumber } from '$lib/utils';
+	import { mapSeverityToNumber, formatBytes } from '$lib/utils';
 	import Spinner from '$lib/components/Spinner.svelte';
 
 	let isLoading = $state(true);
@@ -360,7 +360,7 @@
 							<div>
 								<div class="d-flex justify-content-between mb-1">
 									<span class="fw-semibold">{g.name}</span>
-									<span class="text-muted small">{count} ({pct}%)</span>
+									<span class="text-muted small">{count} ({pct}%) &bull; {formatBytes(g.total_space_used)}</span>
 								</div>
 								<div class="progress" style="height: 8px; border-radius: 4px;">
 									<div class="progress-bar bg-primary" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
@@ -390,7 +390,7 @@
 							<div>
 								<div class="d-flex justify-content-between mb-1">
 									<span class="fw-semibold">{t.name}</span>
-									<span class="text-muted small">{count} devices</span>
+									<span class="text-muted small">{count} devices{#if t.permission_admin === 'write'} &bull; {formatBytes(t.total_space_used)}{/if}</span>
 								</div>
 								<div class="progress" style="height: 8px; border-radius: 4px;">
 									<div class="progress-bar bg-info" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>

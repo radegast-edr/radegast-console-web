@@ -2558,6 +2558,11 @@ export interface components {
              * @default critical
              */
             response_min_severity: string;
+            /**
+             * Total Space Used
+             * @default 0
+             */
+            total_space_used: number;
         };
         /** DeviceGroupResponse */
         DeviceGroupResponse: {
@@ -2594,6 +2599,11 @@ export interface components {
              * @default critical
              */
             response_min_severity: string;
+            /**
+             * Total Space Used
+             * @default 0
+             */
+            total_space_used: number;
         };
         /** DeviceHealthReport */
         DeviceHealthReport: {
@@ -3255,6 +3265,11 @@ export interface components {
             permission_logs: string | null;
             /** Managing Team Id */
             managing_team_id?: number | null;
+            /**
+             * Total Space Used
+             * @default 0
+             */
+            total_space_used: number;
         };
         /** TeamUpdate */
         TeamUpdate: {
@@ -3365,6 +3380,11 @@ export interface components {
             deletion_requested_at?: string | null;
             /** Deletion Scheduled At */
             deletion_scheduled_at?: string | null;
+            /**
+             * Total Space Used
+             * @default 0
+             */
+            total_space_used: number;
         };
         /** ValidationError */
         ValidationError: {

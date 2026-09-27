@@ -9,7 +9,7 @@
 	import { showFlash, showError, triggerKeyRefresh, user } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
-	import { isDeviceActive, sortDevices } from '$lib/utils';
+	import { isDeviceActive, sortDevices, formatBytes } from '$lib/utils';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import { initAgeWasm, generateKeypair, encrypt, decrypt, getStoredPrivateKey, getStoredPublicKey } from '$lib/crypto';
 	import { goto } from '$app/navigation';
@@ -705,6 +705,9 @@
 				<button class="btn btn-danger btn-sm" onclick={deleteGroup}>Delete Group</button>
 			{/if}
 		</div>
+		<p class="text-body-secondary mt-2 mb-0">
+			Space used: <span class="badge bg-secondary font-monospace">{formatBytes(group.total_space_used)}</span>
+		</p>
 	</div>
 
 	{#if unsupportedDevices.length > 0}
@@ -789,6 +792,7 @@
 						<tr>
 							<th>Device</th>
 							<th>Status</th>
+							<th>Space Used</th>
 							<th></th>
 						</tr>
 					</thead>
@@ -807,6 +811,7 @@
 										<span class="badge bg-success">Online</span>
 									{/if}
 								</td>
+								<td>{formatBytes(device.total_space_used)}</td>
 								<td>
 									<button
 										class="btn btn-sm btn-outline-danger"

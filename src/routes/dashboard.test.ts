@@ -172,4 +172,31 @@ describe('Dashboard Component', () => {
 			expect(screen.getByText('Alert Distribution by Team')).toBeInTheDocument();
 		});
 	});
+
+	it('shows team space used on dashboard only when permission_admin is write', async () => {
+		vi.mocked(api.getDashboardData).mockResolvedValue({
+			teams: [
+				{ id: 1, name: 'Team ReadOnly', permission_admin: null, total_space_used: 5000 },
+				{ id: 2, name: 'Team AdminWrite', permission_admin: 'write', total_space_used: 10240 }
+			],
+			groups: [],
+			devices: [{ id: 10, name: 'Server-01' }],
+			logs: [],
+			team_device_counts: { 1: 1, 2: 1 },
+			group_device_counts: {},
+			device_groups_map: {},
+			device_teams_map: {}
+		} as any);
+
+		render(Dashboard);
+
+		await waitFor(() => {
+			expect(screen.getByText('Team ReadOnly')).toBeInTheDocument();
+			expect(screen.getByText('Team AdminWrite')).toBeInTheDocument();
+			expect(screen.getByText(/1 devices[\s\S]*10 KB/)).toBeInTheDocument();
+			expect(screen.getByText((content, element) => {
+				return element?.tagName.toLowerCase() === 'span' && content.trim() === '1 devices';
+			})).toBeInTheDocument();
+		});
+	});
 });

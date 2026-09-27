@@ -18,6 +18,7 @@
 	let resetPasswordResult = $state<{ email: string } | null>(null);
 
 	let totalDevicesSpace = $derived(devices.reduce((acc, d) => acc + (d.total_space_used || 0), 0));
+	let totalUsersSpace = $derived(users.reduce((acc, u) => acc + (u.total_space_used || 0), 0));
 
 	type DeviceSortColumn = 'id' | 'name' | 'space_used';
 	let deviceSortColumn = $state<DeviceSortColumn>('id');
@@ -46,7 +47,7 @@
 		})
 	);
 
-	type UserSortColumn = 'id' | 'email' | 'role';
+	type UserSortColumn = 'id' | 'email' | 'role' | 'space_used';
 	let userSortColumn = $state<UserSortColumn>('id');
 	let userSortAsc = $state(true);
 
@@ -55,7 +56,7 @@
 			userSortAsc = !userSortAsc;
 		} else {
 			userSortColumn = column;
-			userSortAsc = true;
+			userSortAsc = column !== 'space_used';
 		}
 	}
 
@@ -68,6 +69,8 @@
 				result = (a.email || '').localeCompare(b.email || '');
 			} else if (userSortColumn === 'role') {
 				result = (a.role || '').localeCompare(b.role || '');
+			} else if (userSortColumn === 'space_used') {
+				result = (a.total_space_used || 0) - (b.total_space_used || 0);
 			}
 			return userSortAsc ? result : -result;
 		})
@@ -506,6 +509,9 @@
 		</div>
 	{/if}
 
+	<div class="d-flex justify-content-between align-items-center mb-3">
+		<span class="text-body-secondary small">Total user storage: <strong class="text-body font-monospace">{formatBytes(totalUsersSpace)}</strong></span>
+	</div>
 	<table class="table table-hover align-middle">
 		<thead>
 			<tr>
@@ -551,6 +557,20 @@
 						{/if}
 					</button>
 				</th>
+				<th>
+					<button
+						type="button"
+						class="btn btn-link text-decoration-none p-0 fw-bold text-body d-inline-flex align-items-center gap-1"
+						onclick={() => toggleUserSort('space_used')}
+					>
+						Space Used
+						{#if userSortColumn === 'space_used'}
+							<Icon icon={userSortAsc ? 'lucide:arrow-up' : 'lucide:arrow-down'} width="14" height="14" />
+						{:else}
+							<Icon icon="lucide:arrow-up-down" width="12" height="12" class="text-body-secondary opacity-50" />
+						{/if}
+					</button>
+				</th>
 				<th>Verified</th>
 				<th>Configured MFA</th>
 				<th>Actions</th>
@@ -562,6 +582,7 @@
 					<td>{u.id}</td>
 					<td>{u.email}</td>
 					<td><span class="badge bg-secondary">{u.role}</span></td>
+					<td><span class="font-monospace small">{formatBytes(u.total_space_used)}</span></td>
 					<td>{u.verified ? '✓' : '✗'}</td>
 					<td>
 						{#if u.mfa_configured_level === 'hardware_token'}
@@ -1300,6 +1321,43 @@
 						{/if}
 					{:else}
 						<Spinner centered size="sm" color="muted" text="Loading device stats..." py={4} />
+					{/if}
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="row g-4 mt-2">
+		<div class="col-12">
+			<div class="card border-0 shadow-sm bg-body-tertiary">
+				<div class="card-body p-4">
+					<div class="d-flex justify-content-between align-items-center mb-3">
+						<h5 class="card-title fw-bold mb-0">User Storage & Quota Stats</h5>
+						<span class="text-body-secondary small">Total user storage: <strong class="text-body font-monospace">{formatBytes(totalUsersSpace)}</strong></span>
+					</div>
+					{#if users.length === 0}
+						<p class="text-muted small mb-0">No users found.</p>
+					{:else}
+						{@const usersWithStorage = [...users].filter(u => (u.total_space_used || 0) > 0).sort((a, b) => (b.total_space_used || 0) - (a.total_space_used || 0))}
+						{#if usersWithStorage.length === 0}
+							<p class="text-muted small mb-0">No users currently consume storage quota.</p>
+						{:else}
+							<h6 class="fw-bold mb-3">Top Users by Storage Consumption</h6>
+							<div class="d-flex flex-column gap-3">
+								{#each usersWithStorage.slice(0, 10) as u}
+									{@const pct = totalUsersSpace > 0 ? Math.round(((u.total_space_used || 0) / totalUsersSpace) * 100) : 0}
+									<div>
+										<div class="d-flex justify-content-between mb-1">
+											<span class="fw-semibold small">{u.email} <span class="badge bg-secondary ms-1">{u.role}</span></span>
+											<span class="text-muted small font-monospace">{formatBytes(u.total_space_used)} ({pct}%)</span>
+										</div>
+										<div class="progress" style="height: 6px;">
+											<div class="progress-bar bg-info" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
 					{/if}
 				</div>
 			</div>

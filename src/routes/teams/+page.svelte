@@ -4,6 +4,7 @@
 	import { api, type Team } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
+	import { formatBytes } from '$lib/utils';
 
 	let teams = $state<Team[]>([]);
 	let showCreate = $state(false);
@@ -57,6 +58,7 @@
 			<tr>
 				<th>Name</th>
 				<th>Permissions</th>
+				<th>Space Used</th>
 				<th>Actions</th>
 			</tr>
 		</thead>
@@ -75,6 +77,13 @@
 						{/if}
 						{#if team.permission_admin}
 							<span class="badge bg-warning me-1">Admin</span>
+						{/if}
+					</td>
+					<td>
+						{#if team.permission_admin === 'write'}
+							{formatBytes(team.total_space_used)}
+						{:else}
+							<span class="text-body-secondary">-</span>
 						{/if}
 					</td>
 					<td>

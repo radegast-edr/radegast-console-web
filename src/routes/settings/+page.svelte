@@ -18,6 +18,7 @@
 	import { initAgeWasm, generateKeypair, storePrivateKey, aesEncrypt, getStoredPublicKey } from '$lib/crypto';
 	import Modal from '$lib/components/Modal.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
+	import { formatBytes } from '$lib/utils';
 
 	function restartOnboardingTour() {
 		showOnboarding.set(true);
@@ -516,6 +517,27 @@
 </svelte:head>
 
 <h2 class="mb-4">User Settings</h2>
+
+<div class="card mb-4">
+	<div class="card-header"><h5 class="mb-0">Storage Quota & Account</h5></div>
+	<div class="card-body">
+		<div class="row align-items-center">
+			<div class="col-md-6 mb-2 mb-md-0">
+				<div><strong>Email:</strong> {$user?.email || 'N/A'}</div>
+				<div class="text-body-secondary small mt-1">Role: <span class="badge bg-secondary text-uppercase">{$user?.role || 'user'}</span></div>
+			</div>
+			<div class="col-md-6">
+				<div class="d-flex align-items-center gap-2">
+					<span class="fw-semibold">Space Used:</span>
+					<span class="badge bg-secondary font-monospace fs-6">{formatBytes($user?.total_space_used)}</span>
+				</div>
+				<div class="text-body-secondary small mt-1">
+					Total storage used across all unique devices in teams you administer.
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
 
 <div class="row g-4">
 	<!-- Change Password -->
