@@ -293,10 +293,36 @@ describe('Hunt URL Hash Shareable State', () => {
 		const queryInput = screen.getByPlaceholderText('e.g., meta.device = "laptop" and alert.event_type = "process"');
 		await fireEvent.input(queryInput, { target: { value: 'meta.status = "online"' } });
 
-		// Wait for debounce (400ms) to trigger re-hunt
+		// Wait for debounce (2000ms) to trigger re-hunt
 		await waitFor(() => {
 			expect(api.listLogs).toHaveBeenCalledTimes(2);
-		}, { timeout: 2000 });
+		}, { timeout: 3500 });
+	});
+
+	it('re-runs the hunt search when time range changes with 2 second debounce', async () => {
+		window.location.hash = '';
+		const initialLogs = [makeLog({ id: 1, time: '2026-06-03T10:00:00Z' })];
+		const updatedLogs = [makeLog({ id: 2, time: '2026-06-03T11:00:00Z' })];
+
+		vi.mocked(api.listLogs)
+			.mockResolvedValueOnce(initialLogs as any)
+			.mockResolvedValueOnce(updatedLogs as any);
+		vi.mocked(api.listDevices).mockResolvedValue([]);
+
+		render(Hunt);
+
+		await waitFor(() => {
+			expect(api.listLogs).toHaveBeenCalledTimes(1);
+			expect(screen.getByText(/Found 1 matching event/i)).toBeInTheDocument();
+		});
+
+		const fromInput = screen.getByLabelText('Start Time');
+		await fireEvent.input(fromInput, { target: { value: '2026-06-01T08:00' } });
+
+		// Wait for debounce (2000ms) to trigger re-hunt
+		await waitFor(() => {
+			expect(api.listLogs).toHaveBeenCalledTimes(2);
+		}, { timeout: 3500 });
 	});
 
 	it('submits hunt search immediately on pressing Enter without waiting for debounce', async () => {

@@ -4,9 +4,11 @@
 	import { api, type Team } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 	import { formatBytes } from '$lib/utils';
 
 	let teams = $state<Team[]>([]);
+	let loading = $state(true);
 	let showCreate = $state(false);
 	let newTeamName = $state('');
 
@@ -15,10 +17,13 @@
 	});
 
 	async function loadTeams(): Promise<void> {
+		loading = true;
 		try {
 			teams = await api.listTeams();
 		} catch (e) {
 			showError((e as Error).message);
+		} finally {
+			loading = false;
 		}
 	}
 
@@ -50,8 +55,10 @@
 	<button class="btn btn-primary" onclick={() => (showCreate = true)}>Create Team</button>
 </div>
 
-{#if teams.length === 0}
-	<p class="text-muted">No teams yet.</p>
+{#if loading}
+	<Spinner centered text="Loading teams..." py={5} />
+{:else if teams.length === 0}
+	<p class="text-body-secondary">No teams yet.</p>
 {:else}
 	<table class="table table-hover align-middle">
 		<thead>

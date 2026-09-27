@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { askConfirm } from '$lib/confirm';
 	import { base } from '$app/paths';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { page } from '$app/state';
 	import { api, type UserInfo, type Device, type Pack } from '$lib/api';
 	import { user, showFlash, showError } from '$lib/store';
 	import { goto } from '$app/navigation';
@@ -11,10 +12,24 @@
 	import { formatBytes } from '$lib/utils';
 	import Icon from '@iconify/svelte';
 
+	type AdminTab = 'users' | 'devices' | 'packs' | 'stats' | 'broadcast';
+
+	function getTabFromUrl(): AdminTab {
+		const tabParam = page.url.searchParams.get('tab');
+		if (tabParam && ['users', 'devices', 'packs', 'stats', 'broadcast'].includes(tabParam)) {
+			return tabParam as AdminTab;
+		}
+		const hash = typeof window !== 'undefined' ? window.location.hash.replace('#', '') : '';
+		if (hash && ['users', 'devices', 'packs', 'stats', 'broadcast'].includes(hash)) {
+			return hash as AdminTab;
+		}
+		return 'users';
+	}
+
 	let users = $state<UserInfo[]>([]);
 	let devices = $state<Device[]>([]);
 	let packs = $state<Pack[]>([]);
-	let activeTab = $state<'users' | 'devices' | 'packs' | 'stats' | 'broadcast'>('users');
+	let activeTab = $state<AdminTab>(getTabFromUrl());
 	let resetPasswordResult = $state<{ email: string } | null>(null);
 
 	let totalDevicesSpace = $derived(devices.reduce((acc, d) => acc + (d.total_space_used || 0), 0));
@@ -188,7 +203,25 @@
 		alertFromTime = formatLocal(sevenDaysAgo);
 		alertToTime = formatLocal(tomorrow);
 
+		if (activeTab === 'stats') {
+			loadAlertStats();
+			loadDeviceStats();
+			loadAvailableRuleIds();
+			loadDeviceFilterOptions();
+		}
+
+		window.addEventListener('popstate', handlePopState);
 		await loadAll();
+	});
+
+	function handlePopState() {
+		selectTab(getTabFromUrl(), false);
+	}
+
+	onDestroy(() => {
+		if (typeof window !== 'undefined') {
+			window.removeEventListener('popstate', handlePopState);
+		}
 	});
 
 	async function loadAlertStats() {
@@ -345,12 +378,19 @@
 		}
 	}
 
-	function selectStatsTab() {
-		activeTab = 'stats';
-		loadAlertStats();
-		loadDeviceStats();
-		loadAvailableRuleIds();
-		loadDeviceFilterOptions();
+	function selectTab(tab: AdminTab, updateUrl = true) {
+		activeTab = tab;
+		if (tab === 'stats') {
+			loadAlertStats();
+			loadDeviceStats();
+			loadAvailableRuleIds();
+			loadDeviceFilterOptions();
+		}
+		if (updateUrl && typeof window !== 'undefined') {
+			const params = new URLSearchParams(page.url.searchParams);
+			params.set('tab', tab);
+			goto(`${base}/admin?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
+		}
 	}
 
 	async function loadAll(): Promise<void> {
@@ -453,48 +493,62 @@
 
 <svelte:window onclick={handleStatsWindowClick} />
 
+<svelte:head>
+	<title>Admin Panel - Radegast</title>
+</svelte:head>
+
 <h2>Admin Panel</h2>
 
 <ul class="nav nav-tabs mb-4">
 	<li class="nav-item">
-		<button
-			class="nav-link {activeTab === 'users' ? 'active' : 'text-body-secondary bg-transparent'}"
-			onclick={() => (activeTab = 'users')}
+		<a
+			href="{base}/admin?tab=users"
+			role="button"
+			class="nav-link {activeTab === 'users' ? 'active' : ''}"
+			onclick={(e) => { e.preventDefault(); selectTab('users'); }}
 		>
 			Users ({users.length})
-		</button>
+		</a>
 	</li>
 	<li class="nav-item">
-		<button
-			class="nav-link {activeTab === 'devices' ? 'active' : 'text-body-secondary bg-transparent'}"
-			onclick={() => (activeTab = 'devices')}
+		<a
+			href="{base}/admin?tab=devices"
+			role="button"
+			class="nav-link {activeTab === 'devices' ? 'active' : ''}"
+			onclick={(e) => { e.preventDefault(); selectTab('devices'); }}
 		>
 			Devices ({devices.length})
-		</button>
+		</a>
 	</li>
 	<li class="nav-item">
-		<button
-			class="nav-link {activeTab === 'packs' ? 'active' : 'text-body-secondary bg-transparent'}"
-			onclick={() => (activeTab = 'packs')}
+		<a
+			href="{base}/admin?tab=packs"
+			role="button"
+			class="nav-link {activeTab === 'packs' ? 'active' : ''}"
+			onclick={(e) => { e.preventDefault(); selectTab('packs'); }}
 		>
 			Packs ({packs.length})
-		</button>
+		</a>
 	</li>
 	<li class="nav-item">
-		<button
-			class="nav-link {activeTab === 'stats' ? 'active' : 'text-body-secondary bg-transparent'}"
-			onclick={selectStatsTab}
+		<a
+			href="{base}/admin?tab=stats"
+			role="button"
+			class="nav-link {activeTab === 'stats' ? 'active' : ''}"
+			onclick={(e) => { e.preventDefault(); selectTab('stats'); }}
 		>
 			Stats
-		</button>
+		</a>
 	</li>
 	<li class="nav-item">
-		<button
-			class="nav-link {activeTab === 'broadcast' ? 'active' : 'text-body-secondary bg-transparent'}"
-			onclick={() => (activeTab = 'broadcast')}
+		<a
+			href="{base}/admin?tab=broadcast"
+			role="button"
+			class="nav-link {activeTab === 'broadcast' ? 'active' : ''}"
+			onclick={(e) => { e.preventDefault(); selectTab('broadcast'); }}
 		>
 			Broadcast
-		</button>
+		</a>
 	</li>
 </ul>
 
@@ -1385,7 +1439,7 @@
 					<option value="downtime_maintenance">Maintenance Notification (Important)</option>
 					<option value="news_updates">Platform News / Updates</option>
 				</select>
-				<div class="form-text text-muted">
+				<div class="form-text text-body-secondary">
 					Users who have unsubscribed from the selected category will not receive this email.
 				</div>
 			</div>
@@ -1424,3 +1478,34 @@
 		<pre class="p-3 rounded font-monospace mb-0" style="background-color: #282a36; color: #f8f8f2; white-space: pre-wrap; word-break: break-all; font-size: 0.82rem; border: 1px solid #44475a; max-height: 60vh; overflow-y: auto;">{modalRuleContent}</pre>
 	{/if}
 </Modal>
+
+<style>
+	.nav-tabs {
+		border-bottom: 1px solid var(--bs-border-color);
+		gap: 0.25rem;
+	}
+	.nav-tabs .nav-link {
+		color: var(--bs-secondary-color);
+		border: 1px solid transparent;
+		border-bottom: none;
+		background: transparent;
+		font-weight: 500;
+		padding: 0.5rem 1rem;
+		cursor: pointer;
+		text-decoration: none;
+		transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+	}
+	.nav-tabs .nav-link:hover {
+		color: var(--bs-body-color);
+		border-color: var(--bs-border-color) var(--bs-border-color) transparent;
+	}
+	.nav-tabs .nav-link.active {
+		color: var(--bs-link-color) !important;
+		background-color: var(--bs-body-bg) !important;
+		border-color: var(--bs-border-color) var(--bs-border-color) var(--bs-body-bg) !important;
+		font-weight: 600;
+	}
+	:global([data-bs-theme="light"]) .nav-tabs .nav-link.active {
+		color: var(--bs-primary) !important;
+	}
+</style>

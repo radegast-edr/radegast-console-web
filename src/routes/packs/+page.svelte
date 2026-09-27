@@ -10,6 +10,7 @@
 
 	let packs = $state<Pack[]>([]);
 	let teams = $state<Team[]>([]);
+	let loading = $state(true);
 	let showCreate = $state(false);
 
 	// Filter state
@@ -355,8 +356,13 @@
 
 	onMount(async () => {
 		loadFiltersFromUrl();
-		await Promise.all([loadPacks(), loadTeams()]);
-		extractFilterOptions(packs);
+		loading = true;
+		try {
+			await Promise.all([loadPacks(), loadTeams()]);
+			extractFilterOptions(packs);
+		} finally {
+			loading = false;
+		}
 	});
 
 	async function loadPacks(): Promise<void> {
@@ -648,83 +654,87 @@
 	</div>
 </div>
 
-<div class="row">
-	{#each filteredPacks as pack, idx}
-		<div class="col-md-6 col-lg-4 mb-3" data-tour={idx === 0 ? "first-pack-card" : undefined}>
-			<div class="card h-100 shadow-sm">
+{#if loading}
+	<Spinner centered text="Loading packs..." py={5} />
+{:else}
+	<div class="row">
+		{#each filteredPacks as pack, idx}
+			<div class="col-md-6 col-lg-4 mb-3" data-tour={idx === 0 ? "first-pack-card" : undefined}>
+				<div class="card h-100 shadow-sm">
 
-				<div class="card-body d-flex flex-column">
-					<h5 class="card-title fw-bold text-primary d-flex align-items-center justify-content-between gap-2">
-						<a href="{base}/packs/{pack.id}" class="text-decoration-none text-truncate">{pack.name}</a>
-						{#if pack.team_ids && pack.team_ids.length > 0}
-							<span class="badge bg-secondary" style="font-size: 0.7rem;">Private</span>
-						{:else}
-							<span class="badge bg-success" style="font-size: 0.7rem;">Global</span>
-						{/if}
-					</h5>
-					<div class="mt-2 mb-2 d-flex gap-2 flex-wrap pack-tags">
-						{#if pack.latest?.meta?.os}
-							<span class="badge rounded-pill bg-secondary os-{pack.latest.meta.os.toString().toLowerCase()}"
-							>
-								OS: {pack.latest.meta.os}
-							</span>
-						{/if}
-						{#if pack.latest?.meta?.status}
-							<span class="badge rounded-pill bg-secondary status-{pack.latest.meta.status.toString().toLowerCase()}">
-								Status: {pack.latest.meta.status}
-							</span>
-						{/if}
-						{#if pack.latest?.meta?.expected_false_positive_level}
-							<span class="badge rounded-pill bg-secondary fp-{pack.latest.meta.expected_false_positive_level.toString().toLowerCase()}">
-								FP: {pack.latest.meta.expected_false_positive_level}
-							</span>
-						{/if}
-						{#if pack.latest?.meta?.level}
-							<span class="badge rounded-pill bg-secondary level-{pack.latest.meta.level.toString().toLowerCase()}">
-								Level: {pack.latest.meta.level}
-							</span>
-						{/if}
-					</div>
-					<p class="card-text text-muted flex-grow-1">
-						{#if pack.description || pack.latest?.meta?.description}
-							{pack.description || ''}
-							{#if pack.description && pack.latest?.meta?.description}
-								<br>
+					<div class="card-body d-flex flex-column">
+						<h5 class="card-title fw-bold text-primary d-flex align-items-center justify-content-between gap-2">
+							<a href="{base}/packs/{pack.id}" class="text-decoration-none text-truncate">{pack.name}</a>
+							{#if pack.team_ids && pack.team_ids.length > 0}
+								<span class="badge bg-secondary" style="font-size: 0.7rem;">Private</span>
+							{:else}
+								<span class="badge bg-success" style="font-size: 0.7rem;">Global</span>
 							{/if}
-							{pack.latest?.meta?.description || ''}
-						{:else}
-							<i>No description provided.</i>
-						{/if}
-					</p>
-					<div class="mt-3 d-flex gap-2 flex-wrap">
-						<button
-							class="btn btn-sm btn-outline-info"
-							onclick={() => openVersions(pack)}
-						>
-							Versions
-						</button>
-						{#if canManagePack(pack)}
+						</h5>
+						<div class="mt-2 mb-2 d-flex gap-2 flex-wrap pack-tags">
+							{#if pack.latest?.meta?.os}
+								<span class="badge rounded-pill bg-secondary os-{pack.latest.meta.os.toString().toLowerCase()}"
+								>
+									OS: {pack.latest.meta.os}
+								</span>
+							{/if}
+							{#if pack.latest?.meta?.status}
+								<span class="badge rounded-pill bg-secondary status-{pack.latest.meta.status.toString().toLowerCase()}">
+									Status: {pack.latest.meta.status}
+								</span>
+							{/if}
+							{#if pack.latest?.meta?.expected_false_positive_level}
+								<span class="badge rounded-pill bg-secondary fp-{pack.latest.meta.expected_false_positive_level.toString().toLowerCase()}">
+									FP: {pack.latest.meta.expected_false_positive_level}
+								</span>
+							{/if}
+							{#if pack.latest?.meta?.level}
+								<span class="badge rounded-pill bg-secondary level-{pack.latest.meta.level.toString().toLowerCase()}">
+									Level: {pack.latest.meta.level}
+								</span>
+							{/if}
+						</div>
+						<p class="card-text text-body-secondary flex-grow-1">
+							{#if pack.description || pack.latest?.meta?.description}
+								{pack.description || ''}
+								{#if pack.description && pack.latest?.meta?.description}
+									<br>
+								{/if}
+								{pack.latest?.meta?.description || ''}
+							{:else}
+								<i>No description provided.</i>
+							{/if}
+						</p>
+						<div class="mt-3 d-flex gap-2 flex-wrap">
 							<button
-								class="btn btn-sm btn-outline-primary"
-								onclick={() => openUpload(pack.id)}
+								class="btn btn-sm btn-outline-info"
+								onclick={() => openVersions(pack)}
 							>
-								Upload Version
+								Versions
 							</button>
-							<button
-								class="btn btn-sm btn-outline-secondary"
-								onclick={() => openEdit(pack)}
-							>
-								Edit Pack
-							</button>
-						{/if}
+							{#if canManagePack(pack)}
+								<button
+									class="btn btn-sm btn-outline-primary"
+									onclick={() => openUpload(pack.id)}
+								>
+									Upload Version
+								</button>
+								<button
+									class="btn btn-sm btn-outline-secondary"
+									onclick={() => openEdit(pack)}
+								>
+									Edit Pack
+								</button>
+							{/if}
+						</div>
 					</div>
 				</div>
 			</div>
-		</div>
-	{:else}
-		<p class="text-muted">No packs available.</p>
-	{/each}
-</div>
+		{:else}
+			<p class="text-body-secondary">No packs available.</p>
+		{/each}
+	</div>
+{/if}
 
 <Modal show={showCreate} title="Create Pack" onClose={() => (showCreate = false)}>
 	<form onsubmit={(e) => { e.preventDefault(); createPack(); }}>

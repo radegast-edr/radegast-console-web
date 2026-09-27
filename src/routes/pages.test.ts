@@ -372,6 +372,33 @@ describe('Route Pages Load Verification', () => {
 		});
 	});
 
+	it('updates link on navtab click and restores tab from URL query param', async () => {
+		vi.mocked(api.adminListUsers).mockResolvedValue([
+			{ id: 1, email: 'user@example.com', role: 'admin', verified: true, total_space_used: 1024 }
+		] as any);
+		vi.mocked(api.adminListDevices).mockResolvedValue([
+			{ id: 1, name: 'Server 1', total_space_used: 2048 }
+		] as any);
+
+		render(Admin);
+		await waitFor(() => {
+			expect(screen.getByText('Admin Panel')).toBeInTheDocument();
+		});
+
+		const devicesTab = screen.getByRole('button', { name: /Devices/ });
+		expect(devicesTab).toHaveAttribute('href', '/admin?tab=devices');
+
+		await fireEvent.click(devicesTab);
+		expect(goto).toHaveBeenCalledWith(
+			expect.stringContaining('tab=devices'),
+			expect.objectContaining({ replaceState: true })
+		);
+		await waitFor(() => {
+			expect(screen.getByText('Total database space used:')).toBeInTheDocument();
+			expect(screen.getByText('Server 1')).toBeInTheDocument();
+		});
+	});
+
 	it('renders Alerts page and verifies basic EDR seen behavior on click', async () => {
 		const mockUser = {
 			id: 1,
@@ -692,6 +719,36 @@ describe('Route Pages Load Verification', () => {
 		expect(levelDropdownBtn).toBeInTheDocument();
 	});
 
+	it('renders Packs page and shows loading spinner before resolving packs', async () => {
+		let resolvePacks: (val: any) => void;
+		vi.mocked(api.listPacks).mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolvePacks = resolve;
+			})
+		);
+		vi.mocked(api.listTeams).mockResolvedValueOnce([]);
+
+		render(Packs);
+		expect(screen.getByText('Loading packs...')).toBeInTheDocument();
+
+		resolvePacks!([
+			{
+				id: 1,
+				name: 'Pack Alpha',
+				latest: {
+					id: 10,
+					pack_id: 1,
+					meta: { level: 'essential', status: 'stable', expected_false_positive_level: 'low' }
+				}
+			}
+		]);
+
+		await waitFor(() => {
+			expect(screen.queryByText('Loading packs...')).not.toBeInTheDocument();
+			expect(screen.getByText('Pack Alpha')).toBeInTheDocument();
+		});
+	});
+
 	it('renders PackDetail page', async () => {
 		render(PackDetail);
 		await waitFor(() => {
@@ -839,6 +896,25 @@ describe('Route Pages Load Verification', () => {
 			expect(screen.getByText('Storage Quota & Account')).toBeInTheDocument();
 			expect(screen.getByText('Space Used:')).toBeInTheDocument();
 			expect(screen.queryByLabelText('Admin notifications')).not.toBeInTheDocument();
+		});
+	});
+
+	it('renders Teams page and shows loading spinner before resolving teams', async () => {
+		let resolveTeams: (val: any) => void;
+		vi.mocked(api.listTeams).mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveTeams = resolve;
+			})
+		);
+
+		render(Teams);
+		expect(screen.getByText('Loading teams...')).toBeInTheDocument();
+
+		resolveTeams!([{ id: 1, name: 'Team Alpha' }]);
+
+		await waitFor(() => {
+			expect(screen.queryByText('Loading teams...')).not.toBeInTheDocument();
+			expect(screen.getByText('Team Alpha')).toBeInTheDocument();
 		});
 	});
 

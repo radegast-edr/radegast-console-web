@@ -92,6 +92,8 @@
 
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let lastExecutedQuery = initialQ || '';
+	let lastExecutedFrom: string | null = null;
+	let lastExecutedTo: string | null = null;
 
 	async function performHunt() {
 		if (!logManager) return;
@@ -100,6 +102,8 @@
 			debounceTimer = null;
 		}
 		lastExecutedQuery = searchQuery;
+		lastExecutedFrom = fromTime;
+		lastExecutedTo = toTime;
 		try {
 			await logManager.performHuntSearch(fromTime, toTime, "informational", searchQuery);
 		} catch (e) {
@@ -261,11 +265,13 @@
 		}
 	}
 
-	// Re-run hunt from server when JSONata query changes (debounced by 400ms)
+	// Re-run hunt from server when JSONata query or time range changes (debounced by 2 seconds)
 	$effect(() => {
 		const currentQ = searchQuery;
+		const currentFrom = fromTime;
+		const currentTo = toTime;
 		if (!initialized || !logManager) return;
-		if (currentQ === lastExecutedQuery) return;
+		if (currentQ === lastExecutedQuery && currentFrom === lastExecutedFrom && currentTo === lastExecutedTo) return;
 
 		if (debounceTimer) {
 			clearTimeout(debounceTimer);
@@ -273,8 +279,10 @@
 
 		debounceTimer = setTimeout(() => {
 			lastExecutedQuery = currentQ;
+			lastExecutedFrom = currentFrom;
+			lastExecutedTo = currentTo;
 			performHunt();
-		}, 400);
+		}, 2000);
 
 		return () => {
 			if (debounceTimer) {
