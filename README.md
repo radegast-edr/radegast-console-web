@@ -1,23 +1,9 @@
 # Radegast EDR - Web Console
 
-Radegast EDR Web Console is the user-facing web dashboard built with **SvelteKit** and styled with **Bootstrap 5**. It provides real-time alerts management, cryptographic age-key storage/transfer operations, device management, and policy distribution capabilities.
+Radegast EDR Web Console is the user-facing web dashboard built with **SvelteKit** and styled with **Bootstrap 5**. It provides real-time alerts management, client side E2EE encryption and decryption, device management, and policy distribution capabilities.
 
-## Key Features
-
-1. **Dashboard Overview**: Summary of registered devices, active teams, device groups, and a reactive card highlighting real-time unread alert counts.
-2. **Alerts Management**:
-   - Paginated display of security alerts (100 per page).
-   - In-browser decryption of logs using age-wasm.
-   - Automatically pretty-prints JSON payloads.
-   - Click to mark alerts as seen/read.
-   - Red badges highlighting unsigned alerts or devices.
-3. **Devices & Groups Administration**: Add/delete/rename endpoints, assign devices to groups, manage team access.
-4. **Key Management**:
-   - Automatic generation of active & recovery keys on first login.
-   - Key transfer mechanics between different browser sessions using secure ephemeral tunnels.
-   - Backup/recovery workflows.
-
----
+- [Screenshots](https://radegast.app/screenshots/)
+- [Docs](https://docs.radegast.app/quickstart)
 
 ## Getting Started
 
