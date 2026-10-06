@@ -5479,6 +5479,7 @@ export interface operations {
                 "agent-send-severity"?: boolean | null;
                 "agent-send-rule-id"?: boolean | null;
                 "agent-healthcheck"?: boolean | null;
+                "agent-init-wait-seconds"?: number | null;
             };
             header?: never;
             path?: never;
