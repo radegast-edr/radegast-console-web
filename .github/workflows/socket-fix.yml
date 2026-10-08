@@ -17,13 +17,13 @@ jobs:
       - name: Setup Node.js with npm cache
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
-          node-version: "22"
+          node-version: "26"
           cache: 'npm'
 
       - name: Install dependencies
         shell: bash
         run: >
-          npx --yes socket npm ci --config '{"issueRules":{"malware":true}}'
+          npx --yes socket npm install --config '{"issueRules":{"malware":true}}'
 
       - name: Run Socket Fix CLI
         env:
