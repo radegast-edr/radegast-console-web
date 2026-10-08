@@ -1,0 +1,34 @@
+name: Socket Fix
+on:
+  schedule:
+    - cron: '0 0 * * *'
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  socket-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+
+      - name: Setup Node.js with npm cache
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: "22"
+          cache: 'npm'
+
+      - name: Install dependencies
+        shell: bash
+        run: >
+          npx --yes socket npm ci --config '{"issueRules":{"malware":true}}'
+
+      - name: Run Socket Fix CLI
+        env:
+          SOCKET_CLI_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOCKET_CLI_GIT_USER_EMAIL: socket-fix[bot]@users.noreply.github.com
+          SOCKET_CLI_GIT_USER_NAME: socket-fix[bot]
+          SOCKET_CLI_API_TOKEN: ${{ secrets.SOCKET_CLI_API_TOKEN }}
+        run: npx --yes socket fix 
