@@ -23,10 +23,30 @@ jobs:
       - name: Install dependencies
         shell: bash
         env:
-          # Don't block on CVEs here; fixing them is what the next step is for
+          # Don't block on CVEs here; fixing them is what socket fix is for
           SOCKET_CLI_ACCEPT_RISKS: "1"
         run: >
           npx --yes socket npm install --config '{"issueRules":{"malware":true}}'
+
+      # Temporary: dump the computed fixes so we can see the output format
+      # (looking for a severity field to filter on). Doesn't apply fixes or open PRs.
+      - name: Inspect Socket Fix output (dry run)
+        continue-on-error: true
+        shell: bash
+        env:
+          SOCKET_CLI_API_TOKEN: ${{ secrets.SOCKET_CLI_API_TOKEN }}
+        run: |
+          env -u CI npx --yes socket fix --all --no-apply-fixes --output-file socket-fixes.json
+          echo "----- socket-fixes.json -----"
+          cat socket-fixes.json || echo "(no output file written)"
+
+      - name: Upload Socket Fix output
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: socket-fixes
+          path: socket-fixes.json
+          if-no-files-found: warn
 
       - name: Run Socket Fix CLI
         env:
