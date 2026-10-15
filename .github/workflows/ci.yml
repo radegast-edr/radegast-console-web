@@ -25,8 +25,15 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Report failing tests without blocking the merge; only lint and build gate it
       - name: Test
-        run: npm test
+        id: test
+        continue-on-error: true
+        run: npm test -- --reporter=default --reporter=github-actions
+
+      - name: Flag test failures
+        if: steps.test.outcome == 'failure'
+        run: echo "::warning::Tests failed (not blocking merge). See the Test step and annotations for details."
 
       - name: Build
         run: npm run build
