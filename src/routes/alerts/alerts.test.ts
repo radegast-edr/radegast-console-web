@@ -4,6 +4,7 @@ import { api } from '$lib/api';
 import { user } from '$lib/store';
 import { goto } from '$app/navigation';
 import { decrypt } from '$lib/crypto';
+import { toLocalISOString } from '$lib/utils';
 import Alerts from './+page.svelte';
 
 vi.mock('$app/paths', () => ({
@@ -526,10 +527,10 @@ describe('Alerts Page', () => {
 				expect(queryInput.value).toBe('url_hash_query');
 				
 				const fromInput = screen.getByLabelText('From') as HTMLInputElement;
-				expect(fromInput.value).toBe('2026-06-04T05:00');
+				expect(fromInput.value).toBe(toLocalISOString('2026-06-04T05:00'));
 
 				const toInput = screen.getByLabelText('To') as HTMLInputElement;
-				expect(toInput.value).toBe('2026-06-05T05:00');
+				expect(toInput.value).toBe(toLocalISOString('2026-06-05T05:00'));
 			});
 		});
 

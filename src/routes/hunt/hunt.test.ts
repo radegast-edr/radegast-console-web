@@ -3,6 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import { api } from '$lib/api';
 import { user } from '$lib/store';
 import { goto } from '$app/navigation';
+import { toLocalISOString } from '$lib/utils';
 import Hunt from './+page.svelte';
 
 vi.mock('$app/paths', () => ({
@@ -98,10 +99,10 @@ describe('Hunt URL Hash Shareable State', () => {
 			expect(queryInput.value).toBe('hunt_hash_query');
 			
 			const fromInput = screen.getByLabelText('Start Time') as HTMLInputElement;
-			expect(fromInput.value).toBe('2026-06-04T05:00');
+			expect(fromInput.value).toBe(toLocalISOString('2026-06-04T05:00'));
 
 			const toInput = screen.getByLabelText('End Time') as HTMLInputElement;
-			expect(toInput.value).toBe('2026-06-05T05:00');
+			expect(toInput.value).toBe(toLocalISOString('2026-06-05T05:00'));
 		});
 	});
 

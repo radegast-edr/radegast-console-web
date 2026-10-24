@@ -6,11 +6,9 @@ on:
 permissions:
   contents: read
 jobs:
-  # Required status check on main: Socket Fix PRs only auto-merge once this passes
   verify:
     runs-on: ubuntu-latest
     env:
-      # .env is git-ignored; $env/static/public needs this at check/build time (production value)
       PUBLIC_BACKEND_URL: /
     steps:
       - name: Checkout repo
@@ -28,15 +26,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # Report failing tests without blocking the merge; only lint and build gate it
       - name: Test
         id: test
-        continue-on-error: true
         run: npm test -- --reporter=default --reporter=github-actions
-
-      - name: Flag test failures
-        if: steps.test.outcome == 'failure'
-        run: echo "::warning::Tests failed (not blocking merge). See the Test step and annotations for details."
 
       - name: Build
         run: npm run build
