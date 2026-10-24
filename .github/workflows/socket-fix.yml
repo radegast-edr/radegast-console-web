@@ -9,7 +9,7 @@ on:
         description: Minimum advisory severity to fix
         type: choice
         options: [low, medium, high, critical]
-        default: high
+        default: low
 
 permissions:
   contents: write
