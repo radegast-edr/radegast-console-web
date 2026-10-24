@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api, type Team, type Group, type Device } from '$lib/api';
 	import { user } from '$lib/store';
@@ -21,50 +21,50 @@
 	let totalLogsCount = $state(0);
 	let alertsByGroup = $state<Record<string, number>>({});
 	let alertsByTeam = $state<Record<string, number>>({});
- 
- 	onMount(() => {
- 		const loadData = async () => {
- 			try {
- 				const me = await api.me();
- 				$user = me;
+
+	onMount(() => {
+		const loadData = async () => {
+			try {
+				const me = await api.me();
+				$user = me;
  				const data = await api.getDashboardData();
 
- 				const teamsRes = data.teams;
- 				const groupsRes = data.groups;
- 				const devicesRes = data.devices;
- 				const logsRes = data.logs;
+				const teamsRes = data.teams;
+				const groupsRes = data.groups;
+				const devicesRes = data.devices;
+				const logsRes = data.logs;
 
- 				teamCounts = data.team_device_counts;
- 				groupCounts = data.group_device_counts;
+				teamCounts = data.team_device_counts;
+				groupCounts = data.group_device_counts;
 
- 				const deviceToGroups = data.device_groups_map;
- 				const deviceToTeams = data.device_teams_map;
+				const deviceToGroups = data.device_groups_map;
+				const deviceToTeams = data.device_teams_map;
 
- 				const sevCounts: Record<string, number> = {
- 					critical: 0,
- 					high: 0,
- 					medium: 0,
- 					low: 0,
- 					informational: 0,
- 					unknown: 0
- 				};
+				const sevCounts: Record<string, number> = {
+					critical: 0,
+					high: 0,
+					medium: 0,
+					low: 0,
+					informational: 0,
+					unknown: 0
+				};
  				const resCounts: Record<string, number> = {
  					unread: 0,
  					read: 0,
  					true_positive: 0,
  					false_positive: 0
  				};
- 				const gAlerts: Record<string, number> = {};
- 				const tAlerts: Record<string, number> = {};
- 
- 				logsRes.forEach(log => {
- 					const sev = (log.severity || 'unknown').toLowerCase();
- 					if (sev in sevCounts) {
- 						sevCounts[sev]++;
- 					} else {
- 						sevCounts.unknown++;
- 					}
- 					const isBelowSeverity = log.severity && $user && mapSeverityToNumber(log.severity) < mapSeverityToNumber($user.notification_level);
+				const gAlerts: Record<string, number> = {};
+				const tAlerts: Record<string, number> = {};
+
+				logsRes.forEach((log) => {
+					const sev = (log.severity || 'unknown').toLowerCase();
+					if (sev in sevCounts) {
+						sevCounts[sev]++;
+					} else {
+						sevCounts.unknown++;
+					}
+					const isBelowSeverity = log.severity && $user && mapSeverityToNumber(log.severity) < mapSeverityToNumber($user.notification_level);
 					let res = 'unread';
 					if (isBelowSeverity) {
 						res = 'read';
@@ -86,73 +86,73 @@
 					if (res in resCounts) {
 						resCounts[res]++;
 					}
+
+					const gNames = deviceToGroups[log.device_id] || ['Unassigned'];
+					gNames.forEach((gName) => {
+						gAlerts[gName] = (gAlerts[gName] || 0) + 1;
+					});
+
+					const tNames = deviceToTeams[log.device_id] || ['Unassigned'];
+					tNames.forEach((tName) => {
+						tAlerts[tName] = (tAlerts[tName] || 0) + 1;
+					});
+				});
+				severityCounts = sevCounts;
+				resolutionCounts = resCounts;
+				alertsByGroup = gAlerts;
+				alertsByTeam = tAlerts;
+				totalLogsCount = logsRes.length;
  
- 					const gNames = deviceToGroups[log.device_id] || ['Unassigned'];
- 					gNames.forEach(gName => {
- 						gAlerts[gName] = (gAlerts[gName] || 0) + 1;
- 					});
- 
- 					const tNames = deviceToTeams[log.device_id] || ['Unassigned'];
- 					tNames.forEach(tName => {
- 						tAlerts[tName] = (tAlerts[tName] || 0) + 1;
- 					});
- 				});
- 				severityCounts = sevCounts;
- 				resolutionCounts = resCounts;
- 				alertsByGroup = gAlerts;
- 				alertsByTeam = tAlerts;
- 				totalLogsCount = logsRes.length;
- 
- 				teams = teamsRes;
+				teams = teamsRes;
 				groups = groupsRes;
 				devices = devicesRes;
 				unreadCount = resCounts.unread;
-				hasPrivateKey = !!(await getStoredPrivateKey(me.id));
-			} catch (err: any) {
+				hasPrivateKey = !!await getStoredPrivateKey(me.id);
+			} catch(err: any) {
 				if (err?.status >= 500 || err?.name === 'TypeError' || err?.message?.includes('NetworkError') || err?.message?.includes('Failed to fetch')) {
-					goto(`${base}/server-error`);
+					goto(resolve('/server-error'));
 				} else if (err?.status === 401 || err?.status === 403 || !err?.status) {
-					goto(`${base}/login`);
+					goto(resolve('/login'));
 				}
 			} finally {
 				isLoading = false;
 			}
- 		};
- 		loadData();
- 
- 		const interval = setInterval(refreshUnreadCount, 60000);
- 		return () => clearInterval(interval);
- 	});
- 
- 	async function refreshUnreadCount(): Promise<void> {
- 		try {
- 			const logsRes = await api.listLogs(1, 1000).catch(() => []);
- 			let unread = 0;
- 			logsRes.forEach(log => {
- 				const isBelowSeverity = log.severity && $user && mapSeverityToNumber(log.severity) < mapSeverityToNumber($user.notification_level);
- 				let res = 'unread';
- 				if (isBelowSeverity) {
- 					res = 'read';
- 				} else if (log.alert_resolution && log.alert_resolution !== 'none') {
- 					if ($user && !$user.extended_edr_enabled) {
- 						res = log.seen ? log.alert_resolution : 'unread';
- 					} else {
- 						res = log.alert_resolution;
- 					}
- 				} else {
- 					if ($user && !$user.extended_edr_enabled && log.seen) {
- 						res = 'read';
- 					}
- 				}
- 				if (res === 'unread') {
- 					unread++;
- 				}
- 			});
- 			unreadCount = unread;
+		};
+		loadData();
+
+		const interval = setInterval(refreshUnreadCount, 60000);
+		return () => clearInterval(interval);
+	});
+
+	async function refreshUnreadCount(): Promise<void> {
+		try {
+			const logsRes = await api.listLogs(1, 1000).catch(() => []);
+			let unread = 0;
+			logsRes.forEach((log) => {
+				const isBelowSeverity = log.severity && $user && mapSeverityToNumber(log.severity) < mapSeverityToNumber($user.notification_level);
+				let res = 'unread';
+				if (isBelowSeverity) {
+					res = 'read';
+				} else if (log.alert_resolution && log.alert_resolution !== 'none') {
+					if ($user && !$user.extended_edr_enabled) {
+						res = log.seen ? log.alert_resolution : 'unread';
+					} else {
+						res = log.alert_resolution;
+					}
+				} else {
+					if ($user && !$user.extended_edr_enabled && log.seen) {
+						res = 'read';
+					}
+				}
+				if (res === 'unread') {
+					unread++;
+				}
+			});
+			unreadCount = unread;
  		} catch (e) {
- 			console.error("Failed to auto-refresh unread alerts:", e);
- 		}
- 	}
+			console.error("Failed to auto-refresh unread alerts:", e);
+		}
+	}
 </script>
 
 <svelte:head>
@@ -170,8 +170,16 @@
 			Your private key is not stored in this browser. You won't be able to decrypt logs until
 			you restore it.
 		</p>
-		<a href="{base}/keys/recovery" class="btn btn-warning btn-sm me-2 fw-bold">Recover with Recovery Key</a>
-		<a href="{base}/keys/transfer" class="btn btn-outline-dark btn-sm fw-bold">Transfer from Another Browser</a>
+
+		<a
+			href={resolve('/keys/recovery')}
+			class="btn btn-warning btn-sm me-2 fw-bold"
+		>Recover with Recovery Key</a>
+
+		<a
+			href={resolve('/keys/transfer')}
+			class="btn btn-outline-dark btn-sm fw-bold"
+		>Transfer from Another Browser</a>
 	</div>
 {/if}
 
@@ -229,14 +237,25 @@
 				{:else}
 					<div class="d-flex flex-column gap-3">
 						{#each Object.entries(alertsByGroup).sort((a, b) => b[1] - a[1]) as [gName, count]}
-							{@const pct = totalLogsCount > 0 ? Math.round((count / totalLogsCount) * 100) : 0}
+							{@const pct = totalLogsCount > 0 ? Math.round(count / totalLogsCount * 100) : 0}
 							<div>
 								<div class="d-flex justify-content-between mb-1">
 									<span class="fw-semibold">{gName}</span>
 									<span class="text-muted small">{count} ({pct}%)</span>
 								</div>
-								<div class="progress" style="height: 8px; border-radius: 4px;">
-									<div class="progress-bar bg-primary" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+
+								<div
+									class="progress"
+									style="height: 8px; border-radius: 4px;"
+								>
+									<div
+										class="progress-bar bg-primary"
+										role="progressbar"
+										style="width: {pct}%;"
+										aria-valuenow={pct}
+										aria-valuemin="0"
+										aria-valuemax="100"
+									></div>
 								</div>
 							</div>
 						{/each}
@@ -257,14 +276,25 @@
 				{:else}
 					<div class="d-flex flex-column gap-3">
 						{#each Object.entries(alertsByTeam).sort((a, b) => b[1] - a[1]) as [tName, count]}
-							{@const pct = totalLogsCount > 0 ? Math.round((count / totalLogsCount) * 100) : 0}
+							{@const pct = totalLogsCount > 0 ? Math.round(count / totalLogsCount * 100) : 0}
 							<div>
 								<div class="d-flex justify-content-between mb-1">
 									<span class="fw-semibold">{tName}</span>
 									<span class="text-muted small">{count} ({pct}%)</span>
 								</div>
-								<div class="progress" style="height: 8px; border-radius: 4px;">
-									<div class="progress-bar bg-info" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+
+								<div
+									class="progress"
+									style="height: 8px; border-radius: 4px;"
+								>
+									<div
+										class="progress-bar bg-info"
+										role="progressbar"
+										style="width: {pct}%;"
+										aria-valuenow={pct}
+										aria-valuemin="0"
+										aria-valuemax="100"
+									></div>
 								</div>
 							</div>
 						{/each}
@@ -288,15 +318,32 @@
 					<div class="d-flex flex-column gap-3">
 						{#each ['critical', 'high', 'medium', 'low', 'informational', 'unknown'] as sev}
 							{@const count = severityCounts[sev] || 0}
-							{@const pct = totalLogsCount > 0 ? Math.round((count / totalLogsCount) * 100) : 0}
-							{@const barColor = sev === 'critical' || sev === 'high' ? 'bg-danger' : (sev === 'medium' ? 'bg-warning' : (sev === 'low' ? 'bg-primary' : 'bg-secondary'))}
+							{@const pct = totalLogsCount > 0 ? Math.round(count / totalLogsCount * 100) : 0}
+
+							{@const barColor = sev === 'critical' || sev === 'high'
+								? 'bg-danger'
+								: sev === 'medium'
+									? 'bg-warning'
+									: sev === 'low' ? 'bg-primary' : 'bg-secondary'}
+
 							<div>
 								<div class="d-flex justify-content-between mb-1">
 									<span class="fw-semibold text-capitalize">{sev}</span>
 									<span class="text-muted small">{count} ({pct}%)</span>
 								</div>
-								<div class="progress" style="height: 8px; border-radius: 4px;">
-									<div class="progress-bar {barColor}" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+
+								<div
+									class="progress"
+									style="height: 8px; border-radius: 4px;"
+								>
+									<div
+										class="progress-bar {barColor}"
+										role="progressbar"
+										style="width: {pct}%;"
+										aria-valuenow={pct}
+										aria-valuemin="0"
+										aria-valuemax="100"
+									></div>
 								</div>
 							</div>
 						{/each}
@@ -324,14 +371,25 @@
 								{ key: 'false_positive', label: 'False Positive', color: 'bg-success' }
 							] as res}
 								{@const count = resolutionCounts[res.key] || 0}
-								{@const pct = totalLogsCount > 0 ? Math.round((count / totalLogsCount) * 100) : 0}
+								{@const pct = totalLogsCount > 0 ? Math.round(count / totalLogsCount * 100) : 0}
 								<div>
 									<div class="d-flex justify-content-between mb-1">
 										<span class="fw-semibold">{res.label}</span>
 										<span class="text-muted small">{count} ({pct}%)</span>
 									</div>
-									<div class="progress" style="height: 8px; border-radius: 4px;">
-										<div class="progress-bar {res.color}" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+
+									<div
+										class="progress"
+										style="height: 8px; border-radius: 4px;"
+									>
+										<div
+											class="progress-bar {res.color}"
+											role="progressbar"
+											style="width: {pct}%;"
+											aria-valuenow={pct}
+											aria-valuemin="0"
+											aria-valuemax="100"
+										></div>
 									</div>
 								</div>
 							{/each}
@@ -356,14 +414,25 @@
 					<div class="d-flex flex-column gap-3">
 						{#each groups as g}
 							{@const count = groupCounts[g.id] || 0}
-							{@const pct = devices.length > 0 ? Math.round((count / devices.length) * 100) : 0}
+							{@const pct = devices.length > 0 ? Math.round(count / devices.length * 100) : 0}
 							<div>
 								<div class="d-flex justify-content-between mb-1">
 									<span class="fw-semibold">{g.name}</span>
-									<span class="text-muted small">{count} ({pct}%) &bull; {formatBytes(g.total_space_used)}</span>
+									<span class="text-muted small">{count} ({pct}%) • {formatBytes(g.total_space_used)}</span>
 								</div>
-								<div class="progress" style="height: 8px; border-radius: 4px;">
-									<div class="progress-bar bg-primary" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+
+								<div
+									class="progress"
+									style="height: 8px; border-radius: 4px;"
+								>
+									<div
+										class="progress-bar bg-primary"
+										role="progressbar"
+										style="width: {pct}%;"
+										aria-valuenow={pct}
+										aria-valuemin="0"
+										aria-valuemax="100"
+									></div>
 								</div>
 							</div>
 						{/each}
@@ -386,14 +455,30 @@
 						{#each teams as t}
 							{@const count = teamCounts[t.id] || 0}
 							{@const maxCount = devices.length || 1}
-							{@const pct = Math.round((count / maxCount) * 100)}
+							{@const pct = Math.round(count / maxCount * 100)}
 							<div>
 								<div class="d-flex justify-content-between mb-1">
 									<span class="fw-semibold">{t.name}</span>
-									<span class="text-muted small">{count} devices{#if t.permission_admin === 'write'} &bull; {formatBytes(t.total_space_used)}{/if}</span>
+
+									<span class="text-muted small">
+										{count} devices{#if t.permission_admin === 'write'}
+											• {formatBytes(t.total_space_used)}
+										{/if}
+									</span>
 								</div>
-								<div class="progress" style="height: 8px; border-radius: 4px;">
-									<div class="progress-bar bg-info" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+
+								<div
+									class="progress"
+									style="height: 8px; border-radius: 4px;"
+								>
+									<div
+										class="progress-bar bg-info"
+										role="progressbar"
+										style="width: {pct}%;"
+										aria-valuenow={pct}
+										aria-valuemin="0"
+										aria-valuemax="100"
+									></div>
 								</div>
 							</div>
 						{/each}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
@@ -65,10 +65,8 @@
 		<h2 class="mb-4">Key Recovery</h2>
 
 		{#if success}
-			<div class="alert alert-success">
-				Your private key has been recovered and stored in this browser. You can now decrypt logs.
-			</div>
-			<a href="{base}/" class="btn btn-primary">Go to Dashboard</a>
+			<div class="alert alert-success">Your private key has been recovered and stored in this browser. You can now decrypt logs.</div>
+			<a href={resolve('/')} class="btn btn-primary">Go to Dashboard</a>
 		{:else}
 			<p class="text-muted">
 				Enter the recovery AES secret that was shown when you first set up your account.

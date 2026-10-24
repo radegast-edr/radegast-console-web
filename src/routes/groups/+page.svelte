@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api, type Group, type Team } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
@@ -88,17 +88,32 @@
 		<tbody>
 			{#each groups as group}
 				<tr>
-					<td><a href="{base}/groups/{group.id}">{group.name}</a></td>
+					<td><a href={resolve(`/groups/${group.id}`)}>{group.name}</a></td>
 					<td>{formatBytes(group.total_space_used)}</td>
-					<td><a href="{base}/groups/{group.id}" class="btn btn-sm btn-outline-primary">Manage</a></td>
+
+					<td>
+						<a
+							href={resolve(`/groups/${group.id}`)}
+							class="btn btn-sm btn-outline-primary"
+						>Manage</a>
+					</td>
 				</tr>
 			{/each}
 		</tbody>
 	</table>
 {/if}
 
-<Modal show={showCreate} title="Add Device Group" onClose={() => (showCreate = false)}>
-	<form onsubmit={(e) => { e.preventDefault(); createGroup(); }}>
+<Modal
+	show={showCreate}
+	title="Add Device Group"
+	onClose={() => showCreate = false}
+>
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			createGroup();
+		}}
+	>
 		<div class="mb-3">
 			<label for="groupName" class="form-label">Group Name</label>
 			<input

@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import Spinner from '$lib/components/Spinner.svelte';
 
 	let status = $state<'loading' | 'success' | 'error'>('loading');
 	let errorMessage = $state('');
 
 	onMount(async () => {
-		const token = $page.url.searchParams.get('token');
+		const token = page.url.searchParams.get('token');
 		if (!token) {
 			status = 'error';
 			errorMessage = 'No invitation token found in the link. Please check your email and try again.';
@@ -41,13 +41,17 @@
 			<div class="mb-4" style="font-size: 4rem;">🎉</div>
 			<h2 class="fw-bold mb-2">Invitation Accepted</h2>
 			<p class="text-muted mb-4">{errorMessage || 'You have successfully joined the team.'}</p>
-			<a href="{base}/" class="btn btn-primary px-5">Go to Dashboard</a>
+			<a href={resolve('/')} class="btn btn-primary px-5">Go to Dashboard</a>
 
 		{:else}
 			<div class="mb-4" style="font-size: 4rem;">❌</div>
 			<h2 class="fw-bold mb-2">Invitation Failed</h2>
 			<p class="text-muted mb-4">{errorMessage}</p>
-			<a href="{base}/" class="btn btn-outline-primary px-5">Go to Dashboard</a>
+
+			<a
+				href={resolve('/')}
+				class="btn btn-outline-primary px-5"
+			>Go to Dashboard</a>
 		{/if}
 	</div>
 </div>

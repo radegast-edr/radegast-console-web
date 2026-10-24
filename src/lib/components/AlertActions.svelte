@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 
 	let {
 		triggeredRule,
@@ -39,7 +39,7 @@
 				</button>
 				{#if triggeredRule.pack_id}
 					<a
-						href="{base}/packs/{triggeredRule.pack_id}"
+						href={resolve(`/packs/${triggeredRule.pack_id}`)}
 						class="btn btn-sm btn-outline-primary d-inline-flex align-items-center"
 						title="View detection pack details"
 					>
@@ -57,7 +57,7 @@
 				</button>
 			{/if}
 			{#if onCreateExclusion && hasPackWritePermission}
-				{#if !extendedEdrEnabled || (extendedEdrEnabled && resolution === 'false_positive')}
+				{#if !extendedEdrEnabled || extendedEdrEnabled && resolution === 'false_positive'}
 					<button
 						class="btn btn-sm btn-outline-secondary"
 						onclick={onCreateExclusion}

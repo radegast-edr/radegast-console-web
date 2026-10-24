@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import Icon from '@iconify/svelte';
 	import {
 		getSeverityClass,
@@ -13,7 +13,7 @@
 		getIntegrityBadgeClass
 	} from '$lib/alertHelpers';
 
-	let { alert, meta } = $props<{
+	interface Props {
 		alert: Record<string, unknown>;
 		meta: {
 			alert_id: number;
@@ -26,7 +26,9 @@
 			severity_number?: number;
 			excluded_by?: { id: number; group: { id: number; name: string } } | null;
 		};
-	}>();
+	}
+
+	let { alert, meta }: Props = $props();
 
 	let severity = $derived(meta.severity ?? 'unknown');
 	let severityClass = $derived(getSeverityClass(severity));
@@ -93,7 +95,7 @@
 				</span>
 				{#if meta.excluded_by}
 					<a
-						href="{base}/groups/{meta.excluded_by.group.id}"
+						href={resolve(`/groups/${meta.excluded_by.group.id}`)}
 						class="badge bg-info text-white text-decoration-none"
 					>
 						Excluded

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
-import { readable } from 'svelte/store';
 import { api } from '$lib/api';
 import { user } from '$lib/store';
 
@@ -37,19 +36,14 @@ import { ApiError } from '$lib/api';
 
 // Mock SvelteKit stores & navigation
 vi.mock('$app/paths', () => ({
-	base: ''
+	base: '',
+	resolve: (path: string) => (!path ? '' : path.startsWith('/') ? path : '/' + path),
+	asset: (path: string) => path
 }));
 
 vi.mock('$app/navigation', () => ({
 	goto: vi.fn(),
 	beforeNavigate: vi.fn()
-}));
-
-vi.mock('$app/stores', () => ({
-	page: readable({
-		url: new URL('http://localhost/?token=test_token'),
-		params: { id: '1', version: '1.0.0' }
-	})
 }));
 
 vi.mock('$app/state', () => ({
@@ -391,7 +385,7 @@ describe('Route Pages Load Verification', () => {
 		await fireEvent.click(devicesTab);
 		expect(goto).toHaveBeenCalledWith(
 			expect.stringContaining('tab=devices'),
-			expect.objectContaining({ replaceState: true })
+			expect.objectContaining({ replace: true })
 		);
 		await waitFor(() => {
 			expect(screen.getByText('Total database space used:')).toBeInTheDocument();

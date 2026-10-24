@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import Icon from '@iconify/svelte';
 </script>
@@ -19,7 +19,9 @@
 				{/if}
 			</div>
 			<h2 class="mb-3 fw-bold">
-				{page.status} - {page.status === 404 ? 'Page Not Found' : (page.status >= 500 ? 'Server Error' : 'Error')}
+				{page.status} - {page.status === 404
+					? 'Page Not Found'
+					: page.status >= 500 ? 'Server Error' : 'Error'}
 			</h2>
 			<p class="text-body-secondary mb-4">
 				{page.error?.message || (page.status === 404 ? 'The requested page could not be found.' : 'An unexpected error occurred.')}
@@ -29,10 +31,10 @@
 					<Icon icon="lucide:refresh-cw" />
 					<span>Try Again</span>
 				</button>
-				<a href="{base}/" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
-					<Icon icon="lucide:home" />
-					<span>Dashboard</span>
-				</a>
+				<a
+					href={resolve('/')}
+					class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
+				><Icon icon="lucide:home" /><span>Dashboard</span></a>
 			</div>
 		</div>
 	</div>

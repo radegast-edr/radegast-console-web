@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { user, flash } from '$lib/store';
 	import { api } from '$lib/api';
 	import { goto } from '$app/navigation';
@@ -30,7 +30,7 @@
 			console.warn('Logout request failed or user already logged out:', e);
 		}
 		$user = null;
-		goto(`${base}/login`);
+		goto(resolve('/login'));
 	}
 
 	function cycleTheme() {
@@ -47,9 +47,9 @@
 
 	function isActive(path: string) {
 		const current = page.url.pathname;
-		if (path === '/' && current === base + '/') return true;
-		if (path !== '/' && current.startsWith(base + path)) return true;
-		return false;
+		const target = resolve(path);
+		if (path === '/') return current === target || current === target.replace(/\/$/, '');
+		return current.startsWith(target);
 	}
 	let collapsed = $state(false);
 
@@ -88,13 +88,19 @@
 	}
 </script>
 
-<svelte:window onclick={closeDropdown} />
+<svelte:window onclick={closeDropdown}></svelte:window>
 
 
 {#if $user}
 	<!-- Mobile top bar -->
-	<div class="d-md-none d-flex align-items-center justify-content-between bg-body-tertiary border-bottom p-2 w-100 sticky-top z-3">
-		<a href="{base}/" class="link-body-emphasis text-decoration-none text-truncate logo ms-2">
+
+	<div
+		class="d-md-none d-flex align-items-center justify-content-between bg-body-tertiary border-bottom p-2 w-100 sticky-top z-3"
+	>
+		<a
+			href={resolve('/')}
+			class="link-body-emphasis text-decoration-none text-truncate logo ms-2"
+		>
 			<span class="logo-parenthesis">[</span>
 			<span class="fs-5 fw-bold">radegast</span>
 			<span class="logo-parenthesis">]</span>
@@ -111,91 +117,148 @@
 		<div class="d-md-none" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1040;" onclick={() => mobileOpen = false}></div>
 	{/if}
 
-	<div class="sidebar d-flex flex-column flex-shrink-0 p-2 bg-body-tertiary border-end {mobileOpen ? 'mobile-open' : ''}" style="--sidebar-width: {collapsed ? '60px' : '180px'};" data-tour="sidebar">
-		<div class="d-none d-md-flex align-items-center justify-content-center mb-3 px-1 mt-2">
-			<a href="{base}/" class="link-body-emphasis text-decoration-none text-truncate logo">
+	<div
+		class="sidebar d-flex flex-column flex-shrink-0 p-2 bg-body-tertiary border-end {mobileOpen ? 'mobile-open' : ''}"
+		style="--sidebar-width: {collapsed ? '60px' : '180px'};"
+		data-tour="sidebar"
+	>
+		<div
+			class="d-none d-md-flex align-items-center justify-content-center mb-3 px-1 mt-2"
+		>
+			<a
+				href={resolve('/')}
+				class="link-body-emphasis text-decoration-none text-truncate logo"
+			>
 				<span class="logo-parenthesis">[</span>
 				<span class="fs-5 fw-bold">{collapsed ? 'r' : 'radegast'}</span>
 				<span class="logo-parenthesis">]</span>
 			</a>
 		</div>
-		<hr class="mt-0 d-none d-md-block">
-		
+		<hr class="mt-0 d-none d-md-block" />
+
 		<ul class="nav nav-pills flex-column mb-auto">
 			<li class="nav-item">
-				<a href="{base}/" class="nav-link {isActive('/') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Dashboard" data-tour="nav-dashboard">
+				<a
+					href={resolve('/')}
+					class="nav-link {isActive('/') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}"
+					title="Dashboard"
+					data-tour="nav-dashboard"
+				>
 					<LayoutDashboard style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Dashboard</span>{/if}
 				</a>
 			</li>
 			<li>
-				<a href="{base}/teams" class="nav-link {isActive('/teams') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Teams" data-tour="nav-teams">
+				<a
+					href={resolve('/teams')}
+					class="nav-link {isActive('/teams') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}"
+					title="Teams"
+					data-tour="nav-teams"
+				>
 					<Users style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Teams</span>{/if}
 				</a>
 			</li>
 			<li>
-				<a href="{base}/groups" class="nav-link {isActive('/groups') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Groups" data-tour="nav-groups">
+				<a
+					href={resolve('/groups')}
+					class="nav-link {isActive('/groups') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}"
+					title="Groups"
+					data-tour="nav-groups"
+				>
 					<Server style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Groups</span>{/if}
 				</a>
 			</li>
 			<li>
-				<a href="{base}/devices" class="nav-link {isActive('/devices') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Devices" data-tour="nav-devices">
+				<a
+					href={resolve('/devices')}
+					class="nav-link {isActive('/devices') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}"
+					title="Devices"
+					data-tour="nav-devices"
+				>
 					<Laptop style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Devices</span>{/if}
 				</a>
 			</li>
 			<li>
-				<a href="{base}/packs" class="nav-link {isActive('/packs') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Packs" data-tour="nav-packs">
+				<a
+					href={resolve('/packs')}
+					class="nav-link {isActive('/packs') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}"
+					title="Packs"
+					data-tour="nav-packs"
+				>
 					<Package style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Packs</span>{/if}
 				</a>
 			</li>
 			<li>
-				<a href="{base}/alerts" class="nav-link {isActive('/alerts') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Alerts" data-tour="nav-alerts">
+				<a
+					href={resolve('/alerts')}
+					class="nav-link {isActive('/alerts') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}"
+					title="Alerts"
+					data-tour="nav-alerts"
+				>
 					<Bell style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Alerts</span>{/if}
 				</a>
 			</li>
 			{#if $user.extended_edr_enabled}
 				<li>
-					<a href="{base}/hunt" class="nav-link {isActive('/hunt') ? 'active text-bg-warning' : 'link-body-emphasis fw-bold text-warning'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Hunt Mode">
+					<a
+						href={resolve('/hunt')}
+						class="nav-link {isActive('/hunt')
+							? 'active text-bg-warning'
+							: 'link-body-emphasis fw-bold text-warning'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}"
+						title="Hunt Mode"
+					>
 						<Crosshair style="width: 20px; height: 20px;" />
 						{#if !collapsed}<span class="text-truncate">Hunt Mode</span>{/if}
 					</a>
 				</li>
 			{/if}
- 
- 			{#if $user.role === 'admin'}
-				<hr>
+
+			{#if $user.role === 'admin'}
+				<hr />
 				{#if !collapsed}
 					<h6 class="sidebar-heading d-flex justify-content-between align-items-center px-2 mt-1 mb-1 text-muted text-uppercase text-truncate" style="font-size: 0.7rem; letter-spacing: 0.05em;">
 						<span>Admin</span>
 					</h6>
 				{/if}
 				<li>
-					<a href="{base}/admin" class="nav-link {isActive('/admin') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Admin">
+					<a
+						href={resolve('/admin')}
+						class="nav-link {isActive('/admin') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}"
+						title="Admin"
+					>
 						<Shield style="width: 20px; height: 20px;" />
 						{#if !collapsed}<span class="text-truncate">Admin</span>{/if}
 					</a>
 				</li>
 				<li>
-					<a href="{base}/releases" class="nav-link {isActive('/releases') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="Releases">
+					<a
+						href={resolve('/releases')}
+						class="nav-link {isActive('/releases') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}"
+						title="Releases"
+					>
 						<Archive style="width: 20px; height: 20px;" />
 						{#if !collapsed}<span class="text-truncate">Releases</span>{/if}
 					</a>
 				</li>
 			{/if}
 			{#if $user.api_keys_enabled}
-				<hr>
+				<hr />
 				{#if !collapsed}
 					<h6 class="sidebar-heading d-flex justify-content-between align-items-center px-2 mt-1 mb-1 text-muted text-uppercase text-truncate" style="font-size: 0.7rem; letter-spacing: 0.05em;">
 						<span>Development</span>
 					</h6>
 				{/if}
 				<li>
-					<a href="{base}/apikeys" class="nav-link {isActive('/apikeys') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}" title="API Keys">
+					<a
+						href={resolve('/apikeys')}
+						class="nav-link {isActive('/apikeys') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}"
+						title="API Keys"
+					>
 						<KeyIcon style="width: 20px; height: 20px;" />
 						{#if !collapsed}<span class="text-truncate">API Keys</span>{/if}
 					</a>
@@ -212,14 +275,14 @@
 				{/if}
 			</button>
 		</div>
-		<hr class="mt-0">
+		<hr class="mt-0" />
 		<div class="dropdown">
 			<button
 				type="button"
 				class="btn btn-link p-0 border-0 d-flex align-items-center link-body-emphasis text-decoration-none {collapsed ? 'justify-content-center' : 'dropdown-toggle'} {dropdownOpen ? 'show' : ''}"
 				aria-expanded={dropdownOpen}
 				onclick={toggleDropdown}
-				title="{$user.email}"
+				title={$user.email}
 			>
 				<div style="width: 32px; height: 32px; border-radius: 50%; background-color: var(--bs-primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; {collapsed ? '' : 'margin-right: 10px;'} flex-shrink-0">
 					{$user.email.charAt(0).toUpperCase()}
@@ -234,15 +297,32 @@
 				class="dropdown-menu text-small shadow custom-dropdown-menu {collapsed ? 'collapsed' : 'expanded'} {dropdownOpen ? 'show' : ''}"
 				onclick={(e) => e.stopPropagation()}
 			>
-				<li><a class="dropdown-item" href="{base}/settings" onclick={closeDropdown} data-tour="nav-settings">Settings</a></li>
+				<li>
+					<a
+						class="dropdown-item"
+						href={resolve('/settings')}
+						onclick={closeDropdown}
+						data-tour="nav-settings"
+					>Settings</a>
+				</li>
 
 				<li>
 					<button class="dropdown-item d-flex align-items-center justify-content-between" onclick={cycleTheme}>
 						Theme: <span class="badge text-bg-secondary text-capitalize">{$theme}</span>
 					</button>
 				</li>
-				<li><hr class="dropdown-divider"></li>
-				<li><button class="dropdown-item text-danger" onclick={() => { closeDropdown(); logout(); }}>Sign out</button></li>
+
+				<li><hr class="dropdown-divider" /></li>
+
+				<li>
+					<button
+						class="dropdown-item text-danger"
+						onclick={() => {
+							closeDropdown();
+							logout();
+						}}
+					>Sign out</button>
+				</li>
 			</ul>
 		</div>
 	</div>
@@ -250,15 +330,29 @@
 	<!-- Top navbar for public routes (login/register) -->
 	<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom w-100">
 		<div class="container-fluid px-4">
-			<a class="navbar-brand link-body-emphasis text-decoration-none text-truncate logo" href="{base}/">
+			<a
+				class="navbar-brand link-body-emphasis text-decoration-none text-truncate logo"
+				href={resolve('/')}
+			>
 				<span class="logo-parenthesis">[</span>
 				<span class="fs-5 fw-bold">radegast</span>
 				<span class="logo-parenthesis">]</span>
 			</a>
 			<div class="ms-auto d-flex gap-2">
-				<button class="btn btn-sm btn-outline-secondary" onclick={cycleTheme}>Theme: {$theme}</button>
-				<a class="btn btn-sm btn-outline-primary" href="{base}/login">Login</a>
-				<a class="btn btn-sm btn-primary" href="{base}/register">Register</a>
+				<button
+					class="btn btn-sm btn-outline-secondary"
+					onclick={cycleTheme}
+				>Theme: {$theme}</button>
+
+				<a
+					class="btn btn-sm btn-outline-primary"
+					href={resolve('/login')}
+				>Login</a>
+
+				<a
+					class="btn btn-sm btn-primary"
+					href={resolve('/register')}
+				>Register</a>
 			</div>
 		</div>
 	</nav>
@@ -268,7 +362,9 @@
 	<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 2050;">
 		<div
 			transition:fly={{ y: 50, duration: 300 }}
-			class="toast align-items-center text-bg-{$flash.type === 'danger' ? 'danger' : ($flash.type === 'success' ? 'success' : $flash.type)} border-0 show shadow-lg"
+			class="toast align-items-center text-bg-{$flash.type === 'danger'
+				? 'danger'
+				: $flash.type === 'success' ? 'success' : $flash.type} border-0 show shadow-lg"
 			role="alert"
 			aria-live="assertive"
 			aria-atomic="true"
@@ -287,7 +383,7 @@
 					type="button"
 					class="btn-close btn-close-white me-3 m-auto"
 					aria-label="Close"
-					onclick={() => ($flash = null)}
+					onclick={() => $flash = null}
 				></button>
 			</div>
 		</div>

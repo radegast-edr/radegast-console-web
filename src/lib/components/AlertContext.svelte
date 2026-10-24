@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Icon from '@iconify/svelte';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import {
 		getOsIcon,
 		getProviderName,
@@ -9,7 +9,7 @@
 		getAlertArray
 	} from '$lib/alertHelpers';
 
-	let { alert, meta, deviceGroups = [], userGroups = [], triggeredRule = null } = $props<{
+	interface Props {
 		alert: Record<string, unknown>;
 		meta: {
 			alert_id: number;
@@ -24,7 +24,9 @@
 		deviceGroups?: Array<{ id: number; name: string }>;
 		userGroups?: Array<{ id: number; name: string }>;
 		triggeredRule?: { rule_type: string; rule_id: string; rule_content: string; pack_id?: number | null; pack_name?: string | null } | null;
-	}>();
+	}
+
+	let { alert, meta, deviceGroups = [], userGroups = [], triggeredRule = null }: Props = $props();
 
 	let userName = $derived(getAlertField(alert, 'user.name'));
 	let relatedUsers = $derived(getAlertArray(alert, 'related.user'));
@@ -78,7 +80,7 @@
 								{@const isMember = userGroups.some((ug: { id: number }) => ug.id === group.id)}
 								{#if isMember}
 									<a
-										href="{base}/groups/{group.id}"
+										href={resolve(`/groups/${group.id}`)}
 										class="badge bg-primary-subtle text-primary border border-primary-subtle text-decoration-none"
 										style="font-size: 0.75rem;"
 									>
@@ -122,7 +124,7 @@
 						<div class="small text-body-secondary fw-bold d-flex align-items-center gap-1"><Icon icon="lucide:package" /> Detection Pack</div>
 						<div class="fw-semibold">
 							<a
-								href="{base}/packs/{triggeredRule.pack_id}"
+								href={resolve(`/packs/${triggeredRule.pack_id}`)}
 								class="text-primary text-decoration-none d-inline-flex align-items-center gap-1"
 							>
 								{triggeredRule.pack_name}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import Icon from '@iconify/svelte';
 
@@ -37,13 +37,16 @@
 					<Icon icon="lucide:refresh-cw" />
 					<span>Try Again</span>
 				</button>
-				<a href="{base}/" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
-					<Icon icon="lucide:home" />
-					<span>Dashboard</span>
-				</a>
-				<a href="{base}/login" class="btn btn-link text-decoration-none d-inline-flex align-items-center gap-1">
-					<span>Go to Login</span>
-				</a>
+
+				<a
+					href={resolve('/')}
+					class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
+				><Icon icon="lucide:home" /><span>Dashboard</span></a>
+
+				<a
+					href={resolve('/login')}
+					class="btn btn-link text-decoration-none d-inline-flex align-items-center gap-1"
+				><span>Go to Login</span></a>
 			</div>
 		</div>
 	</div>

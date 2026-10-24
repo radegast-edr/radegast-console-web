@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { askConfirm } from '$lib/confirm';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { api, type DeviceDetail, type Group } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
@@ -84,8 +84,8 @@
 		try {
 			const g = await api.getGroup(Number(groupId));
 			const currentPubKeys = await api.getGroupRecipientPublicKeys(g.id);
-			const updatedPubKeys = dev.encryption_public_key 
-				? currentPubKeys.filter(k => k !== dev.encryption_public_key)
+			const updatedPubKeys = dev.encryption_public_key
+				? currentPubKeys.filter((k) => k !== dev.encryption_public_key)
 				: currentPubKeys;
 			let reencryptedKey = '';
 			if (g.private_key) {
@@ -142,15 +142,28 @@
 
 {#if device}
 	<div class="mb-4">
-		<div class="d-flex justify-content-between align-items-center mb-2">
-			<a href="{base}/devices" class="btn btn-outline-secondary btn-sm">← Back to Devices</a>
-			<button class="btn btn-warning btn-sm" onclick={confirmReinstall}>Reinstall Device</button>
+		<div
+			class="d-flex justify-content-between align-items-center mb-2"
+		>
+			<a
+				href={resolve('/devices')}
+				class="btn btn-outline-secondary btn-sm"
+			>← Back to Devices</a>
+
+			<button
+				class="btn btn-warning btn-sm"
+				onclick={confirmReinstall}
+			>Reinstall Device</button>
 		</div>
 		<div class="d-flex align-items-center gap-2 mt-1">
 			{#if editingName}
 				<input class="form-control form-control-lg w-auto" bind:value={editName} />
 				<button class="btn btn-success btn-sm" onclick={saveName}>Save</button>
-				<button class="btn btn-outline-secondary btn-sm" onclick={() => (editingName = false)}>Cancel</button>
+
+				<button
+					class="btn btn-outline-secondary btn-sm"
+					onclick={() => editingName = false}
+				>Cancel</button>
 			{:else}
 				<h2 class="mb-0">{device.name}</h2>
 				<button class="btn btn-outline-secondary btn-sm" onclick={startRename} title="Rename device">✎</button>
@@ -190,7 +203,7 @@
 		token={newDeviceToken}
 		deviceName={device.name}
 		isReinstall={true}
-		onDismiss={() => (newDeviceToken = '')}
+		onDismiss={() => newDeviceToken = ''}
 	/>
 
 	<div class="card mb-4">
@@ -209,7 +222,7 @@
 					<tbody>
 						{#each device.groups as group}
 							<tr>
-								<td><a href="{base}/groups/{group.id}">{group.name}</a></td>
+								<td><a href={resolve(`/groups/${group.id}`)}>{group.name}</a></td>
 								<td>
 									<button
 										class="btn btn-sm btn-outline-danger"

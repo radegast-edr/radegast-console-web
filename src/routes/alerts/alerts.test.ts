@@ -8,7 +8,9 @@ import { toLocalISOString } from '$lib/utils';
 import Alerts from './+page.svelte';
 
 vi.mock('$app/paths', () => ({
-	base: ''
+	base: '',
+	resolve: (path: string) => (!path ? '' : path.startsWith('/') ? path : '/' + path),
+	asset: (path: string) => path
 }));
 
 vi.mock('$lib/confirm', () => ({
@@ -553,7 +555,7 @@ describe('Alerts Page', () => {
 			await waitFor(() => {
 				expect(goto).toHaveBeenCalledWith(
 					expect.stringContaining('q=new_filter_query'),
-					expect.objectContaining({ replaceState: true })
+					expect.objectContaining({ replace: true })
 				);
 			});
 		});

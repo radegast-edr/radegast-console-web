@@ -1,11 +1,20 @@
 import { sveltekit } from '@sveltejs/kit/vite';
+import adapter from '@sveltejs/adapter-static';
 import { defineConfig } from 'vitest/config';
 import { svelteTesting } from '@testing-library/svelte/vite';
 import Icons from 'unplugin-icons/vite';
+import path from 'node:path';
 
 export default defineConfig({
 	plugins: [
-		sveltekit(),
+		sveltekit({
+			adapter: adapter({
+				fallback: 'index.html'
+			}),
+			paths: {
+				base: '/ui'
+			}
+		}),
 		svelteTesting(),
 		Icons({
 			compiler: 'svelte'
@@ -22,7 +31,10 @@ export default defineConfig({
 		}
 	},
 	resolve: {
-		conditions: ['browser']
+		conditions: ['browser'],
+		alias: {
+			$lib: path.resolve('./src/lib')
+		}
 	},
 	test: {
 		environment: 'jsdom',

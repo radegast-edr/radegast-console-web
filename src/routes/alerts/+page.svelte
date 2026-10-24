@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { askConfirm } from '$lib/confirm';
 	import { onMount, onDestroy } from 'svelte';
@@ -106,7 +106,7 @@
 			selectedLog = null;
 		} else if (logManager) {
 			const focusedId = Number(focused);
-			const matchedLog = logManager.logs.find(l => l.id === focusedId);
+			const matchedLog = logManager.logs.find((l) => l.id === focusedId);
 			if (matchedLog) {
 				selectedLog = matchedLog;
 			}
@@ -136,7 +136,7 @@
 					injectMockAlert: (mockLog: Log, decrypted: any, device: any) => {
 						if (!logManager) return;
 						logManager.deviceMap.set(device.id, device);
-						if (!logManager.logs.some(l => l.id === mockLog.id)) {
+						if (!logManager.logs.some((l) => l.id === mockLog.id)) {
 							logManager.logs = [mockLog, ...logManager.logs];
 						}
 						logManager.decryptionState[mockLog.id] = {
@@ -147,7 +147,7 @@
 					},
 					cleanupMockAlert: (mockLogId: number) => {
 						if (!logManager) return;
-						logManager.logs = logManager.logs.filter(l => l.id !== mockLogId);
+						logManager.logs = logManager.logs.filter((l) => l.id !== mockLogId);
 						delete logManager.decryptionState[mockLogId];
 						if (selectedLog?.id === mockLogId) {
 							selectedLog = null;
@@ -167,7 +167,7 @@
 			const initialFocusedAlert = hashParams.get('focused_alert');
 			if (initialFocusedAlert && logManager) {
 				const focusedId = Number(initialFocusedAlert);
-				const matchedLog = logManager.logs.find(l => l.id === focusedId);
+				const matchedLog = logManager.logs.find((l) => l.id === focusedId);
 				if (matchedLog) {
 					selectLog(matchedLog);
 				}
@@ -210,9 +210,8 @@
 		const newHash = hash ? `#${hash}` : '';
 		if (window.location.hash !== newHash) {
 			goto(window.location.pathname + window.location.search + newHash, {
-				replaceState: true,
-				noScroll: true,
-				keepFocus: true
+				replace: true,
+				reset: false
 			});
 		}
 	});
@@ -226,11 +225,11 @@
 		selectedDeviceDetails = null;
 		const devicePromise = api.getDevice(log.device_id);
 		if (devicePromise && typeof devicePromise.then === 'function') {
-			devicePromise.then(details => {
+			devicePromise.then((details) => {
 				if (selectedLog?.id === log.id) {
 					selectedDeviceDetails = details;
 				}
-			}).catch(e => {
+			}).catch((e) => {
 				console.error("Failed to load device details for groups", e);
 			});
 		}
@@ -279,10 +278,15 @@
 					params: { path: { log_id: selectedLog.id } }
 				});
 				if (keysRes.error) {
-					const detail = typeof keysRes.error.detail === 'string' ? keysRes.error.detail : (keysRes.error.detail ? JSON.stringify(keysRes.error.detail) : 'Unknown error');
+					const detail = typeof keysRes.error.detail === 'string'
+						? keysRes.error.detail
+						: keysRes.error.detail
+							? JSON.stringify(keysRes.error.detail)
+							: 'Unknown error';
+
 					throw new Error("Failed to fetch encryption keys: " + detail);
 				}
-				const keys = (keysRes.data as any) || [];
+				const keys = keysRes.data as any || [];
 				const activeKeys = keys.filter((k: any) => k.key_type !== 'recovery').map((k: any) => k.public_key);
 				if (activeKeys.length === 0) {
 					throw new Error("No active public keys found to encrypt the triage note.");
@@ -296,7 +300,10 @@
 			});
 
 			if (res.error) {
-				const detail = typeof res.error.detail === 'string' ? res.error.detail : (res.error.detail ? JSON.stringify(res.error.detail) : 'Unknown error');
+				const detail = typeof res.error.detail === 'string'
+					? res.error.detail
+					: res.error.detail ? JSON.stringify(res.error.detail) : 'Unknown error';
+
 				throw new Error(detail);
 			}
 
@@ -325,7 +332,7 @@
 		const isEdr = $user?.extended_edr_enabled;
 		if (isEdr) {
 			// Only mark alerts that don't yet have a resolution
-			const unresolvedLogs = logManager.filteredLogs.filter(log => !log.alert_resolution || log.alert_resolution === "none");
+			const unresolvedLogs = logManager.filteredLogs.filter((log) => !log.alert_resolution || log.alert_resolution === "none");
 			const count = unresolvedLogs.length;
 			if (count === 0) return;
 
@@ -336,16 +343,19 @@
 				logManager.loading = true;
 				await Promise.all(
 					unresolvedLogs.map(async (log) => {
-						const res = await api.client.PATCH('/api/v1/logs/{log_id}/resolve', {
-							params: { path: { log_id: log.id } },
-							body: { alert_resolution: 'read', triage_note: null }
-						});
-						if (res.error) {
-							const detail = typeof res.error.detail === 'string' ? res.error.detail : (res.error.detail ? JSON.stringify(res.error.detail) : 'Unknown error');
-							throw new Error(detail);
-						}
-						log.alert_resolution = 'read';
-						log.seen = true;
+					const res = await api.client.PATCH('/api/v1/logs/{log_id}/resolve', {
+						params: { path: { log_id: log.id } },
+						body: { alert_resolution: 'read', triage_note: null }
+					});
+					if (res.error) {
+						const detail = typeof res.error.detail === 'string'
+							? res.error.detail
+							: res.error.detail ? JSON.stringify(res.error.detail) : 'Unknown error';
+
+						throw new Error(detail);
+					}
+					log.alert_resolution = 'read';
+					log.seen = true;
 					})
 				);
 				logManager.logs = [...logManager.logs];
@@ -362,7 +372,7 @@
 			try {
 				logManager.loading = true;
 				await api.markAllLogsSeen();
-				logManager.logs.forEach(log => {
+				logManager.logs.forEach((log) => {
 					log.seen = true;
 				});
 				logManager.logs = [...logManager.logs];
@@ -395,10 +405,7 @@
 			// Filter to groups where the user has pack write permissions (matched by team membership)
 			const permittedGroups = groupDetails.filter((g) => {
 				return (g.teams ?? []).some((teamInGroup) => {
-					return (
-						teamInGroup.permission_pack === 'write' &&
-						userTeamsForPermission.some((userTeam) => userTeam.id === teamInGroup.id)
-					);
+					return teamInGroup.permission_pack === 'write' && userTeamsForPermission.some((userTeam) => userTeam.id === teamInGroup.id);
 				});
 			});
 
@@ -415,9 +422,7 @@
 
 		const alertObj = logManager.getAlertObject(selectedLog);
 		// Store a plain snapshot — the flat alert data (keys like "rule.name") is passed directly to JSONata
-		currentAlertObj = typeof alertObj.alert === 'object' && alertObj.alert !== null
-			? (alertObj.alert as Record<string, unknown>)
-			: null;
+		currentAlertObj = typeof alertObj.alert === 'object' && alertObj.alert !== null ? alertObj.alert as Record<string, unknown> : null;
 
 		// Generate a suggested JSONata query. The alert is a flat object with dotted keys,
 		// so use backtick notation (`rule.name`) to reference them in JSONata.
@@ -451,7 +456,7 @@
 			exclusionName = decrypted.name;
 			exclusionQuery = decrypted.jsonata_query;
 			exclusionDescription = decrypted.description;
-			exclusionType = (existingExclusion.exclusion_type as 'hard' | 'soft') || 'hard';
+			exclusionType = existingExclusion.exclusion_type as 'hard' | 'soft' || 'hard';
 			exclusionEncrypted = existingExclusion.encrypted || false;
 			selectedGroupId = excludedBy.group.id;
 			editingExclusion = existingExclusion;
@@ -573,10 +578,8 @@
 		
 		const tool = $user?.ai_analysis_tool || 'lumo-guest';
 		const consentKey = `radegast_ai_consent_${tool}`;
-		const hasConsent = typeof window !== 'undefined' && 
-			(localStorage.getItem(consentKey) === 'true' || 
-			 (tool.startsWith('lumo') && localStorage.getItem('radegast_proton_lumo_consent') === 'true'));
-			 
+		const hasConsent = typeof window !== 'undefined' && (localStorage.getItem(consentKey) === 'true' || tool.startsWith('lumo') && localStorage.getItem('radegast_proton_lumo_consent') === 'true');
+
 		if (hasConsent) {
 			openAiAnalysisLink();
 		} else {
@@ -624,7 +627,7 @@
 	function exportToJsonl() {
 		const lm = logManager;
 		if (!lm) return;
-		const lines = lm.filteredLogs.map(log => {
+		const lines = lm.filteredLogs.map((log) => {
 			const alertObj = lm.getAlertObject(log);
 			return JSON.stringify(alertObj);
 		});
@@ -685,251 +688,253 @@
 		<div class="alerts-container">
 			<!-- Left Pane: Alert List -->
 			<div class="left-pane">
-			<div class="mb-3" data-tour="alert-filters">
-				<input 
+				<div class="mb-3" data-tour="alert-filters">
+					<input
 
-					type="text" 
-					class="form-control mb-2" 
-					placeholder="Filter alerts (JSONata)..." 
-					bind:value={searchQuery}
-				/>
-				<div class="row g-2">
-					<div class="col-6">
+						type="text"
+						class="form-control mb-2"
+						placeholder="Filter alerts (JSONata)..."
+						bind:value={searchQuery}
+					/>
+					<div class="row g-2">
+						<div class="col-6">
 						<label for="alerts-from-time" class="form-label small fw-bold mb-1">From</label>
-						<input 
-							id="alerts-from-time"
-							type="datetime-local" 
-							class="form-control form-control-sm" 
-							bind:value={fromTime}
-							onchange={() => logManager?.performSearch(fromTime, toTime, null, 1)}
-						/>
-					</div>
-					<div class="col-6">
+							<input
+								id="alerts-from-time"
+								type="datetime-local"
+								class="form-control form-control-sm"
+								bind:value={fromTime}
+								onchange={() => logManager?.performSearch(fromTime, toTime, null, 1)}
+							/>
+						</div>
+						<div class="col-6">
 						<label for="alerts-to-time" class="form-label small fw-bold mb-1">To</label>
-						<input 
-							id="alerts-to-time"
-							type="datetime-local" 
-							class="form-control form-control-sm" 
-							bind:value={toTime}
-							onchange={() => logManager?.performSearch(fromTime, toTime, null, 1)}
-						/>
+							<input
+								id="alerts-to-time"
+								type="datetime-local"
+								class="form-control form-control-sm"
+								bind:value={toTime}
+								onchange={() => logManager?.performSearch(fromTime, toTime, null, 1)}
+							/>
+						</div>
 					</div>
 				</div>
-			</div>
-			
-			<div class="alerts-list flex-grow-1 overflow-auto">
-				{#each logManager.filteredLogs as log}
-					{@const alertObj = logManager.getAlertObject(log)}
-					{@const alertData = typeof alertObj.alert === 'object' && alertObj.alert !== null ? alertObj.alert : {}}
-					{@const ruleName = alertData['rule.name'] || alertData?.rule?.name || `An alert on ${alertObj.meta.device || 'Unknown Device'}`}
-					{@const eventCount = alertData['event.count'] !== undefined ? Number(alertData['event.count']) : undefined}
-					{@const engine = alertData['edr.rule.engine'] || alertData?.edr?.rule?.engine}
-					{@const yaraSource = alertData['edr.yara.scan_source'] || alertData?.edr?.yara?.scan_source}
-					{@const techniques = Array.isArray(alertData['threat.technique.id']) ? alertData['threat.technique.id'] : []}
-					{@const isRead = ($user?.extended_edr_enabled ? (!!log.alert_resolution && log.alert_resolution !== 'none') : !!log.seen) || (log.severity && mapSeverityToNumber(log.severity) < mapSeverityToNumber($user?.notification_level))}
-					
-					<div 
-						class="card mb-2 border-0 shadow-sm {selectedLog?.id === log.id ? 'bg-primary text-white' : 'bg-body-tertiary'} {isRead ? 'opacity-75' : 'border-start border-3 border-danger'}" 
-						style="cursor: pointer; border-radius: 8px;"
-						onclick={() => selectLog(log)}
+
+				<div class="alerts-list flex-grow-1 overflow-auto">
+					{#each logManager.filteredLogs as log}
+						{@const alertObj = logManager.getAlertObject(log)}
+						{@const alertData = typeof alertObj.alert === 'object' && alertObj.alert !== null ? alertObj.alert : {}}
+						{@const ruleName = alertData['rule.name'] || alertData?.rule?.name || `An alert on ${alertObj.meta.device || 'Unknown Device'}`}
+						{@const eventCount = alertData['event.count'] !== undefined ? Number(alertData['event.count']) : undefined}
+						{@const engine = alertData['edr.rule.engine'] || alertData?.edr?.rule?.engine}
+						{@const yaraSource = alertData['edr.yara.scan_source'] || alertData?.edr?.yara?.scan_source}
+						{@const techniques = Array.isArray(alertData['threat.technique.id']) ? alertData['threat.technique.id'] : []}
+
+						{@const isRead = ($user?.extended_edr_enabled
+							? !!log.alert_resolution && log.alert_resolution !== 'none'
+							: !!log.seen) || log.severity && mapSeverityToNumber(log.severity) < mapSeverityToNumber($user?.notification_level)}
+
+						<div
+							class="card mb-2 border-0 shadow-sm {selectedLog?.id === log.id ? 'bg-primary text-white' : 'bg-body-tertiary'} {isRead ? 'opacity-75' : 'border-start border-3 border-danger'}"
+							style="cursor: pointer; border-radius: 8px;"
+							onclick={() => selectLog(log)}
 						onkeydown={(e) => { if (e.key === 'Enter') selectLog(log); }}
-						role="button"
-						tabindex="0"
-						data-tour={log.id === 104932 ? "mock-alert" : undefined}
-					>
-						<div class="card-body p-3">
-							<div class="d-flex justify-content-between mb-1">
+							role="button"
+							tabindex="0"
+							data-tour={log.id === 104932 ? "mock-alert" : undefined}
+						>
+							<div class="card-body p-3">
+								<div class="d-flex justify-content-between mb-1">
 								<span class="fw-bold text-truncate" style="max-width: 70%;">{ruleName}</span>
-								<span class="small opacity-75">{formatFullDateTime(log.time)}</span>
-							</div>
+									<span class="small opacity-75">{formatFullDateTime(log.time)}</span>
+								</div>
 							<div class="d-flex justify-content-between align-items-center small">
-								<span class="opacity-75">{alertObj.meta.device}</span>
+									<span class="opacity-75">{alertObj.meta.device}</span>
 								<div class="d-flex flex-wrap gap-1 align-items-center justify-content-end">
-									{#if eventCount && eventCount > 0}
+										{#if eventCount && eventCount > 0}
 										<span class="badge bg-warning-subtle text-warning-emphasis border border-warning" title="{eventCount} duplicates suppressed">
 											+{eventCount} repeats
 										</span>
-									{/if}
-									{#if engine}
+										{/if}
+										{#if engine}
 										<span class="badge {selectedLog?.id === log.id ? 'bg-white text-dark' : 'bg-secondary-subtle text-secondary border'}" style="font-size: 0.65rem;">
 											{engine}{yaraSource === 'process_memory' ? ' (Mem)' : yaraSource === 'file' ? ' (File)' : ''}
 										</span>
-									{/if}
-									{#if alertObj.meta.excluded_by}
-										<a
-											href="{base}/groups/{alertObj.meta.excluded_by.group.id}"
-											class="badge bg-info text-white text-decoration-none"
-											onclick={(e) => e.stopPropagation()}
+										{/if}
+										{#if alertObj.meta.excluded_by}
+											<a
+												href={resolve(`/groups/${alertObj.meta.excluded_by.group.id}`)}
+												class="badge bg-info text-white text-decoration-none"
+												onclick={(e) => e.stopPropagation()}
 										>
 											Excluded
 										</a>
-									{/if}
-									{#if log.alert_resolution && log.alert_resolution !== 'none'}
-										{@const res = log.alert_resolution}
-										<span class="badge {res === 'true_positive' ? 'bg-danger' : (res === 'false_positive' ? 'bg-success' : 'bg-secondary')}">
-											{res === 'true_positive' ? 'tp' : (res === 'false_positive' ? 'fp' : 'read')}
-										</span>
-									{:else if !$user?.extended_edr_enabled && log.seen}
-										<span class="badge bg-secondary">read</span>
-									{/if}
-									{#if log.severity}
+										{/if}
+										{#if log.alert_resolution && log.alert_resolution !== 'none'}
+											{@const res = log.alert_resolution}
+
+											<span
+												class="badge {res === 'true_positive'
+													? 'bg-danger'
+													: res === 'false_positive' ? 'bg-success' : 'bg-secondary'}"
+											>{res === 'true_positive' ? 'tp' : res === 'false_positive' ? 'fp' : 'read'}</span>
+										{:else if !$user?.extended_edr_enabled && log.seen}
+											<span class="badge bg-secondary">read</span>
+										{/if}
+										{#if log.severity}
 										<span class="badge {log.severity === 'high' || log.severity === 'critical' ? 'bg-danger' : 'bg-warning text-dark'} text-uppercase">{log.severity}</span>
-									{/if}
+										{/if}
+									</div>
 								</div>
-							</div>
-							{#if techniques.length > 0}
-								<div class="d-flex flex-wrap gap-1 mt-1">
-									{#each techniques.slice(0, 2) as tech}
+								{#if techniques.length > 0}
+									<div class="d-flex flex-wrap gap-1 mt-1">
+										{#each techniques.slice(0, 2) as tech}
 										<span class="badge {selectedLog?.id === log.id ? 'bg-white text-danger' : 'bg-danger-subtle text-danger border border-danger-subtle'}" style="font-size: 0.65rem;">
 											{tech}
 										</span>
-									{/each}
-									{#if techniques.length > 2}
+										{/each}
+										{#if techniques.length > 2}
 										<span class="badge {selectedLog?.id === log.id ? 'bg-white text-dark' : 'bg-secondary-subtle text-secondary border'}" style="font-size: 0.65rem;">
 											+{techniques.length - 2}
 										</span>
-									{/if}
-								</div>
-							{/if}
+										{/if}
+									</div>
+								{/if}
+							</div>
 						</div>
-					</div>
-				{/each}
-				{#if logManager.filteredLogs.length === 0}
-					<div class="text-muted text-center p-4">No alerts found.</div>
-				{/if}
-			</div>
+					{/each}
+					{#if logManager.filteredLogs.length === 0}
+						<div class="text-muted text-center p-4">No alerts found.</div>
+					{/if}
+				</div>
 
 			<div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-				<button 
-					class="btn btn-outline-secondary btn-sm fw-bold" 
-					disabled={logManager.currentPage <= 1 || logManager.loading}
-					onclick={() => logManager?.performSearch(fromTime, toTime, null, logManager.currentPage - 1)}
-				>
-					&laquo; Prev
-				</button>
-				<span class="small fw-semibold text-muted">
-					Page {logManager.currentPage} of {logManager.totalPages} ({logManager.totalLogs} total)
-				</span>
-				<button 
-					class="btn btn-outline-secondary btn-sm fw-bold" 
-					disabled={logManager.currentPage >= logManager.totalPages || logManager.loading}
-					onclick={() => logManager?.performSearch(fromTime, toTime, null, logManager.currentPage + 1)}
-				>
-					Next &raquo;
-				</button>
+					<button
+						class="btn btn-outline-secondary btn-sm fw-bold"
+						disabled={logManager.currentPage <= 1 || logManager.loading}
+						onclick={() => logManager?.performSearch(fromTime, toTime, null, logManager.currentPage - 1)}
+					>« Prev</button>
+
+					<span class="small fw-semibold text-muted">Page {logManager.currentPage} of {logManager.totalPages} ({logManager.totalLogs} total)</span>
+
+					<button
+						class="btn btn-outline-secondary btn-sm fw-bold"
+						disabled={logManager.currentPage >= logManager.totalPages || logManager.loading}
+						onclick={() => logManager?.performSearch(fromTime, toTime, null, logManager.currentPage + 1)}
+					>Next »</button>
+				</div>
 			</div>
-		</div>
 
-		<!-- Right Pane: Alert Details -->
+			<!-- Right Pane: Alert Details -->
 		<div class="right-pane" data-tour={selectedLog?.id === 104932 ? "mock-alert-detail" : undefined}>
-			{#if selectedLog}
-				{@const alertObj = logManager.getAlertObject(selectedLog)}
-				{@const alertData = typeof alertObj.alert === 'object' && alertObj.alert !== null ? alertObj.alert : null}
+				{#if selectedLog}
+					{@const alertObj = logManager.getAlertObject(selectedLog)}
+					{@const alertData = typeof alertObj.alert === 'object' && alertObj.alert !== null ? alertObj.alert : null}
 
-				{#if alertData}
-					<AlertDetail
-						alert={alertData}
-						meta={alertObj.meta}
-						triggeredRule={selectedLog.triggered_rule}
-						deviceGroups={selectedDeviceDetails?.groups || []}
-						{userGroups}
-						hasPackWritePermission={hasAnyPackWritePermission}
-						extendedEdrEnabled={$user?.extended_edr_enabled ?? false}
-						{resolution}
-						{triageNote}
-						{savingResolution}
-						onViewRule={openTriggeredRule}
-						onAiAnalysis={runAiAnalysis}
-						onCreateExclusion={openCreateExclusionFromAlert}
-						onSaveResolution={saveResolution}
+					{#if alertData}
+						<AlertDetail
+							alert={alertData}
+							meta={alertObj.meta}
+							triggeredRule={selectedLog.triggered_rule}
+							deviceGroups={selectedDeviceDetails?.groups || []}
+							userGroups={userGroups}
+							hasPackWritePermission={hasAnyPackWritePermission}
+							extendedEdrEnabled={$user?.extended_edr_enabled ?? false}
+							resolution={resolution}
+							triageNote={triageNote}
+							savingResolution={savingResolution}
+							onViewRule={openTriggeredRule}
+							onAiAnalysis={runAiAnalysis}
+							onCreateExclusion={openCreateExclusionFromAlert}
+							onSaveResolution={saveResolution}
 						onResolutionChange={(v) => { resolution = v; }}
 						onTriageNoteChange={(v) => { triageNote = v; }}
-					/>
-				{:else}
-					<!-- Fallback for non-object alert (encrypted/decryption failed) -->
+						/>
+					{:else}
+						<!-- Fallback for non-object alert (encrypted/decryption failed) -->
 					<div class="card border-0 shadow-sm mb-3" style="background: var(--bs-body-bg);">
 						<div class="card-header bg-transparent border-bottom-0 pt-4 pb-0">
-							<h4 class="fw-bold mb-1">Alert #{selectedLog.id}</h4>
-							<div class="d-flex gap-3 text-muted small">
+								<h4 class="fw-bold mb-1">Alert #{selectedLog.id}</h4>
+								<div class="d-flex gap-3 text-muted small">
 								<span><strong>Device:</strong> {alertObj.meta.device}</span>
 								<span><strong>Time:</strong> {new Date(selectedLog.time).toLocaleString()}</span>
 								<span><strong>Severity:</strong> {selectedLog.severity ? selectedLog.severity.toUpperCase() : 'N/A'}</span>
+								</div>
+							</div>
+							<div class="card-body">
+							<pre class="p-3 rounded mb-0 font-monospace" style="background-color: #282a36 !important; color: #f8f8f2 !important; white-space: pre-wrap; word-break: break-all; font-size: 0.85rem; border: 1px solid #44475a;">{typeof alertObj.alert === 'string' ? alertObj.alert : JSON.stringify(alertObj.alert, null, 2)}</pre>
 							</div>
 						</div>
-						<div class="card-body">
-							<pre class="p-3 rounded mb-0 font-monospace" style="background-color: #282a36 !important; color: #f8f8f2 !important; white-space: pre-wrap; word-break: break-all; font-size: 0.85rem; border: 1px solid #44475a;">{typeof alertObj.alert === 'string' ? alertObj.alert : JSON.stringify(alertObj.alert, null, 2)}</pre>
-						</div>
-					</div>
-				{/if}
-			{:else}
+					{/if}
+				{:else}
 				<div class="d-flex align-items-center justify-content-center h-100 text-muted">
 					Select an alert from the list to view details and triage.
 				</div>
-			{/if}
-		</div>
-	</div>
-	
-	<!-- Create Exclusion Modal -->
-	{#if $user}
-		<ExclusionModal
-			bind:show={showExclusionModal}
-			bind:name={exclusionName}
-			bind:query={exclusionQuery}
-			bind:description={exclusionDescription}
-			bind:exclusionType={exclusionType}
-			bind:selectedGroupId={selectedGroupId}
-			bind:encrypted={exclusionEncrypted}
-			title={editingExclusion ? 'Edit Exclusion' : 'Create Exclusion from Alert'}
-			isEditMode={!!editingExclusion}
-			groups={userGroups}
-			alertObj={currentAlertObj}
-			onClose={() => { showExclusionModal = false; editingExclusion = null; }}
-			onSave={saveExclusionFromAlert}
-		/>
-	{/if}
-
-	<!-- Triggered Rule Modal -->
-	{#if selectedLog?.triggered_rule}
-		<Modal
-			show={showTriggeredRuleModal}
-			title="Triggered Rule"
-			onClose={() => { showTriggeredRuleModal = false; }}
-		>
-			<div class="mb-2 d-flex gap-2 align-items-center">
-				<span class="badge bg-warning text-dark text-uppercase">{selectedLog.triggered_rule.rule_type}</span>
-				<span class="fw-bold text-body font-monospace small">{selectedLog.triggered_rule.rule_id}</span>
+				{/if}
 			</div>
-			<pre class="p-3 rounded font-monospace mb-0" style="background-color: #282a36; color: #f8f8f2; white-space: pre-wrap; word-break: break-all; font-size: 0.82rem; border: 1px solid #44475a; max-height: 60vh; overflow-y: auto;">{selectedLog.triggered_rule.rule_content}</pre>
-		</Modal>
-	{/if}
+		</div>
 
-	<!-- AI Consent Modal -->
-	<Modal
-		show={showAiConsentModal}
-		title="Confirm AI Analysis"
+		<!-- Create Exclusion Modal -->
+		{#if $user}
+			<ExclusionModal
+				bind:show={showExclusionModal}
+				bind:name={exclusionName}
+				bind:query={exclusionQuery}
+				bind:description={exclusionDescription}
+				bind:exclusionType
+				bind:selectedGroupId
+				bind:encrypted={exclusionEncrypted}
+				title={editingExclusion ? 'Edit Exclusion' : 'Create Exclusion from Alert'}
+				isEditMode={!!editingExclusion}
+				groups={userGroups}
+				alertObj={currentAlertObj}
+			onClose={() => { showExclusionModal = false; editingExclusion = null; }}
+				onSave={saveExclusionFromAlert}
+			/>
+		{/if}
+
+		<!-- Triggered Rule Modal -->
+		{#if selectedLog?.triggered_rule}
+			<Modal
+				show={showTriggeredRuleModal}
+				title="Triggered Rule"
+			onClose={() => { showTriggeredRuleModal = false; }}
+			>
+				<div class="mb-2 d-flex gap-2 align-items-center">
+					<span class="badge bg-warning text-dark text-uppercase">{selectedLog.triggered_rule.rule_type}</span>
+					<span class="fw-bold text-body font-monospace small">{selectedLog.triggered_rule.rule_id}</span>
+				</div>
+			<pre class="p-3 rounded font-monospace mb-0" style="background-color: #282a36; color: #f8f8f2; white-space: pre-wrap; word-break: break-all; font-size: 0.82rem; border: 1px solid #44475a; max-height: 60vh; overflow-y: auto;">{selectedLog.triggered_rule.rule_content}</pre>
+			</Modal>
+		{/if}
+
+		<!-- AI Consent Modal -->
+		<Modal
+			show={showAiConsentModal}
+			title="Confirm AI Analysis"
 		onClose={() => { showAiConsentModal = false; }}
-	>
-		{@const tool = $user?.ai_analysis_tool || 'lumo-guest'}
-		{@const details = getAiToolDetails(tool)}
-		<p class="text-body mb-3">
+		>
+			{@const tool = $user?.ai_analysis_tool || 'lumo-guest'}
+			{@const details = getAiToolDetails(tool)}
+			<p class="text-body mb-3">
 			You are about to send this alert's decrypted raw telemetry to <strong>{details.name}</strong> ({details.domain}) for AI analysis.
-		</p>
-		<p class="text-body mb-3">
-			Please note that the AI's output should be taken only as advice, as the AI model does not have full context of your specific infrastructure.
-		</p>
+			</p>
+			<p class="text-body mb-3">
+				Please note that the AI's output should be taken only as advice, as the AI model does not have full context of your specific infrastructure.
+			</p>
 		<p class="text-body mb-4">
 			Are you OK with sending your alert data to {details.name}?
 		</p>
-		<div class="d-flex justify-content-end gap-2">
+			<div class="d-flex justify-content-end gap-2">
 			<button class="btn btn-outline-secondary" onclick={() => { showAiConsentModal = false; }}>
 				No, Cancel
 			</button>
 			<button class="btn btn-primary" onclick={handleConsentYes}>
 				Yes, Proceed
 			</button>
-		</div>
-	</Modal>
-{/if}
+			</div>
+		</Modal>
+	{/if}
 </div>
 
 <style>

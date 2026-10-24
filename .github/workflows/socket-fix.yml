@@ -63,8 +63,8 @@ jobs:
             case "$1" in
               low) echo 1 ;; medium) echo 2 ;; high) echo 3 ;; critical) echo 4 ;; *) echo 0 ;;
             esac
-          }
-          min=$(rank "$MIN_SEVERITY")
+          min=$(rank "${MIN_SEVERITY:-high}")
+          [ "$min" -eq 0 ] && min=3
           ids=()
           for id in $(jq -r '.fixes | keys[]' socket-fixes.json); do
             if ! sev=$(gh api "/advisories/$id" --jq .severity); then

@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import Spinner from '$lib/components/Spinner.svelte';
 
 	let status = $state<'loading' | 'success' | 'error'>('loading');
@@ -11,7 +11,7 @@
 	let isExpired = $state(false);
 
 	onMount(async () => {
-		const token = $page.url.searchParams.get('token');
+		const token = page.url.searchParams.get('token');
 		if (!token) {
 			status = 'error';
 			errorMessage = 'No unsubscribe token found in the link. Please check your email and try again.';
@@ -44,16 +44,25 @@
 			<div class="mb-4" style="font-size: 4rem;">🔕</div>
 			<h2 class="fw-bold mb-2">Unsubscribed</h2>
 			<p class="text-muted mb-4">{successMessage}</p>
-			<a href="{base}/login" class="btn btn-primary px-5">Go to Login</a>
 
+			<a
+				href={resolve('/login')}
+				class="btn btn-primary px-5"
+			>Go to Login</a>
 		{:else}
 			<div class="mb-4" style="font-size: 4rem;">⚠️</div>
 			<h2 class="fw-bold mb-2">Unsubscribe Failed</h2>
 			<p class="text-muted mb-4">{errorMessage}</p>
 			{#if isExpired}
-				<a href="{base}/login" class="btn btn-primary px-5 mb-2">Go to Login</a>
+				<a
+					href={resolve('/login')}
+					class="btn btn-primary px-5 mb-2"
+				>Go to Login</a>
 			{:else}
-				<a href="{base}/login" class="btn btn-outline-primary px-5">Back to Login</a>
+				<a
+					href={resolve('/login')}
+					class="btn btn-outline-primary px-5"
+				>Back to Login</a>
 			{/if}
 		{/if}
 	</div>

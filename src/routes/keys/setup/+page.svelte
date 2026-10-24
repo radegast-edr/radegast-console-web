@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
@@ -41,7 +41,7 @@
 
 			// 3. Generate random 256-bit AES key
 			const keyBytes = window.crypto.getRandomValues(new Uint8Array(32));
-			const aesKeyHex = Array.from(keyBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+			const aesKeyHex = Array.from(keyBytes).map((b) => b.toString(16).padStart(2, '0')).join('');
 
 			// 4. AES-GCM-256 encrypt recovery private key with the AES key
 			const encryptedRecoveryPriv = await aesEncrypt(recoveryPriv, aesKeyHex);
@@ -76,7 +76,7 @@
 	}
 
 	function finishSetup(): void {
-		goto(`${base}/`);
+		goto(resolve('/'));
 	}
 </script>
 

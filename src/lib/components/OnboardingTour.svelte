@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { goto, afterNavigate } from '$app/navigation';
 	import { user, showOnboarding, showFlash } from '$lib/store';
 	import { api } from '$lib/api';
@@ -124,15 +124,16 @@
 
 	async function navigateAndDelay(path: string): Promise<void> {
 		cleanupMockAlert();
-		await goto(`${base}${path}`);
+		await goto(resolve(path.startsWith('/') ? path : '/' + path));
 		await new Promise((resolve) => setTimeout(resolve, 350));
 	}
 
 	afterNavigate(({ to }) => {
 		if (!tour) return;
 		const toPath = to?.url.pathname || '';
-		
-		const toRelative = toPath.startsWith(base) ? toPath.slice(base.length) : toPath;
+
+		const basePrefix = resolve('').replace(/\/+$/, '');
+		const toRelative = basePrefix && toPath.startsWith(basePrefix) ? toPath.slice(basePrefix.length) : toPath;
 		
 		if (tour.getCurrentStep()?.id === 'enable-pack' && toRelative.match(/^\/packs\/\d+$/)) {
 			tour.next();
@@ -296,7 +297,8 @@
 			},
 			beforeShowPromise: async () => {
 				const currentPath = window.location.pathname;
-				const relative = currentPath.startsWith(base) ? currentPath.slice(base.length) : currentPath;
+				const basePrefix = resolve('').replace(/\/+$/, '');
+				const relative = basePrefix && currentPath.startsWith(basePrefix) ? currentPath.slice(basePrefix.length) : currentPath;
 				if (!relative.match(/^\/packs\/\d+$/)) {
 					try {
 						const packs = await api.listPacks();

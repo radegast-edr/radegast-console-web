@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import KeyIcon from '~icons/lucide/key';
@@ -22,7 +22,7 @@
 
 	function restartOnboardingTour() {
 		showOnboarding.set(true);
-		goto(`${base}/`);
+		goto(resolve('/'));
 	}
 
 
@@ -120,7 +120,7 @@
 			console.warn('Logout request failed:', e);
 		}
 		$user = null;
-		goto(`${base}/login`);
+		goto(resolve('/login'));
 	}
 
 	function openConfirmModal(title: string, message: string, callback: () => void): void {
@@ -174,15 +174,14 @@
 			'Confirm Key Deletion',
 			`Are you sure you want to delete the key "${key.name || 'Unnamed Key'}" (${key.public_key.substring(0, 10)}...)? Any logs encrypted using this key will become permanently unreadable unless you have a backup of the key. This action cannot be undone.`,
 			async () => {
-				try {
-					await api.deleteKey(key.id);
-					showFlash('Encryption key deleted.');
-					await loadKeys();
+			try {
+				await api.deleteKey(key.id);
+				showFlash('Encryption key deleted.');
+				await loadKeys();
 				} catch (e: any) {
-					showError('Failed to delete key: ' + e.message);
-				}
+				showError('Failed to delete key: ' + e.message);
 			}
-		);
+		});
 	}
 
 	function requestGenerateKey(): void {
@@ -212,7 +211,7 @@
 			if (isRecovery) {
 				// Generate random 256-bit AES key
 				const keyBytes = window.crypto.getRandomValues(new Uint8Array(32));
-				const aesKeyHex = Array.from(keyBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+				const aesKeyHex = Array.from(keyBytes).map((b) => b.toString(16).padStart(2, '0')).join('');
 
 				// Encrypt private key with AES key
 				const encryptedPriv = await aesEncrypt(privateKey, aesKeyHex);
@@ -411,15 +410,14 @@
 			'Disable Authenticator App MFA',
 			'Are you sure you want to disable OTP MFA on your account? This might lower your security level below role requirements.',
 			async () => {
-				try {
-					await api.disableMfaOtp();
-					showFlash('OTP MFA disabled successfully.');
-					await loadMfaSettings();
+			try {
+				await api.disableMfaOtp();
+				showFlash('OTP MFA disabled successfully.');
+				await loadMfaSettings();
 				} catch (e: any) {
-					showError('Failed to disable OTP: ' + e.message);
-				}
+				showError('Failed to disable OTP: ' + e.message);
 			}
-		);
+		});
 	}
 
 	function bufferFromBase64url(str: string): ArrayBuffer {
@@ -500,15 +498,14 @@
 			'Delete Security Key',
 			'Are you sure you want to delete this security key? You will no longer be able to use it to log in.',
 			async () => {
-				try {
-					await api.deleteMfaHardwareToken(Number(id));
-					showFlash('Hardware token deleted successfully.');
-					await loadMfaSettings();
+			try {
+				await api.deleteMfaHardwareToken(Number(id));
+				showFlash('Hardware token deleted successfully.');
+				await loadMfaSettings();
 				} catch (e: unknown) {
-					showError('Failed to delete Hardware token: ' + (e as Error).message);
-				}
+				showError('Failed to delete Hardware token: ' + (e as Error).message);
 			}
-		);
+		});
 	}
 </script>
 
@@ -657,8 +654,12 @@
 							type="checkbox"
 							id="notifyDowntimeMaintenance"
 							bind:checked={notifications.notify_downtime_maintenance}
-						>
-						<label class="form-check-label" for="notifyDowntimeMaintenance">Platform downtime and maintenance emails</label>
+						/>
+
+						<label
+							class="form-check-label"
+							for="notifyDowntimeMaintenance"
+						>Platform downtime and maintenance emails</label>
 					</div>
 					<div class="form-check form-switch mb-3">
 						<input
@@ -694,31 +695,33 @@
 	<div class="col-12">
 		<div class="card">
 			<div class="card-header"><h5 class="mb-0">Device Alert Settings</h5></div>
-				{#if notifications}
-					<div class="m-3">
+			{#if notifications}
+				<div class="m-3">
 						<label for="notificationLevel" class="form-label fw-semibold">Minimal alert severity</label>
-						<select
-							id="notificationLevel"
-							class="form-select form-select-sm"
-							bind:value={notifications.notification_level}
-						>
-							<option value="informational">Informational</option>
-							<option value="low">Low</option>
-							<option value="medium">Medium</option>
-							<option value="high">High</option>
-							<option value="critical">Critical</option>
-						</select>
-						<div class="form-text text-muted small">
-							All alerts with severity lower than this are hidden and marked as read.
-						</div>
-						<button class="btn btn-primary btn-sm mt-2" onclick={saveNotifications} disabled={notifSaving}>
-							{notifSaving ? 'Saving…' : 'Save'}
-						</button>
-					</div>
-				{/if}
-			</div>
+					<select
+						id="notificationLevel"
+						class="form-select form-select-sm"
+						bind:value={notifications.notification_level}
+					>
+						<option value="informational">Informational</option>
+						<option value="low">Low</option>
+						<option value="medium">Medium</option>
+						<option value="high">High</option>
+						<option value="critical">Critical</option>
+					</select>
+
+					<div class="form-text text-muted small">All alerts with severity lower than this are hidden and marked as read.</div>
+
+					<button
+						class="btn btn-primary btn-sm mt-2"
+						onclick={saveNotifications}
+						disabled={notifSaving}
+					>{notifSaving ? 'Saving…' : 'Save'}</button>
+				</div>
+			{/if}
 		</div>
 	</div>
+</div>
 
 <div class="row g-4 mt-2">
 	<!-- Encryption Keys Card -->
@@ -873,11 +876,20 @@
 					Manage your private encryption keys across different browsers and devices. Transfer keys securely or generate new ones.
 				</p>
 				<div class="d-flex gap-3">
-					<a href="{base}/keys/transfer" class="btn btn-primary d-flex align-items-center gap-2">
-						<KeyIcon style="width: 18px; height: 18px;"/> Transfer Keys Between Browsers
+					<a
+						href={resolve('/keys/transfer')}
+						class="btn btn-primary d-flex align-items-center gap-2"
+					>
+						<KeyIcon style="width: 18px; height: 18px;" />
+						Transfer Keys Between Browsers
 					</a>
-					<a href="{base}/keys/recovery" class="btn btn-outline-secondary d-flex align-items-center gap-2">
-						<DownloadIcon style="width: 18px; height: 18px;"/> Recover Using Recovery Key
+
+					<a
+						href={resolve('/keys/recovery')}
+						class="btn btn-outline-secondary d-flex align-items-center gap-2"
+					>
+						<DownloadIcon style="width: 18px; height: 18px;" />
+						Recover Using Recovery Key
 					</a>
 				</div>
 			</div>
@@ -914,8 +926,12 @@
 										<span class="badge bg-success">Enabled</span>
 										<span class="text-muted small">Authenticator app active</span>
 									</div>
-									{#if (['otp', 'hardware_token', 'token'].includes(mfaSettings.required_level) && mfaSettings.hardware_tokens.length === 0)}
-										<p class="text-muted small mb-0"><AlertTriangleIcon style="width: 16px; height: 16px;" /> Cannot disable — OTP is required for your role and you have no hardware token registered.</p>
+
+									{#if ['otp', 'hardware_token', 'token'].includes(mfaSettings.required_level) && mfaSettings.hardware_tokens.length === 0}
+										<p class="text-muted small mb-0">
+											<AlertTriangleIcon style="width: 16px; height: 16px;" />
+											Cannot disable — OTP is required for your role and you have no hardware token registered.
+										</p>
 									{:else}
 										<button class="btn btn-outline-danger btn-sm" onclick={disableOtp}>
 											Disable OTP
@@ -965,7 +981,11 @@
 														<span class="small fw-semibold">{tk.name}</span>
 													</div>
 													{#if !(['hardware_token', 'token'].includes(mfaSettings.required_level) && mfaSettings.hardware_tokens.length === 1)}
-														<button class="btn btn-sm btn-outline-danger py-0 px-2 fs-6" onclick={() => deleteHardwareToken(tk.id)} title="Delete device">&times;</button>
+														<button
+															class="btn btn-sm btn-outline-danger py-0 px-2 fs-6"
+															onclick={() => deleteHardwareToken(tk.id)}
+															title="Delete device"
+														>×</button>
 													{:else}
 														<span class="text-muted small d-inline-flex align-items-center" title="Required — cannot delete last hardware token">
 															<LockIcon style="width: 14px; height: 14px;" />
@@ -1078,8 +1098,17 @@
 			<div class="card-body">
 				<p class="text-muted small">You can review our legal policies and agreements at any time.</p>
 				<div class="d-flex gap-3">
-					<a href="{base}/terms" target="_blank" class="btn btn-outline-secondary btn-sm">Terms of Service</a>
-					<a href="{base}/privacy" target="_blank" class="btn btn-outline-secondary btn-sm">Privacy Policy</a>
+					<a
+						href={resolve('/terms')}
+						target="_blank"
+						class="btn btn-outline-secondary btn-sm"
+					>Terms of Service</a>
+
+					<a
+						href={resolve('/privacy')}
+						target="_blank"
+						class="btn btn-outline-secondary btn-sm"
+					>Privacy Policy</a>
 				</div>
 			</div>
 		</div>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { onMount, onDestroy } from 'svelte';
 	import Icon from '@iconify/svelte';
@@ -69,11 +69,11 @@
 			await initAgeWasm();
 			const me = await api.me();
 			if (!me.extended_edr_enabled) {
-				goto(`${base}/`);
+				goto(resolve('/'));
 				return;
 			}
 			privateKey = await getStoredPrivateKey(me.id);
-			
+
 			logManager = new LogManager(privateKey);
 			
 			const devicesData = await api.listDevices();
@@ -82,7 +82,7 @@
 			// Load user teams and groups for exclusion creation
 			userTeamsForPermission = await api.listTeams();
 			userGroups = await api.listGroups();
-			
+
 			await performHunt();
 			initialized = true;
 		} catch (e) {
@@ -128,20 +128,15 @@
 		try {
 			// Fetch device to get its groups
 			const deviceDetail = await api.getDevice(log.device_id);
-			
-			const deviceGroupIds = new Set(deviceDetail.groups.map(g => g.id));
-			
+
+			const deviceGroupIds = new Set(deviceDetail.groups.map((g) => g.id));
+
 			// Fetch full group details for permission checking
-			const groupDetails = await Promise.all(
-				userGroups.filter(g => deviceGroupIds.has(g.id)).map(g => api.getGroup(g.id))
-			);
+			const groupDetails = await Promise.all(userGroups.filter((g) => deviceGroupIds.has(g.id)).map((g) => api.getGroup(g.id)));
 
 			const permittedGroups = groupDetails.filter((g) => {
 				return (g.teams ?? []).some((teamInGroup) => {
-					return (
-						teamInGroup.permission_pack === 'write' &&
-						userTeamsForPermission.some((userTeam) => userTeam.id === teamInGroup.id)
-					);
+					return teamInGroup.permission_pack === 'write' && userTeamsForPermission.some((userTeam) => userTeam.id === teamInGroup.id);
 				});
 			});
 
@@ -156,9 +151,7 @@
 			return;
 		}
 
-		currentAlertObj = typeof alertObj.alert === 'object' && alertObj.alert !== null
-			? (alertObj.alert as Record<string, unknown>)
-			: null;
+		currentAlertObj = typeof alertObj.alert === 'object' && alertObj.alert !== null ? alertObj.alert as Record<string, unknown> : null;
 
 		const ruleName = currentAlertObj?.['rule.name'] as string | undefined;
 		let suggestedQuery = '';
@@ -189,7 +182,7 @@
 			exclusionName = decrypted.name;
 			exclusionQuery = decrypted.jsonata_query;
 			exclusionDescription = decrypted.description;
-			exclusionType = (existingExclusion.exclusion_type as 'hard' | 'soft') || 'hard';
+			exclusionType = existingExclusion.exclusion_type as 'hard' | 'soft' || 'hard';
 			exclusionEncrypted = existingExclusion.encrypted || false;
 			selectedGroupId = alertObj.meta.excluded_by.group.id;
 			editingExclusion = existingExclusion;
@@ -303,9 +296,8 @@
 		const newHash = hash ? `#${hash}` : '';
 		if (window.location.hash !== newHash) {
 			goto(window.location.pathname + window.location.search + newHash, {
-				replaceState: true,
-				noScroll: true,
-				keepFocus: true
+				replace: true,
+				reset: false
 			});
 		}
 	});
@@ -316,25 +308,21 @@
 		return escaped.replace(
 			/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
 			(match) => {
-				let cls = 'number';
-				if (match.startsWith('"')) {
+			let cls = 'number';
+			if (match.startsWith('"')) {
 					if (match.endsWith(':')) cls = 'key';
 					else cls = 'string';
 				} else if (match === 'true' || match === 'false') cls = 'boolean';
 				else if (match === 'null') cls = 'null';
 
-				if (cls === 'key') return `<span style="color: #ff79c6; font-weight: bold;">${match}</span>`;
-				else if (cls === 'string') return `<span style="color: #f1fa8c;">${match}</span>`;
-				else if (cls === 'number') return `<span style="color: #bd93f9;">${match}</span>`;
-				else if (cls === 'boolean') return `<span style="color: #50fa7b; font-weight: bold;">${match}</span>`;
-				else return `<span style="color: #6272a4;">${match}</span>`;
-			}
-		);
+			if (cls === 'key') return `<span style="color: #ff79c6; font-weight: bold;">${match}</span>`; else if (cls === 'string') return `<span style="color: #f1fa8c;">${match}</span>`; else if (cls === 'number') return `<span style="color: #bd93f9;">${match}</span>`; else if (cls === 'boolean') return `<span style="color: #50fa7b; font-weight: bold;">${match}</span>`; else return `<span style="color: #6272a4;">${match}</span>`;
+		});
 	}
+
 	function exportToJsonl() {
 		const lm = logManager;
 		if (!lm) return;
-		const lines = lm.filteredLogs.map(log => {
+		const lines = lm.filteredLogs.map((log) => {
 			const alertObj = lm.getAlertObject(log);
 			return JSON.stringify(alertObj);
 		});
@@ -370,9 +358,9 @@
 						<label for="hunt-query" class="form-label fw-bold small mb-1">JSONata Text Query</label>
 						<input 
 							id="hunt-query"
-							type="text" 
-							class="form-control form-control-sm font-monospace" 
-							placeholder='e.g., meta.device = "laptop" and alert.event_type = "process"' 
+							type="text"
+							class="form-control form-control-sm font-monospace"
+							placeholder='e.g., meta.device = "laptop" and alert.event_type = "process"'
 							bind:value={searchQuery}
 							onkeydown={(e) => { if (e.key === 'Enter') performHunt(); }}
 						/>
@@ -499,7 +487,11 @@
 											<button class="btn btn-link btn-sm text-success p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem;" onclick={() => openRuleModal(log)}>[show rule]</button>
 										{/if}
 										{#if alertObj.meta.pack?.id}
-											<a href="{base}/packs/{alertObj.meta.pack.id}" class="btn btn-link btn-sm text-primary p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem; text-decoration: none;">[show pack]</a>
+											<a
+												href={resolve(`/packs/${alertObj.meta.pack.id}`)}
+												class="btn btn-link btn-sm text-primary p-0 ms-2 fw-bold"
+												style="vertical-align: baseline; font-size: 0.85rem; text-decoration: none;"
+											>[show pack]</a>
 										{/if}
 										{#if alertObj.meta.excluded_by}
 											<button class="btn btn-link btn-sm text-info p-0 ms-2 fw-bold" style="vertical-align: baseline; font-size: 0.85rem;" onclick={() => startExclusionFromHunt(log, alertObj)}>[show exclusion]</button>
@@ -530,12 +522,12 @@
 			bind:name={exclusionName}
 			bind:query={exclusionQuery}
 			bind:description={exclusionDescription}
-			bind:exclusionType={exclusionType}
+			bind:exclusionType
 			bind:encrypted={exclusionEncrypted}
 			title={editingExclusion ? 'Edit Exclusion' : 'Create Exclusion'}
 			isEditMode={!!editingExclusion}
 			groups={exclusionGroups}
-			bind:selectedGroupId={selectedGroupId}
+			bind:selectedGroupId
 			alertObj={currentAlertObj}
 			onClose={() => { showExclusionModal = false; editingExclusion = null; }}
 			onSave={saveExclusionFromHunt}

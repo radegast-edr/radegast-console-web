@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { base } from '$app/paths';
-	import { page } from '$app/stores';
+	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import { api, type AccountDeletionConfirm } from '$lib/api';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import AlertTriangleIcon from '~icons/lucide/alert-triangle';
@@ -11,7 +11,7 @@
 	let errorMessage = $state('');
 	let result = $state<AccountDeletionConfirm | null>(null);
 
-	const token = $page.url.searchParams.get('token');
+	const token = page.url.searchParams.get('token');
 
 	if (!token) {
 		status = 'error';
@@ -57,12 +57,15 @@
 						Do you want to proceed with scheduling your account for deletion?
 					</p>
 					<div class="d-flex justify-content-end gap-2">
-						<a href="{base}/login" class="btn btn-outline-secondary px-4 fw-semibold">
-							No, Keep Account
-						</a>
-						<button class="btn btn-danger px-4 fw-semibold" onclick={handleConfirm}>
-							Yes, Confirm Deletion
-						</button>
+						<a
+							href={resolve('/login')}
+							class="btn btn-outline-secondary px-4 fw-semibold"
+						>No, Keep Account</a>
+
+						<button
+							class="btn btn-danger px-4 fw-semibold"
+							onclick={handleConfirm}
+						>Yes, Confirm Deletion</button>
 					</div>
 				</div>
 			</div>
@@ -91,9 +94,11 @@
 							If you wish to cancel this deletion, simply log back in to your account before the scheduled deletion date.
 						</div>
 					{/if}
-					<a href="{base}/login" class="btn btn-primary px-5 fw-semibold">
-						Back to Login
-					</a>
+
+					<a
+						href={resolve('/login')}
+						class="btn btn-primary px-5 fw-semibold"
+					>Back to Login</a>
 				</div>
 			</div>
 
@@ -105,9 +110,11 @@
 					</div>
 					<h3 class="fw-bold mb-2 text-body">Confirmation Failed</h3>
 					<p class="text-body-secondary mb-4">{errorMessage}</p>
-					<a href="{base}/login" class="btn btn-outline-secondary px-5 fw-semibold">
-						Back to Login
-					</a>
+
+					<a
+						href={resolve('/login')}
+						class="btn btn-outline-secondary px-5 fw-semibold"
+					>Back to Login</a>
 				</div>
 			</div>
 		{/if}

@@ -10,7 +10,7 @@
  *   decrypt(identities, ciphertext) → { output, error }  (identities = newline-joined keys)
  */
 
-import { base } from '$app/paths';
+import { asset } from '$app/paths';
 
 declare global {
 	interface Window {
@@ -33,13 +33,11 @@ export async function initAgeWasm(): Promise<void> {
 
 	initPromise = (async () => {
 		if (!window.Go) {
-			await loadScript(`${base}/agewasm/wasm_exec.js`);
+			await loadScript(asset('agewasm/wasm_exec.js'));
 		}
 		const go = new window.Go();
-		const result = await WebAssembly.instantiateStreaming(
-			fetch(`${base}/agewasm/main.wasm`),
-			go.importObject
-		);
+		const result = await WebAssembly.instantiateStreaming(fetch(asset('agewasm/main.wasm')), go.importObject);
+
 		go.run(result.instance);
 		// Give the Go program a tick to register globals
 		await new Promise<void>((r) => setTimeout(r, 0));
@@ -127,7 +125,7 @@ function idbGet<T = unknown>(db: IDBDatabase, key: IDBValidKey): Promise<T | nul
 	return new Promise((resolve, reject) => {
 		const tx = db.transaction(IDB_STORE, 'readonly');
 		const req = tx.objectStore(IDB_STORE).get(key);
-		req.onsuccess = () => resolve((req.result as T) ?? null);
+		req.onsuccess = () => resolve(req.result as T ?? null);
 		req.onerror = () => reject(req.error);
 	});
 }
@@ -293,7 +291,7 @@ function hexToBytes(hex: string): Uint8Array {
 }
 
 function bytesToHex(bytes: Uint8Array): string {
-	return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+	return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**

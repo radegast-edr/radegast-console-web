@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { askConfirm } from '$lib/confirm';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api';
@@ -44,7 +44,7 @@
 	let allowedArches = $derived(ARCHES_BY_OS[uploadOS] || []);
 
 	// Filtering releases matching this version
-	let artifacts = $derived(releases.filter(r => r.version === currentVersion));
+	let artifacts = $derived(releases.filter((r) => r.version === currentVersion));
 
 	onMount(loadReleases);
 
@@ -91,8 +91,8 @@
 			showFlash(`Deleted artifact ${os}/${arch}`);
 			await loadReleases();
 			// If no artifacts left for this version, redirect back to releases list
-			if (releases.filter(r => r.version === currentVersion).length === 0) {
-				goto(`${base}/releases`);
+			if (releases.filter((r) => r.version === currentVersion).length === 0) {
+				goto(resolve('/releases'));
 			}
 		} catch (e: any) {
 			showError(e.message);
@@ -108,7 +108,10 @@
 </svelte:head>
 
 <div class="mb-4">
-	<a href="{base}/releases" class="btn btn-outline-secondary btn-sm">← Back to Releases</a>
+	<a
+		href={resolve('/releases')}
+		class="btn btn-outline-secondary btn-sm"
+	>← Back to Releases</a>
 </div>
 
 {#if loading}
@@ -128,9 +131,10 @@
 			<p class="text-muted small mb-0">Inspect artifacts and deployment endpoints for this Rustinel release.</p>
 		</div>
 		{#if isAdmin}
-			<button class="btn btn-primary" onclick={() => (showUpload = true)}>
-				Add OS/Arch Artifact
-			</button>
+			<button
+				class="btn btn-primary"
+				onclick={() => showUpload = true}
+			>Add OS/Arch Artifact</button>
 		{/if}
 	</div>
 
@@ -287,8 +291,18 @@
 {/if}
 
 <!-- Upload Artifact Modal -->
-<Modal show={showUpload} title="Upload OS/Arch Artifact" onClose={() => (showUpload = false)}>
-	<form onsubmit={(e) => { e.preventDefault(); uploadArtifact(); }}>
+
+<Modal
+	show={showUpload}
+	title="Upload OS/Arch Artifact"
+	onClose={() => showUpload = false}
+>
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			uploadArtifact();
+		}}
+	>
 		<div class="mb-3">
 			<label for="upload-version" class="form-label">Version</label>
 			<input id="upload-version" type="text" class="form-control font-monospace" value={currentVersion} disabled />

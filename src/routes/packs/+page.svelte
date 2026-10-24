@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { api, type Pack, type Team, type PackVersion } from '$lib/api';
 	import { user, showFlash, showError } from '$lib/store';
@@ -35,96 +35,96 @@
 	// Derived: filtered packs
 	let filteredPacks = $derived(
 		packs.filter((pack) => {
-			// Full-text search (match all if empty)
-			const searchLower = searchQuery.toLowerCase();
+		// Full-text search (match all if empty)
+		const searchLower = searchQuery.toLowerCase();
 			const matchesSearch = !searchLower ||
 				pack.name.toLowerCase().includes(searchLower) ||
 				(pack.description?.toLowerCase().includes(searchLower) ?? false) ||
 				(pack.latest?.meta?.description?.toString().toLowerCase().includes(searchLower) ?? false);
 
-			// Status filter (match all if no filters)
-			const packStatus = pack.latest?.meta?.status?.toString().toLowerCase();
-			const matchesStatus = statusFilters.length === 0 || (packStatus && statusFilters.some((f) => f.toLowerCase() === packStatus));
+		// Status filter (match all if no filters)
+		const packStatus = pack.latest?.meta?.status?.toString().toLowerCase();
+		const matchesStatus = statusFilters.length === 0 || packStatus && statusFilters.some((f) => f.toLowerCase() === packStatus);
 
-			// OS filter (match all if no filters)
-			const packOS = pack.latest?.meta?.os?.toString().toLowerCase();
-			const matchesOS = osFilters.length === 0 || (packOS && osFilters.some((f) => f.toLowerCase() === packOS));
+		// OS filter (match all if no filters)
+		const packOS = pack.latest?.meta?.os?.toString().toLowerCase();
+		const matchesOS = osFilters.length === 0 || packOS && osFilters.some((f) => f.toLowerCase() === packOS);
 
-			// False Positive filter (match all if no filters)
-			const packFP = pack.latest?.meta?.expected_false_positive_level?.toString().toLowerCase();
-			const matchesFP = fpFilters.length === 0 || (packFP && fpFilters.some((f) => f.toLowerCase() === packFP));
+		// False Positive filter (match all if no filters)
+		const packFP = pack.latest?.meta?.expected_false_positive_level?.toString().toLowerCase();
+		const matchesFP = fpFilters.length === 0 || packFP && fpFilters.some((f) => f.toLowerCase() === packFP);
 
-			// Level filter (match all if no filters)
-			const packLevel = pack.latest?.meta?.level?.toString().toLowerCase();
-			const matchesLevel = levelFilters.length === 0 || (packLevel && levelFilters.some((f) => f.toLowerCase() === packLevel));
+		// Level filter (match all if no filters)
+		const packLevel = pack.latest?.meta?.level?.toString().toLowerCase();
+		const matchesLevel = levelFilters.length === 0 || packLevel && levelFilters.some((f) => f.toLowerCase() === packLevel);
 
-			return matchesSearch && matchesStatus && matchesOS && matchesFP && matchesLevel;
-		}).sort((a, b) => {
-			const isPrivateA = a.team_ids && a.team_ids.length > 0;
-			const isPrivateB = b.team_ids && b.team_ids.length > 0;
-			if (isPrivateA !== isPrivateB) {
-				return isPrivateA ? -1 : 1;
+		return matchesSearch && matchesStatus && matchesOS && matchesFP && matchesLevel;
+	}).sort((a, b) => {
+		const isPrivateA = a.team_ids && a.team_ids.length > 0;
+		const isPrivateB = b.team_ids && b.team_ids.length > 0;
+		if (isPrivateA !== isPrivateB) {
+			return isPrivateA ? -1 : 1;
+		}
+
+		const getNameOrder = (name: string) => {
+			if (name.toLowerCase().startsWith('radegast')) {
+				return 1;
 			}
-
-			const getNameOrder = (name: string) => {
-				if (name.toLowerCase().startsWith('radegast')) {
-					return 1;
-				}
-				if (name.toLowerCase().startsWith('rustinel')) {
-					return 2;
-				}
-				return 3;
+			if (name.toLowerCase().startsWith('rustinel')) {
+				return 2;
 			}
-			const nameOrderA = getNameOrder(a.name);
-			const nameOrderB = getNameOrder(b.name);
-			if (nameOrderA !== nameOrderB) {
-				return nameOrderA - nameOrderB;
+			return 3;
 			}
+		const nameOrderA = getNameOrder(a.name);
+		const nameOrderB = getNameOrder(b.name);
+		if (nameOrderA !== nameOrderB) {
+			return nameOrderA - nameOrderB;
+		}
 
-			const getLevelOrder = (level: any) => {
-				if (!level) return 4;
-				const l = String(level).toLowerCase();
-				if (l === 'essential') return 1;
-				if (l === 'advanced') return 2;
-				if (l === 'hunting') return 3;
-				return 4;
-			};
-			const levelOrderA = getLevelOrder(a.latest?.meta?.level);
-			const levelOrderB = getLevelOrder(b.latest?.meta?.level);
-			if (levelOrderA !== levelOrderB) {
-				return levelOrderA - levelOrderB;
-			}
+		const getLevelOrder = (level: any) => {
+			if (!level) return 4;
+			const l = String(level).toLowerCase();
+			if (l === 'essential') return 1;
+			if (l === 'advanced') return 2;
+			if (l === 'hunting') return 3;
+			return 4;
+		};
+		const levelOrderA = getLevelOrder(a.latest?.meta?.level);
+		const levelOrderB = getLevelOrder(b.latest?.meta?.level);
+		if (levelOrderA !== levelOrderB) {
+			return levelOrderA - levelOrderB;
+		}
 
-			const getStatusOrder = (status: any) => {
-				if (!status) return 5;
-				const s = String(status).toLowerCase();
-				if (s === 'stable') return 1;
-				if (s === 'beta') return 2;
-				if (s === 'testing') return 3;
-				if (s === 'experimental') return 4;
-				return 5;
-			};
-			const statusOrderA = getStatusOrder(a.latest?.meta?.status);
-			const statusOrderB = getStatusOrder(b.latest?.meta?.status);
-			if (statusOrderA !== statusOrderB) {
-				return statusOrderA - statusOrderB;
-			}
+		const getStatusOrder = (status: any) => {
+			if (!status) return 5;
+			const s = String(status).toLowerCase();
+			if (s === 'stable') return 1;
+			if (s === 'beta') return 2;
+			if (s === 'testing') return 3;
+			if (s === 'experimental') return 4;
+			return 5;
+		};
+		const statusOrderA = getStatusOrder(a.latest?.meta?.status);
+		const statusOrderB = getStatusOrder(b.latest?.meta?.status);
+		if (statusOrderA !== statusOrderB) {
+			return statusOrderA - statusOrderB;
+		}
 
-			const getFpOrder = (fp: any) => {
-				if (!fp) return 4;
-				const f = String(fp).toLowerCase();
-				if (f === 'low') return 1;
-				if (f === 'medium') return 2;
-				if (f === 'high') return 3;
-				return 4;
-			};
-			const fpOrderA = getFpOrder(a.latest?.meta?.expected_false_positive_level);
-			const fpOrderB = getFpOrder(b.latest?.meta?.expected_false_positive_level);
-			if (fpOrderA !== fpOrderB) {
-				return fpOrderA - fpOrderB;
-			}
+		const getFpOrder = (fp: any) => {
+			if (!fp) return 4;
+			const f = String(fp).toLowerCase();
+			if (f === 'low') return 1;
+			if (f === 'medium') return 2;
+			if (f === 'high') return 3;
+			return 4;
+		};
+		const fpOrderA = getFpOrder(a.latest?.meta?.expected_false_positive_level);
+		const fpOrderB = getFpOrder(b.latest?.meta?.expected_false_positive_level);
+		if (fpOrderA !== fpOrderB) {
+			return fpOrderA - fpOrderB;
+		}
 
-			return a.name.localeCompare(b.name);
+		return a.name.localeCompare(b.name);
 		})
 	);
 
@@ -147,7 +147,7 @@
 			}));
 		}
 
-		goto(`${base}/packs?${params.toString()}`, { replaceState: true, keepFocus: true });
+		goto(resolve(`/packs?${params.toString()}`), { replace: true, reset: false });
 	}
 
 	function parseArrayParam(param: string | null): string[] {
@@ -156,7 +156,7 @@
 	}
 
 	function loadFiltersFromUrl(): void {
-		const urlParams = $page.url.searchParams;
+		const urlParams = page.url.searchParams;
 
 		let savedFilters: any = {};
 		if (typeof localStorage !== 'undefined') {
@@ -283,7 +283,7 @@
 
 	// Close dropdowns when URL changes (filters applied)
 	$effect(() => {
-		const _ = $page.url;
+		const _ = page.url;
 		closeAllDropdowns();
 	});
 
@@ -471,16 +471,25 @@
 	}
 </script>
 
-<svelte:window onclick={(e) => { const target = e.target as HTMLElement; if (!target.closest('.dropdown')) closeAllDropdowns(); }} />
+<svelte:window
+	onclick={(e) => {
+		const target = e.target as HTMLElement;
 
-<svelte:head>
-	<title>Packs - Radegast</title>
-</svelte:head>
+		if (!target.closest('.dropdown')) closeAllDropdowns();
+	}}
+></svelte:window>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<svelte:head><title>Packs - Radegast</title></svelte:head>
+
+<div
+	class="d-flex justify-content-between align-items-center mb-4"
+>
 	<h2>Packs</h2>
 	{#if canCreate}
-		<button class="btn btn-primary" onclick={() => (showCreate = true)}>Create Pack</button>
+		<button
+			class="btn btn-primary"
+			onclick={() => showCreate = true}
+		>Create Pack</button>
 	{/if}
 </div>
 
@@ -663,8 +672,14 @@
 				<div class="card h-100 shadow-sm">
 
 					<div class="card-body d-flex flex-column">
-						<h5 class="card-title fw-bold text-primary d-flex align-items-center justify-content-between gap-2">
-							<a href="{base}/packs/{pack.id}" class="text-decoration-none text-truncate">{pack.name}</a>
+						<h5
+							class="card-title fw-bold text-primary d-flex align-items-center justify-content-between gap-2"
+						>
+							<a
+								href={resolve(`/packs/${pack.id}`)}
+								class="text-decoration-none text-truncate"
+							>{pack.name}</a>
+
 							{#if pack.team_ids && pack.team_ids.length > 0}
 								<span class="badge bg-secondary" style="font-size: 0.7rem;">Private</span>
 							{:else}
@@ -698,7 +713,7 @@
 							{#if pack.description || pack.latest?.meta?.description}
 								{pack.description || ''}
 								{#if pack.description && pack.latest?.meta?.description}
-									<br>
+									<br />
 								{/if}
 								{pack.latest?.meta?.description || ''}
 							{:else}
@@ -736,8 +751,17 @@
 	</div>
 {/if}
 
-<Modal show={showCreate} title="Create Pack" onClose={() => (showCreate = false)}>
-	<form onsubmit={(e) => { e.preventDefault(); createPack(); }}>
+<Modal
+	show={showCreate}
+	title="Create Pack"
+	onClose={() => showCreate = false}
+>
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			createPack();
+		}}
+	>
 		<div class="mb-3">
 			<label for="packName" class="form-label fw-semibold">Pack Name</label>
 			<input type="text" class="form-control" id="packName" bind:value={newPackName} required />
@@ -797,8 +821,15 @@
 	</form>
 </Modal>
 
-<Modal show={showEdit} title="Edit Pack" onClose={() => (showEdit = false)}>
-	<form onsubmit={(e) => { e.preventDefault(); savePack(); }}>
+<Modal
+	show={showEdit}
+	title="Edit Pack"
+	onClose={() => showEdit = false}
+>
+	<form onsubmit={(e) => {
+		e.preventDefault();
+		savePack();
+	}}>
 		<div class="mb-3">
 			<label for="editPackName" class="form-label fw-semibold">Pack Name</label>
 			<input type="text" class="form-control" id="editPackName" bind:value={editPackName} required />
@@ -858,7 +889,11 @@
 	</form>
 </Modal>
 
-<Modal show={showVersions} title="Pack Versions - {versionsPackName}" onClose={() => (showVersions = false)}>
+<Modal
+	show={showVersions}
+	title="Pack Versions - {versionsPackName}"
+	onClose={() => showVersions = false}
+>
 	{#if loadingVersions}
 		<Spinner centered text="Loading versions..." py={4} />
 	{:else if packVersions.length === 0}
@@ -890,8 +925,17 @@
 	{/if}
 </Modal>
 
-<Modal show={showUpload} title="Upload Version" onClose={() => (showUpload = false)}>
-	<form onsubmit={(e) => { e.preventDefault(); uploadPackVersion(); }}>
+<Modal
+	show={showUpload}
+	title="Upload Version"
+	onClose={() => showUpload = false}
+>
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			uploadPackVersion();
+		}}
+	>
 		<div class="mb-3">
 			<label for="version" class="form-label">Version</label>
 			<input

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api';
 	import { showFlash } from '$lib/store';
@@ -86,10 +86,8 @@
 	<div class="col-md-6 col-lg-4">
 		<h2 class="mb-4">Register</h2>
 		{#if success}
-			<div class="alert alert-success">
-				Registration successful! Please check your email and click the verification link.
-			</div>
-			<p class="text-center"><a href="{base}/login">Go to Login</a></p>
+			<div class="alert alert-success">Registration successful! Please check your email and click the verification link.</div>
+			<p class="text-center"><a href={resolve('/login')}>Go to Login</a></p>
 		{:else}
 			{#if error}
 				<div class="alert alert-danger">{error}</div>
@@ -130,8 +128,26 @@
 						bind:checked={acceptedPolicies}
 						required
 					/>
-					<label class="form-check-label small text-muted" for="acceptPolicies">
-						I accept the <a href="{base}/terms" target="_blank" onclick={(e) => e.stopPropagation()}>Terms of Service</a> and <a href="{base}/privacy" target="_blank" onclick={(e) => e.stopPropagation()}>Privacy Policy</a>
+
+					<label
+						class="form-check-label small text-muted"
+						for="acceptPolicies"
+					>
+						I accept the 
+
+						<a
+							href={resolve('/terms')}
+							target="_blank"
+							onclick={(e) => e.stopPropagation()}
+						>Terms of Service</a>
+
+						and 
+
+						<a
+							href={resolve('/privacy')}
+							target="_blank"
+							onclick={(e) => e.stopPropagation()}
+						>Privacy Policy</a>
 					</label>
 				</div>
 				{#if turnstileSiteKey}
@@ -149,7 +165,8 @@
 				<button type="submit" class="btn btn-primary w-100">Register</button>
 			</form>
 			<p class="mt-3 text-center">
-				Already have an account? <a href="{base}/login">Login</a>
+				Already have an account? 
+				<a href={resolve('/login')}>Login</a>
 			</p>
 		{/if}
 	</div>

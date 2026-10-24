@@ -4,7 +4,7 @@
 	import { parseYaraRule } from '$lib/yaraParser';
 	import { getAlertField, getAlertArray } from '$lib/alertHelpers';
 
-	let { triggeredRule = null, alert = undefined } = $props<{
+	interface Props {
 		triggeredRule?: {
 			rule_type: string;
 			rule_id: string;
@@ -13,7 +13,9 @@
 			pack_name?: string | null;
 		} | null;
 		alert?: Record<string, unknown>;
-	}>();
+	}
+
+	let { triggeredRule = null, alert = undefined }: Props = $props();
 
 	let parsedMeta = $derived<SigmaRuleMeta | null>(
 		triggeredRule

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { askConfirm } from '$lib/confirm';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { api, type Team, type TeamMember, type Group, type Device } from '$lib/api';
@@ -80,7 +80,7 @@
 				const fullGroup = await api.getGroup(g.id);
 				if (fullGroup.private_key && userPrivKey) {
 					const currentPubKeys = await api.getGroupRecipientPublicKeys(g.id);
-					newPubs.forEach(p => {
+					newPubs.forEach((p) => {
 						if (!currentPubKeys.includes(p)) currentPubKeys.push(p);
 					});
 					const groupPrivKey = decrypt(fullGroup.private_key, userPrivKey);
@@ -89,7 +89,7 @@
 			}
 
 			await api.inviteToTeam(teamId, inviteEmail.trim(), groupKeysMap);
-			triggerKeyRefresh.update(n => n + 1);
+			triggerKeyRefresh.update((n) => n + 1);
 			showInvite = false;
 			inviteEmail = '';
 			showFlash('Invitation sent');
@@ -117,7 +117,7 @@
 			}
 
 			await api.removeMember(teamId, Number(userId), groupKeysMap);
-			triggerKeyRefresh.update(n => n + 1);
+			triggerKeyRefresh.update((n) => n + 1);
 			await loadTeam();
 			showFlash('Member removed');
 		} catch (e) {
@@ -154,7 +154,11 @@
 			{#if editingName}
 				<input class="form-control form-control-lg w-auto" bind:value={editName} />
 				<button class="btn btn-success btn-sm" onclick={saveName}>Save</button>
-				<button class="btn btn-outline-secondary btn-sm" onclick={() => (editingName = false)}>Cancel</button>
+
+				<button
+					class="btn btn-outline-secondary btn-sm"
+					onclick={() => editingName = false}
+				>Cancel</button>
 			{:else}
 				<h2 class="mb-0">{team.name}</h2>
 				<button class="btn btn-outline-secondary btn-sm" onclick={startRename} title="Rename team">✎</button>
@@ -172,7 +176,11 @@
 			<div class="card">
 				<div class="card-header d-flex justify-content-between align-items-center">
 					<span>Members</span>
-					<button class="btn btn-sm btn-outline-primary" onclick={() => (showInvite = true)}>Invite</button>
+
+					<button
+						class="btn btn-sm btn-outline-primary"
+						onclick={() => showInvite = true}
+					>Invite</button>
 				</div>
 				<ul class="list-group list-group-flush">
 					{#each members as member}
@@ -199,12 +207,18 @@
 			<div class="card">
 				<div class="card-header d-flex justify-content-between align-items-center">
 					<span>Device Groups</span>
-					<button class="btn btn-sm btn-outline-primary" onclick={() => (showCreateGroup = true)}>New Group</button>
+
+					<button
+						class="btn btn-sm btn-outline-primary"
+						onclick={() => showCreateGroup = true}
+					>New Group</button>
 				</div>
 				<ul class="list-group list-group-flush">
 					{#each groups as group}
-						<li class="list-group-item d-flex justify-content-between align-items-center">
-							<a href="{base}/groups/{group.id}">{group.name}</a>
+						<li
+							class="list-group-item d-flex justify-content-between align-items-center"
+						>
+							<a href={resolve(`/groups/${group.id}`)}>{group.name}</a>
 							<span class="badge bg-secondary font-monospace">{formatBytes(group.total_space_used)}</span>
 						</li>
 					{:else}
@@ -234,7 +248,7 @@
 					{#each teamDevices as d}
 						<tr>
 							<td>
-								<a href="{base}/devices/{d.id}">{d.name}</a>
+								<a href={resolve(`/devices/${d.id}`)}>{d.name}</a>
 								{#if !d.signature_public_key}
 									<span class="badge bg-danger ms-2" title="Unsigned device! Signing key is not set.">Unsigned</span>
 								{/if}
@@ -336,8 +350,15 @@
 	<Spinner centered text="Loading team details..." py={5} />
 {/if}
 
-<Modal show={showInvite} title="Invite User" onClose={() => (showInvite = false)}>
-	<form onsubmit={(e) => { e.preventDefault(); invite(); }}>
+<Modal
+	show={showInvite}
+	title="Invite User"
+	onClose={() => showInvite = false}
+>
+	<form onsubmit={(e) => {
+		e.preventDefault();
+		invite();
+	}}>
 		<div class="mb-3">
 			<label for="inviteEmail" class="form-label">Email</label>
 			<input
@@ -352,8 +373,17 @@
 	</form>
 </Modal>
 
-<Modal show={showCreateGroup} title="Create Device Group" onClose={() => (showCreateGroup = false)}>
-	<form onsubmit={(e) => { e.preventDefault(); createGroup(); }}>
+<Modal
+	show={showCreateGroup}
+	title="Create Device Group"
+	onClose={() => showCreateGroup = false}
+>
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			createGroup();
+		}}
+	>
 		<div class="mb-3">
 			<label for="groupName" class="form-label">Group Name</label>
 			<input

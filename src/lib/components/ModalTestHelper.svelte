@@ -1,11 +1,13 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
 
-	let { show = false, title = 'Test Modal', onClose = () => {} } = $props<{
+	interface Props {
 		show?: boolean;
 		title?: string;
 		onClose?: () => void;
-	}>();
+	}
+
+	let { show = false, title = 'Test Modal', onClose = () => {} }: Props = $props();
 </script>
 
 <Modal {show} {title} {onClose}>

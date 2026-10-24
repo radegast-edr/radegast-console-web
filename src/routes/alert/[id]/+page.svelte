@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
@@ -9,7 +9,7 @@
 	onMount(async () => {
 		const idStr = page.params.id;
 		if (!idStr) {
-			goto(`${base}/alerts`);
+			goto(resolve('/alerts'));
 			return;
 		}
 
@@ -21,18 +21,18 @@
 				// Calculate 24 hours before and after
 				const from = new Date(logTime.getTime() - 24 * 60 * 60 * 1000);
 				const to = new Date(logTime.getTime() + 24 * 60 * 60 * 1000);
-				
+
 				const pad = (num: number) => String(num).padStart(2, '0');
 				const fromStr = `${from.getFullYear()}-${pad(from.getMonth() + 1)}-${pad(from.getDate())}T${pad(from.getHours())}:${pad(from.getMinutes())}`;
 				const toStr = `${to.getFullYear()}-${pad(to.getMonth() + 1)}-${pad(to.getDate())}T${pad(to.getHours())}:${pad(to.getMinutes())}`;
 
-				goto(`${base}/alerts#from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}&focused_alert=${id}`);
+				goto(resolve(`/alerts#from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}&focused_alert=${id}`));
 			} else {
-				goto(`${base}/alerts`);
+				goto(resolve('/alerts'));
 			}
 		} catch (e) {
 			console.error("Failed to redirect to alert:", e);
-			goto(`${base}/alerts`);
+			goto(resolve('/alerts'));
 		}
 	});
 </script>

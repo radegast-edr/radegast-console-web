@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
 	import { user } from '$lib/store';
 	import { goto } from '$app/navigation';
 	import { getPublicKeyForLogin } from '$lib/crypto';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import Icon from '@iconify/svelte';
 
 	let email = $state('');
@@ -47,11 +47,11 @@
 		if (me && me.id) {
 			localStorage.setItem(`uid_${email.toLowerCase().trim()}`, String(me.id));
 		}
-		const next = $page.url.searchParams.get('next');
+		const next = page.url.searchParams.get('next');
 		if (next) {
-			goto(`${base}${decodeURIComponent(next)}`);
+			const target = decodeURIComponent(next); goto(resolve(target.startsWith('/') ? target : '/' + target));
 		} else {
-			goto(`${base}/`);
+			goto(resolve('/'));
 		}
 	}
 
@@ -160,10 +160,14 @@
 				<button type="submit" class="btn btn-primary w-100">Login</button>
 			</form>
 			<p class="mt-3 text-center">
-				Don't have an account? <a href="{base}/register">Register</a>
+				Don't have an account? 
+				<a href={resolve('/register')}>Register</a>
 			</p>
 			<p class="mt-2 text-center small">
-				<a href="{base}/reset-password" class="text-secondary">Forgot password?</a>
+				<a
+					href={resolve('/reset-password')}
+					class="text-secondary"
+				>Forgot password?</a>
 			</p>
 		{:else if step === 'mfa'}
 			<div class="card p-4 shadow-sm bg-body-tertiary">

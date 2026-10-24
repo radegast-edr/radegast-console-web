@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { api } from '$lib/api';
 	import { showFlash } from '$lib/store';
 	import Spinner from '$lib/components/Spinner.svelte';
@@ -17,7 +17,7 @@
 	let turnstileToken = $state<string | null>(null);
 
 	onMount(async () => {
-		token = $page.url.searchParams.get('token');
+		token = page.url.searchParams.get('token');
 		if (token) {
 			loading = true;
 			try {
@@ -98,22 +98,16 @@
 				<Spinner centered text={token ? "Confirming password reset..." : "Sending password reset request..."} />
 			</div>
 		{:else if success}
-			<div class="alert alert-success">
-				{successMessage}
-			</div>
-			<p class="text-center"><a href="{base}/login">Go to Login</a></p>
+			<div class="alert alert-success">{successMessage}</div>
+			<p class="text-center"><a href={resolve('/login')}>Go to Login</a></p>
 		{:else}
 			{#if error}
 				<div class="alert alert-danger">{error}</div>
 			{/if}
 
 			{#if token}
-				<p class="text-muted small text-center mb-4">
-					There was a problem resetting your password. The link might have expired or been used already.
-				</p>
-				<p class="text-center">
-					<a href="{base}/reset-password">Request a new reset link</a>
-				</p>
+				<p class="text-muted small text-center mb-4">There was a problem resetting your password. The link might have expired or been used already.</p>
+				<p class="text-center"><a href={resolve('/reset-password')}>Request a new reset link</a></p>
 			{:else}
 				<form onsubmit={(e) => { e.preventDefault(); handleRequestReset(); }}>
 					<p class="text-muted small mb-3">
@@ -133,7 +127,8 @@
 					<button type="submit" class="btn btn-primary w-100">Send Reset Link</button>
 				</form>
 				<p class="mt-3 text-center">
-					Remembered your password? <a href="{base}/login">Login</a>
+					Remembered your password? 
+					<a href={resolve('/login')}>Login</a>
 				</p>
 			{/if}
 		{/if}

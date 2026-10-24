@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { getAlertField } from '$lib/alertHelpers';
 
-	let { alert } = $props<{
+	interface Props {
 		alert: Record<string, unknown>;
-	}>();
+	}
+
+	let { alert }: Props = $props();
 
 	let description = $derived(getAlertField(alert, 'rule.description') ?? '');
 </script>

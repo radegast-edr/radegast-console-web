@@ -1,5 +1,5 @@
-import { base } from '$app/paths';
-import { PUBLIC_BACKEND_URL as BACKEND_URL_RAW } from '$env/static/public';
+import { resolve } from '$app/paths';
+import { PUBLIC_BACKEND_URL as BACKEND_URL_RAW } from '$app/env/public';
 import { goto } from '$app/navigation';
 import createClient, { type Middleware, type FetchOptions, type FetchResponse } from 'openapi-fetch';
 import type { components, paths, operations } from './openapi.d.ts';
@@ -58,13 +58,13 @@ const errorMiddleware: Middleware = {
 
 		// 401 Unauthorized or 403 Forbidden: unauthenticated session
 		if ((response.status === 401 || response.status === 403) && !isAuthLogin) {
-			await goto(`${base}/login`);
+			await goto(resolve('/login'));
 			throw new ApiError(response.status === 401 ? 'Not authenticated' : 'Forbidden', response.status);
 		}
 
 		// 5xx Server Errors: drop to server error page
 		if (response.status >= 500 && !isServerErrorPage) {
-			await goto(`${base}/server-error?status=${response.status}`);
+			await goto(resolve(`/server-error?status=${response.status}`));
 			throw new ApiError(`Server error (${response.status})`, response.status);
 		}
 
@@ -82,7 +82,7 @@ const errorMiddleware: Middleware = {
 		const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
 		const isServerErrorPage = currentPath.includes('/server-error');
 		if (!isServerErrorPage) {
-			await goto(`${base}/server-error?status=network_error`);
+			await goto(resolve('/server-error?status=network_error'));
 		}
 	}
 };
@@ -259,45 +259,39 @@ export const api = {
 		call(callOp('get_account_deletion_status_api_v1_user_delete_account_status_get', {})),
 
 	// Teams
-	listTeams: () =>
-		call(callOp('list_teams_api_v1_teams__get', {})),
+	listTeams: () => call(callOp('list_teams_api_v1_teams__get', {})),
+	createTeam: (body: components['schemas']['TeamCreate']) => call(callOp('create_team_api_v1_teams__post', { body })),
+	getTeam: (team_id: number) => call(callOp('get_team_api_v1_teams__team_id__get', { params: { path: { team_id } } })),
+	updateTeam: (team_id: number, body: components['schemas']['TeamUpdate']) => call(callOp('update_team_api_v1_teams__team_id__put', { params: { path: { team_id } }, body })),
+	inviteToTeam: (
+		team_id: number,
+		email: string,
+		group_keys: Record<number, string> | null = null
+	) => call(callOp('invite_to_team_api_v1_teams__team_id__invite_post', { params: { path: { team_id } }, body: { email, group_keys } })),
 
-	createTeam: (body: components['schemas']['TeamCreate']) =>
-		call(callOp('create_team_api_v1_teams__post', { body })),
-
-	getTeam: (team_id: number) =>
-		call(callOp('get_team_api_v1_teams__team_id__get', { params: { path: { team_id } } })),
-
-	updateTeam: (team_id: number, body: components['schemas']['TeamUpdate']) =>
-		call(callOp('update_team_api_v1_teams__team_id__put', { params: { path: { team_id } }, body })),
-
-	inviteToTeam: (team_id: number, email: string, group_keys: Record<number, string> | null = null) =>
-		call(callOp('invite_to_team_api_v1_teams__team_id__invite_post', { params: { path: { team_id } }, body: { email, group_keys } })),
-
-	cancelInvitation: (team_id: number, user_id: number, group_keys: Record<number, string>) =>
-		call(callOp('cancel_invitation_api_v1_teams__team_id__invitations__user_id__cancel_post', { params: { path: { team_id, user_id } }, body: { group_keys } })),
-
-	getTeamRecipientPublicKeys: (team_id: number) =>
-		call(callOp('get_team_recipient_public_keys_api_v1_teams__team_id__recipient_public_keys_get', { params: { path: { team_id } } })),
-
-	listMembers: (team_id: number) =>
-		call(callOp('list_members_api_v1_teams__team_id__members_get', { params: { path: { team_id } } })),
-
-	removeMember: (team_id: number, user_id: number, group_keys: Record<number, string>) =>
-		call(callOp('remove_member_api_v1_teams__team_id__members__user_id__delete_post', { params: { path: { team_id, user_id } }, body: { group_keys } })),
-
-	listTeamGroups: (team_id: number) =>
-		call(callOp('list_team_groups_api_v1_teams__team_id__groups_get', { params: { path: { team_id } } })),
-
-	createTeamGroup: (team_id: number, name: string) =>
-		call(callOp('create_team_group_api_v1_teams__team_id__groups_post', { params: { path: { team_id } }, body: { name } })),
-
-	linkGroupToTeam: (team_id: number, group_id: number, encrypted_private_key: string) =>
-		call(callOp('link_group_to_team_api_v1_teams__team_id__groups__group_id__link_post', { params: { path: { team_id, group_id } }, body: { encrypted_private_key } })),
-
-	listTeamDevices: (team_id: number) =>
-		call(callOp('list_team_devices_api_v1_teams__team_id__devices_get', { params: { path: { team_id } } })),
-
+	cancelInvitation: (
+		team_id: number,
+		user_id: number,
+		group_keys: Record<number, string>
+	) => call(callOp('cancel_invitation_api_v1_teams__team_id__invitations__user_id__cancel_post', { params: { path: { team_id, user_id } }, body: { group_keys } })),
+	getTeamRecipientPublicKeys: (team_id: number) => call(callOp('get_team_recipient_public_keys_api_v1_teams__team_id__recipient_public_keys_get', { params: { path: { team_id } } })),
+	listMembers: (team_id: number) => call(callOp('list_members_api_v1_teams__team_id__members_get', { params: { path: { team_id } } })),
+	removeMember: (
+		team_id: number,
+		user_id: number,
+		group_keys: Record<number, string>
+	) => call(callOp('remove_member_api_v1_teams__team_id__members__user_id__delete_post', { params: { path: { team_id, user_id } }, body: { group_keys } })),
+	listTeamGroups: (team_id: number) => call(callOp('list_team_groups_api_v1_teams__team_id__groups_get', { params: { path: { team_id } } })),
+	createTeamGroup: (team_id: number, name: string) => call(callOp('create_team_group_api_v1_teams__team_id__groups_post', { params: { path: { team_id } }, body: { name } })),
+	linkGroupToTeam: (
+		team_id: number,
+		group_id: number,
+		encrypted_private_key: string
+	) => call(callOp('link_group_to_team_api_v1_teams__team_id__groups__group_id__link_post', {
+		params: { path: { team_id, group_id } },
+		body: { encrypted_private_key }
+	})),
+	listTeamDevices: (team_id: number) => call(callOp('list_team_devices_api_v1_teams__team_id__devices_get', { params: { path: { team_id } } })),
 	// Devices
 	createDevice: (name: string, group_id: number) =>
 		call(callOp('create_device_api_v1_devices__post', { body: { name, group_id } })),
@@ -324,37 +318,48 @@ export const api = {
 		call(callOp('reinstall_device_api_v1_devices__device_id__reinstall_post', { params: { path: { device_id } } })),
 
 	// Device Groups
-	listGroups: () =>
-		call(callOp('list_groups_api_v1_groups__get', {})),
+	listGroups: () => call(callOp('list_groups_api_v1_groups__get', {})),
+	listGroupsNeedingRefresh: () => call(callOp('list_groups_needing_refresh_api_v1_groups_needs_refresh_get', {})),
+	getGroup: (group_id: number) => call(callOp('get_group_api_v1_groups__group_id__get', { params: { path: { group_id } } })),
+	renameGroup: (group_id: number, name: string) => call(callOp('rename_group_api_v1_groups__group_id__patch', { params: { path: { group_id } }, body: { name } })),
+	updateGroupResponse: (
+		group_id: number,
+		data: { response_enabled: boolean; response_min_severity: string }
+	) => call(callOp('update_group_response_api_v1_groups__group_id__response_patch', { params: { path: { group_id } }, body: data })),
 
-	listGroupsNeedingRefresh: () =>
-		call(callOp('list_groups_needing_refresh_api_v1_groups_needs_refresh_get', {})),
+	unlinkGroupFromTeam: (
+		group_id: number,
+		team_id: number,
+		encrypted_private_key: string
+	) => call(callOp('unlink_group_from_team_api_v1_groups__group_id__teams__team_id__unlink_post', {
+		params: { path: { group_id, team_id } },
+		body: { encrypted_private_key }
+	})),
 
-	getGroup: (group_id: number) =>
-		call(callOp('get_group_api_v1_groups__group_id__get', { params: { path: { group_id } } })),
+	addDeviceToGroupViaGroup: (
+		group_id: number,
+		device_id: number,
+		encrypted_private_key: string
+	) => call(callOp('add_device_to_group_api_v1_groups__group_id__devices__device_id__post', {
+		params: { path: { group_id, device_id } },
+		body: { encrypted_private_key }
+	})),
 
-	renameGroup: (group_id: number, name: string) =>
-		call(callOp('rename_group_api_v1_groups__group_id__patch', { params: { path: { group_id } }, body: { name } })),
+	removeDeviceFromGroupViaGroup: (
+		group_id: number,
+		device_id: number,
+		encrypted_private_key: string
+	) => call(callOp('remove_device_from_group_api_v1_groups__group_id__devices__device_id__remove_post', {
+		params: { path: { group_id, device_id } },
+		body: { encrypted_private_key }
+	})),
 
-	updateGroupResponse: (group_id: number, data: { response_enabled: boolean; response_min_severity: string }) =>
-		call(callOp('update_group_response_api_v1_groups__group_id__response_patch', { params: { path: { group_id } }, body: data })),
-
-	unlinkGroupFromTeam: (group_id: number, team_id: number, encrypted_private_key: string) =>
-		call(callOp('unlink_group_from_team_api_v1_groups__group_id__teams__team_id__unlink_post', { params: { path: { group_id, team_id } }, body: { encrypted_private_key } })),
-
-	addDeviceToGroupViaGroup: (group_id: number, device_id: number, encrypted_private_key: string) =>
-		call(callOp('add_device_to_group_api_v1_groups__group_id__devices__device_id__post', { params: { path: { group_id, device_id } }, body: { encrypted_private_key } })),
-
-	removeDeviceFromGroupViaGroup: (group_id: number, device_id: number, encrypted_private_key: string) =>
-		call(callOp('remove_device_from_group_api_v1_groups__group_id__devices__device_id__remove_post', { params: { path: { group_id, device_id } }, body: { encrypted_private_key } })),
-
-	getGroupRecipientPublicKeys: (group_id: number, exclude_user_id: number | null = null) =>
-		call(callOp('get_recipient_public_keys_api_v1_groups__group_id__recipient_public_keys_get', {
-			params: {
-				path: { group_id },
-				query: { ...(exclude_user_id ? { exclude_user_id } : {}) }
-			}
-		})),
+	getGroupRecipientPublicKeys: (group_id: number, exclude_user_id: number | null = null) => call(callOp('get_recipient_public_keys_api_v1_groups__group_id__recipient_public_keys_get', {
+		params: {
+			path: { group_id },
+			query: { ...exclude_user_id ? { exclude_user_id } : {} }
+		}
+	})),
 
 	setupGroupKeys: (group_id: number, keys: { public_key: string; private_key: string }) =>
 		call(callOp('setup_group_keys_api_v1_groups__group_id__keys_post', { params: { path: { group_id } }, body: keys })),
@@ -441,9 +446,9 @@ export const api = {
 
 	transferComplete: (transfer_id: string, encrypted_private_key: string) =>
 		call(callOp('complete_key_transfer_api_v1_user_keys_transfer__transfer_id__complete_post', {
-			params: { path: { transfer_id } },
-			body: { encrypted_private_key }
-		})),
+		params: { path: { transfer_id } },
+		body: { encrypted_private_key }
+	})),
 
 	// Logs
 	getLog: (log_id: number) =>
@@ -460,17 +465,17 @@ export const api = {
 	) =>
 		call(
 			callOp('list_logs_api_v1_logs__get', {
-				params: {
-					query: {
-						page,
-						limit,
-						...(device_id ? { device_id } : {}),
-						...(from_time ? { from_time } : {}),
-						...(to_time ? { to_time } : {}),
-						...(min_level ? { min_level } : {}),
-						...(offset !== null && offset !== undefined ? { offset } : {})
-					}
-				}
+		params: {
+			query: {
+				page,
+				limit,
+				...device_id ? { device_id } : {},
+				...from_time ? { from_time } : {},
+				...to_time ? { to_time } : {},
+				...min_level ? { min_level } : {},
+				...offset !== null && offset !== undefined ? { offset } : {}
+			}
+		}
 			})
 		),
 
@@ -482,14 +487,14 @@ export const api = {
 	) =>
 		call(
 			callOp('get_logs_count_api_v1_logs_count_get', {
-				params: {
-					query: {
-						...(device_id ? { device_id } : {}),
-						...(from_time ? { from_time } : {}),
-						...(to_time ? { to_time } : {}),
-						...(min_level ? {min_level}: {})
-					}
-				}
+		params: {
+			query: {
+				...device_id ? { device_id } : {},
+				...from_time ? { from_time } : {},
+				...to_time ? { to_time } : {},
+				...min_level ? { min_level } : {}
+			}
+		}
 			})
 		),
 
@@ -511,8 +516,8 @@ export const api = {
 		body.append('file', file);
 		return call(
 			callOp('upload_release_api_v1_releases__post', {
-				body: body as any,
-				bodySerializer: (b: unknown) => b as FormData
+			body: body as any,
+			bodySerializer: (b: unknown) => b as FormData
 			})
 		);
 	},
@@ -540,32 +545,33 @@ export const api = {
 		call(callOp('unsubscribe_api_v1_user_unsubscribe_post', { body: { token } } as any)),
 
 	// MFA
-	getMfaSettings: () =>
-		call(callOp('get_mfa_settings_api_v1_user_mfa_settings_get', {})),
-
-	setupMfaOtp: () =>
-		call(callOp('mfa_otp_setup_api_v1_user_mfa_otp_setup_post', {})),
-
-	verifyMfaOtp: (code: string) =>
-		call(callOp('mfa_otp_verify_api_v1_user_mfa_otp_verify_post', { body: { code } })),
-
-	disableMfaOtp: () =>
-		call(callOp('mfa_otp_disable_api_v1_user_mfa_otp_disable_post', {})),
-
-	setupMfaHardwareToken: () =>
-		call(callOp('mfa_hardware_token_setup_api_v1_user_mfa_hardware_token_setup_post', {})),
-
-	verifyMfaHardwareToken: (registration_token: string, credential_response: Record<string, unknown>, name: string | null = null) =>
-		call(callOp('mfa_hardware_token_verify_api_v1_user_mfa_hardware_token_verify_post', { body: { registration_token, credential_response, name } })),
-
-	deleteMfaHardwareToken: (hardware_token_id: number) =>
-		call(callOp('delete_hardware_token_api_v1_user_mfa_hardware_token__token_id__delete', { params: { path: { token_id: hardware_token_id } } })),
-
-	getMfaHardwareTokenAssertionOptions: (mfa_token: string) =>
-		call(callOp('mfa_hardware_token_assertion_options_api_v1_auth_mfa_hardware_token_assertion_options_post', { body: { mfa_token } })),
-
-	verifyMfa: (mfa_token: string, method: string, otp_code: string | null = null, assertion_token: string | null = null, webauthn_response: Record<string, unknown> | null = null) =>
-		call(callOp('mfa_verify_api_v1_auth_mfa_verify_post', { body: { mfa_token, method, otp_code, assertion_token, webauthn_response } })),
+	getMfaSettings: () => call(callOp('get_mfa_settings_api_v1_user_mfa_settings_get', {})),
+	setupMfaOtp: () => call(callOp('mfa_otp_setup_api_v1_user_mfa_otp_setup_post', {})),
+	verifyMfaOtp: (code: string) => call(callOp('mfa_otp_verify_api_v1_user_mfa_otp_verify_post', { body: { code } })),
+	disableMfaOtp: () => call(callOp('mfa_otp_disable_api_v1_user_mfa_otp_disable_post', {})),
+	setupMfaHardwareToken: () => call(callOp('mfa_hardware_token_setup_api_v1_user_mfa_hardware_token_setup_post', {})),
+	verifyMfaHardwareToken: (
+		registration_token: string,
+		credential_response: Record<string, unknown>,
+		name: string | null = null
+	) => call(callOp('mfa_hardware_token_verify_api_v1_user_mfa_hardware_token_verify_post', { body: { registration_token, credential_response, name } })),
+	deleteMfaHardwareToken: (hardware_token_id: number) => call(callOp('delete_hardware_token_api_v1_user_mfa_hardware_token__token_id__delete', { params: { path: { token_id: hardware_token_id } } })),
+	getMfaHardwareTokenAssertionOptions: (mfa_token: string) => call(callOp('mfa_hardware_token_assertion_options_api_v1_auth_mfa_hardware_token_assertion_options_post', { body: { mfa_token } })),
+	verifyMfa: (
+		mfa_token: string,
+		method: string,
+		otp_code: string | null = null,
+		assertion_token: string | null = null,
+		webauthn_response: Record<string, unknown> | null = null
+	) => call(callOp('mfa_verify_api_v1_auth_mfa_verify_post', {
+		body: {
+			mfa_token,
+			method,
+			otp_code,
+			assertion_token,
+			webauthn_response
+		}
+	})),
 
 	// Admin
 	adminListUsers: () =>
@@ -596,65 +602,46 @@ export const api = {
 		call(callOp('get_dashboard_data_api_v1_dashboard__get', {})),
 
 	adminGetAlertStats: (params: {
-		from_time?: string | null;
-		to_time?: string | null;
-		severity?: string[];
-		rule_type?: string[];
-		rule_id?: string[];
-		alert_resolution?: string[];
-	}) =>
-		call(
-			callOp('get_admin_alert_stats_api_v1_admin_stats_alerts_get', {
-				params: {
-					query: {
-						...(params.from_time ? { from_time: params.from_time } : {}),
-						...(params.to_time ? { to_time: params.to_time } : {}),
-						...(params.severity?.length ? { severity: params.severity } : {}),
-						...(params.rule_type?.length ? { rule_type: params.rule_type } : {}),
-						...(params.rule_id?.length ? { rule_id: params.rule_id } : {}),
-						...(params.alert_resolution?.length
-							? { alert_resolution: params.alert_resolution }
-							: {})
-					}
-				}
-			})
-		),
-
-	adminGetAlertRuleIds: () =>
-		call(
-			callOp('get_admin_alert_rule_ids_api_v1_admin_stats_alerts_rule_ids_get', {})
-		),
-
-	adminGetAlertRuleContent: (rule_type: string, rule_id: string) =>
-		call(
-			callOp('get_admin_alert_rule_content_api_v1_admin_stats_alerts_rule_content_get', {
-				params: {
-					query: {
-						rule_type,
-						rule_id
-					}
-				}
-			})
-		),
-
-	adminGetDeviceStats: (params?: {
-		online_status?: string[];
-		health_status?: string[];
-		agent_version?: string[];
-		rustinel_version?: string[];
+			from_time?: string | null;
+			to_time?: string | null;
+			severity?: string[];
+			rule_type?: string[];
+			rule_id?: string[];
+			alert_resolution?: string[]
+		 }
+	) => call(callOp('get_admin_alert_stats_api_v1_admin_stats_alerts_get', {
+		params: {
+			query: {
+				...params.from_time ? { from_time: params.from_time } : {},
+				...params.to_time ? { to_time: params.to_time } : {},
+				...params.severity?.length ? { severity: params.severity } : {},
+				...params.rule_type?.length ? { rule_type: params.rule_type } : {},
+				...params.rule_id?.length ? { rule_id: params.rule_id } : {},
+				...params.alert_resolution?.length ? { alert_resolution: params.alert_resolution } : {}
+			}
+		}
+	})),
+	adminGetAlertRuleIds: () => call(callOp('get_admin_alert_rule_ids_api_v1_admin_stats_alerts_rule_ids_get', {})),
+	adminGetAlertRuleContent: (rule_type: string, rule_id: string) => call(callOp('get_admin_alert_rule_content_api_v1_admin_stats_alerts_rule_content_get', { params: { query: { rule_type, rule_id } } })),
+	adminGetDeviceStats: (
+		params?: { 
+			online_status?: string[];
+			health_status?: string[];
+			agent_version?: string[];
+			rustinel_version?: string[];
 		os?: string[];
 	}) =>
 		call(
 			callOp('get_admin_device_stats_api_v1_admin_stats_devices_get', {
-				params: {
-					query: {
-						...(params?.online_status?.length ? { online_status: params.online_status } : {}),
-						...(params?.health_status?.length ? { health_status: params.health_status } : {}),
-						...(params?.agent_version?.length ? { agent_version: params.agent_version } : {}),
-						...(params?.rustinel_version?.length ? { rustinel_version: params.rustinel_version } : {}),
-						...(params?.os?.length ? { os: params.os } : {})
-					}
-				}
+		params: {
+			query: {
+				...params?.online_status?.length ? { online_status: params.online_status } : {},
+				...params?.health_status?.length ? { health_status: params.health_status } : {},
+				...params?.agent_version?.length ? { agent_version: params.agent_version } : {},
+				...params?.rustinel_version?.length ? { rustinel_version: params.rustinel_version } : {},
+				...params?.os?.length ? { os: params.os } : {}
+			}
+		}
 			})
 		),
 

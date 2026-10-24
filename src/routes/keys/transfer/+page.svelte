@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
@@ -17,10 +17,8 @@
 
 	// Sender state
 	let senderTransferId = $state('');
+
 	let senderSent = $state(false);
-
-
-
 	const EPH_PRIV_KEY = 'radegast_transfer_eph_priv';
 
 	onMount(() => {
@@ -96,7 +94,7 @@
 				}
 				await storePrivateKey(userId, mainPriv, matchedPubKey);
 				showFlash('Key transferred successfully!');
-				goto(`${base}/`);
+				goto(resolve('/'));
 			}
 		} catch (e) {
 			if (pollInterval !== undefined) {
@@ -208,18 +206,19 @@
 			<div class="card mb-4">
 				<div class="card-body">
 					<h5 class="card-title">Generate New Keys on This Device</h5>
-					<p class="text-muted mb-3">
-						To generate a fresh encryption keypair, please visit your account Settings.
-					</p>
-					<a href="{base}/settings" class="btn btn-outline-secondary">
-						Go to Settings
-					</a>
+					<p class="text-muted mb-3">To generate a fresh encryption keypair, please visit your account Settings.</p>
+
+					<a
+						href={resolve('/settings')}
+						class="btn btn-outline-secondary"
+					>Go to Settings</a>
 				</div>
 			</div>
 
 			<p class="text-muted">
-				No key in this browser? You can also
-				<a href="{base}/keys/recovery">restore using your recovery key</a>.
+				No key in this browser? You can also 
+				<a href={resolve('/keys/recovery')}>restore using your recovery key</a>
+				.
 			</p>
 		{/if}
 	</div>

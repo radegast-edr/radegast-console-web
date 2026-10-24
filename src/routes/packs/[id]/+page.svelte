@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { askConfirm } from '$lib/confirm';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { api, type Pack, type Team, type PackVersion } from '$lib/api';
 	import { user, showFlash, showError } from '$lib/store';
@@ -81,20 +81,11 @@
 			const userTeamIds = new Set(teamsRes.map((t: any) => t.id));
 
 			// Load details and enabled state for all visible groups
-			const groupDataList = await Promise.all(
-				groupsRes.map(async (g: any) => {
-					const [detail, enabled] = await Promise.all([
-						api.getGroup(g.id),
-						api.listEnabledPacks(g.id)
-					]);
-					return {
-						id: g.id,
-						name: g.name,
-						detail,
-						enabledPacks: enabled
-					};
-				})
-			);
+			const groupDataList = await Promise.all(groupsRes.map(async (g: any) => {
+				const [detail, enabled] = await Promise.all([api.getGroup(g.id), api.listEnabledPacks(g.id)]);
+
+				return { id: g.id, name: g.name, detail, enabledPacks: enabled };
+			}));
 
 			groupStates = groupDataList.map((item) => {
 				const enabledPack = item.enabledPacks.find((pe) => pe.pack_name === packRes.name);
@@ -108,7 +99,9 @@
 					checked: !!enabledPack,
 					initialChecked: !!enabledPack,
 					enabledId: enabledPack ? enabledPack.id : null,
-					packVersionId: enabledPack ? String(enabledPack.pack_version_id) : (versionsRes.length > 0 ? String(versionsRes[0].id) : ''),
+					packVersionId: enabledPack
+						? String(enabledPack.pack_version_id)
+						: versionsRes.length > 0 ? String(versionsRes[0].id) : '',
 					initialPackVersionId: enabledPack ? String(enabledPack.pack_version_id) : '',
 					autoupdate: enabledPack ? enabledPack.autoupdate : true,
 					initialAutoupdate: enabledPack ? enabledPack.autoupdate : true
@@ -145,8 +138,8 @@
 		try {
 			await api.deletePack(pack.id);
 			showFlash('Pack deleted');
-			goto(`${base}/packs`);
-		} catch (e) {
+			goto(resolve('/packs'));
+		} catch(e) {
 			showError((e as Error).message);
 		}
 	}
@@ -194,8 +187,7 @@
 			for (const gs of groupStates) {
 				if (!gs.hasWrite) continue; // Skip if user has no permission
 
-				const hasChanged = gs.checked !== gs.initialChecked ||
-					(gs.checked && (gs.packVersionId !== gs.initialPackVersionId || gs.autoupdate !== gs.initialAutoupdate));
+				const hasChanged = gs.checked !== gs.initialChecked || gs.checked && (gs.packVersionId !== gs.initialPackVersionId || gs.autoupdate !== gs.initialAutoupdate);
 
 				if (!hasChanged) continue;
 
@@ -224,7 +216,10 @@
 </svelte:head>
 
 <div class="mb-4">
-	<a href="{base}/packs" class="btn btn-outline-secondary btn-sm mb-2">← Back to Packs</a>
+	<a
+		href={resolve('/packs')}
+		class="btn btn-outline-secondary btn-sm mb-2"
+	>← Back to Packs</a>
 </div>
 
 {#if loading && !pack}
@@ -467,8 +462,18 @@
 {/if}
 
 <!-- Upload Version Modal -->
-<Modal show={showUpload} title="Upload New Version" onClose={() => (showUpload = false)}>
-	<form onsubmit={(e) => { e.preventDefault(); uploadPackVersion(); }}>
+
+<Modal
+	show={showUpload}
+	title="Upload New Version"
+	onClose={() => showUpload = false}
+>
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			uploadPackVersion();
+		}}
+	>
 		<div class="mb-3">
 			<label for="versionInput" class="form-label">Version String</label>
 			<input

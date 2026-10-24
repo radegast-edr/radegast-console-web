@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api, type Team } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
@@ -52,7 +52,11 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
 	<h2>Teams</h2>
-	<button class="btn btn-primary" onclick={() => (showCreate = true)}>Create Team</button>
+
+	<button
+		class="btn btn-primary"
+		onclick={() => showCreate = true}
+	>Create Team</button>
 </div>
 
 {#if loading}
@@ -72,9 +76,8 @@
 		<tbody>
 			{#each teams as team}
 				<tr>
-					<td>
-						<a href="{base}/teams/{team.id}">{team.name}</a>
-					</td>
+					<td><a href={resolve(`/teams/${team.id}`)}>{team.name}</a></td>
+
 					<td>
 						{#if team.permission_pack}
 							<span class="badge bg-primary me-1">Pack: {team.permission_pack}</span>
@@ -94,7 +97,10 @@
 						{/if}
 					</td>
 					<td>
-						<a href="{base}/teams/{team.id}" class="btn btn-sm btn-outline-primary">Manage</a>
+						<a
+							href={resolve(`/teams/${team.id}`)}
+							class="btn btn-sm btn-outline-primary"
+						>Manage</a>
 					</td>
 				</tr>
 			{/each}
@@ -102,8 +108,17 @@
 	</table>
 {/if}
 
-<Modal show={showCreate} title="Create Team" onClose={() => (showCreate = false)}>
-	<form onsubmit={(e) => { e.preventDefault(); createTeam(); }}>
+<Modal
+	show={showCreate}
+	title="Create Team"
+	onClose={() => showCreate = false}
+>
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			createTeam();
+		}}
+	>
 		<div class="mb-3">
 			<label for="teamName" class="form-label">Team Name</label>
 			<input type="text" class="form-control" id="teamName" bind:value={newTeamName} required />

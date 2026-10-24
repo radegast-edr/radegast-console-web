@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { askConfirm } from '$lib/confirm';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api';
 	import { user, showFlash, showError } from '$lib/store';
@@ -134,9 +134,10 @@
 		<p class="text-muted small mb-0">Manage Rustinel eBPF sensor release binaries distributed to enrolled devices.</p>
 	</div>
 	{#if isAdmin}
-		<button class="btn btn-primary" onclick={() => (showUpload = true)}>
-			Upload Release
-		</button>
+		<button
+			class="btn btn-primary"
+			onclick={() => showUpload = true}
+		>Upload Release</button>
 	{/if}
 </div>
 
@@ -147,7 +148,10 @@
 		<div style="font-size: 3rem;">📦</div>
 		<p class="mt-2">No releases uploaded yet.</p>
 		{#if isAdmin}
-			<button class="btn btn-outline-primary btn-sm" onclick={() => (showUpload = true)}>Upload First Release</button>
+			<button
+				class="btn btn-outline-primary btn-sm"
+				onclick={() => showUpload = true}
+			>Upload First Release</button>
 		{/if}
 	</div>
 {:else}
@@ -158,7 +162,11 @@
 					<span class="badge bg-success fs-6 px-3 py-2">{version}</span>
 					<span class="text-muted small">{[...osMap.values()].flat().length} artifact(s)</span>
 				</div>
-				<a href="{base}/releases/{version}" class="btn btn-sm btn-outline-secondary">Details</a>
+
+				<a
+					href={resolve(`/releases/${version}`)}
+					class="btn btn-sm btn-outline-secondary"
+				>Details</a>
 			</div>
 			<div class="card-body p-0">
 				<div class="table-responsive">
@@ -217,8 +225,17 @@
 	{/each}
 {/if}
 
-<Modal show={showUpload} title="Upload Rustinel Release" onClose={() => (showUpload = false)}>
-	<form onsubmit={(e) => { e.preventDefault(); uploadRelease(); }}>
+<Modal
+	show={showUpload}
+	title="Upload Rustinel Release"
+	onClose={() => showUpload = false}
+>
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			uploadRelease();
+		}}
+	>
 		<div class="mb-3">
 			<label for="rel-version" class="form-label">Version <span class="text-danger">*</span></label>
 			<input

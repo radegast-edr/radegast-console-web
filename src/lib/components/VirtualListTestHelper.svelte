@@ -1,7 +1,11 @@
 <script lang="ts">
 	import VirtualList from './VirtualList.svelte';
 
-	let { items = [] } = $props<{ items?: string[] }>();
+	interface Props {
+		items?: string[];
+	}
+
+	let { items = [] }: Props = $props();
 </script>
 
 <VirtualList {items} estimatedItemHeight={40}>

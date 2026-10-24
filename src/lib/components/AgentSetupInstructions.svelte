@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { api } from '$lib/api';
 
-	let { token = '', deviceName = 'windows', isReinstall = false, onDismiss = () => {} } = $props<{
+	interface Props {
 		deviceName?: string;
 		token?: string;
 		isReinstall?: boolean;
 		onDismiss?: () => void;
-	}>();
+	}
+
+	let { token = '', deviceName = 'windows', isReinstall = false, onDismiss = () => {} }: Props = $props();
 
 	let selectedOS = $state<'linux' | 'windows' | 'macos'>('linux');
 	const backendUrl = api.getBackendUrl().replace(/\/$/, '');
@@ -100,7 +102,7 @@
 				</div>
 			{/if}
 
-			<button class="btn btn-secondary btn-sm" onclick={onDismiss}>
+			<button class="btn btn-secondary btn-sm" onclick={() => onDismiss()}>
 				Dismiss
 			</button>
 		</div>

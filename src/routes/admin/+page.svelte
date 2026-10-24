@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { askConfirm } from '$lib/confirm';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import { api, type UserInfo, type Device, type Pack } from '$lib/api';
@@ -50,15 +50,15 @@
 
 	let sortedAdminDevices = $derived(
 		[...devices].sort((a, b) => {
-			let result = 0;
-			if (deviceSortColumn === 'id') {
-				result = Number(a.id) - Number(b.id);
-			} else if (deviceSortColumn === 'name') {
-				result = (a.name || '').localeCompare(b.name || '');
-			} else if (deviceSortColumn === 'space_used') {
-				result = (a.total_space_used || 0) - (b.total_space_used || 0);
-			}
-			return deviceSortAsc ? result : -result;
+		let result = 0;
+		if (deviceSortColumn === 'id') {
+			result = Number(a.id) - Number(b.id);
+		} else if (deviceSortColumn === 'name') {
+			result = (a.name || '').localeCompare(b.name || '');
+		} else if (deviceSortColumn === 'space_used') {
+			result = (a.total_space_used || 0) - (b.total_space_used || 0);
+		}
+		return deviceSortAsc ? result : -result;
 		})
 	);
 
@@ -77,17 +77,17 @@
 
 	let sortedAdminUsers = $derived(
 		[...users].sort((a, b) => {
-			let result = 0;
-			if (userSortColumn === 'id') {
-				result = Number(a.id) - Number(b.id);
-			} else if (userSortColumn === 'email') {
-				result = (a.email || '').localeCompare(b.email || '');
-			} else if (userSortColumn === 'role') {
-				result = (a.role || '').localeCompare(b.role || '');
-			} else if (userSortColumn === 'space_used') {
-				result = (a.total_space_used || 0) - (b.total_space_used || 0);
-			}
-			return userSortAsc ? result : -result;
+		let result = 0;
+		if (userSortColumn === 'id') {
+			result = Number(a.id) - Number(b.id);
+		} else if (userSortColumn === 'email') {
+			result = (a.email || '').localeCompare(b.email || '');
+		} else if (userSortColumn === 'role') {
+			result = (a.role || '').localeCompare(b.role || '');
+		} else if (userSortColumn === 'space_used') {
+			result = (a.total_space_used || 0) - (b.total_space_used || 0);
+		}
+		return userSortAsc ? result : -result;
 		})
 	);
 
@@ -106,28 +106,28 @@
 
 	let sortedAdminPacks = $derived(
 		[...packs].sort((a, b) => {
-			let result = 0;
-			if (packSortColumn === 'id') {
-				result = Number(a.id) - Number(b.id);
-			} else if (packSortColumn === 'name') {
-				result = (a.name || '').localeCompare(b.name || '');
-			}
-			return packSortAsc ? result : -result;
+		let result = 0;
+		if (packSortColumn === 'id') {
+			result = Number(a.id) - Number(b.id);
+		} else if (packSortColumn === 'name') {
+			result = (a.name || '').localeCompare(b.name || '');
+		}
+		return packSortAsc ? result : -result;
 		})
 	);
 
 	// Stats tab state
 	let alertStats = $state<{
-		severity_distribution: Record<string, number>;
-		resolution_distribution: Record<string, number>;
-		rule_distribution: Record<string, number>;
+			severity_distribution: Record<string, number>;
+			resolution_distribution: Record<string, number>;
+			rule_distribution: Record<string, number>;
 		rule_type_distribution: Record<string, number>;
 	} | null>(null);
 	let deviceStats = $state<{
-		agent_distribution: Record<string, number>;
-		rustinel_distribution: Record<string, number>;
-		os_distribution: Record<string, number>;
-		health_distribution: Record<string, number>;
+			agent_distribution: Record<string, number>;
+			rustinel_distribution: Record<string, number>;
+			os_distribution: Record<string, number>;
+			health_distribution: Record<string, number>;
 		online_distribution: Record<string, number>;
 	} | null>(null);
 
@@ -189,7 +189,7 @@
 			}
 		}
 		if (currentUser?.role !== 'admin') {
-			goto(`${base}/`);
+			goto(resolve('/'));
 			return;
 		}
 
@@ -319,15 +319,15 @@
 		showOsDropdown = false;
 	}
 
-	type FilterDropdownName =
-		| 'severity'
-		| 'ruletype'
-		| 'resolution'
-		| 'online'
-		| 'health'
-		| 'agent'
-		| 'rustinel'
-		| 'os';
+	type FilterDropdownName = 
+		'severity' |
+		'ruletype' |
+		'resolution' |
+		'online' |
+		'health' |
+		'agent' |
+		'rustinel' |
+		'os';
 
 	function toggleFilterDropdown(dropdownName: FilterDropdownName) {
 		const isOpenMap: Record<FilterDropdownName, boolean> = {
@@ -387,9 +387,9 @@
 			loadDeviceFilterOptions();
 		}
 		if (updateUrl && typeof window !== 'undefined') {
-			const params = new URLSearchParams(page.url.searchParams);
+			const params = new URLSearchParams(page.url.search);
 			params.set('tab', tab);
-			goto(`${base}/admin?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
+			goto(resolve(`/admin?${params.toString()}`), { replace: true, reset: false });
 		}
 	}
 
@@ -491,18 +491,14 @@
 	}
 </script>
 
-<svelte:window onclick={handleStatsWindowClick} />
-
-<svelte:head>
-	<title>Admin Panel - Radegast</title>
-</svelte:head>
-
+<svelte:window onclick={handleStatsWindowClick}></svelte:window>
+<svelte:head><title>Admin Panel - Radegast</title></svelte:head>
 <h2>Admin Panel</h2>
 
 <ul class="nav nav-tabs mb-4">
 	<li class="nav-item">
 		<a
-			href="{base}/admin?tab=users"
+			href={resolve('/admin?tab=users')}
 			role="button"
 			class="nav-link {activeTab === 'users' ? 'active' : ''}"
 			onclick={(e) => { e.preventDefault(); selectTab('users'); }}
@@ -512,7 +508,7 @@
 	</li>
 	<li class="nav-item">
 		<a
-			href="{base}/admin?tab=devices"
+			href={resolve('/admin?tab=devices')}
 			role="button"
 			class="nav-link {activeTab === 'devices' ? 'active' : ''}"
 			onclick={(e) => { e.preventDefault(); selectTab('devices'); }}
@@ -522,7 +518,7 @@
 	</li>
 	<li class="nav-item">
 		<a
-			href="{base}/admin?tab=packs"
+			href={resolve('/admin?tab=packs')}
 			role="button"
 			class="nav-link {activeTab === 'packs' ? 'active' : ''}"
 			onclick={(e) => { e.preventDefault(); selectTab('packs'); }}
@@ -532,7 +528,7 @@
 	</li>
 	<li class="nav-item">
 		<a
-			href="{base}/admin?tab=stats"
+			href={resolve('/admin?tab=stats')}
 			role="button"
 			class="nav-link {activeTab === 'stats' ? 'active' : ''}"
 			onclick={(e) => { e.preventDefault(); selectTab('stats'); }}
@@ -542,7 +538,7 @@
 	</li>
 	<li class="nav-item">
 		<a
-			href="{base}/admin?tab=broadcast"
+			href={resolve('/admin?tab=broadcast')}
 			role="button"
 			class="nav-link {activeTab === 'broadcast' ? 'active' : ''}"
 			onclick={(e) => { e.preventDefault(); selectTab('broadcast'); }}
@@ -559,7 +555,13 @@
 			<p class="mb-0 small text-dark-emphasis">
 				The password for <strong>{resetPasswordResult.email}</strong> has been reset. The user was emailed the new password.
 			</p>
-			<button type="button" class="btn-close" onclick={() => (resetPasswordResult = null)} aria-label="Close"></button>
+
+			<button
+				type="button"
+				class="btn-close"
+				onclick={() => resetPasswordResult = null}
+				aria-label="Close"
+			></button>
 		</div>
 	{/if}
 
@@ -723,7 +725,7 @@
 				<tr>
 					<td>{d.id}</td>
 					<td>
-						<a href="{base}/devices/{d.id}">{d.name}</a>
+						<a href={resolve(`/devices/${d.id}`)}>{d.name}</a>
 						{#if !d.signature_public_key}
 							<span class="badge bg-danger ms-2" title="Unsigned device! Signing key is not set.">Unsigned</span>
 						{/if}
@@ -851,7 +853,7 @@
 										<input
 											type="checkbox"
 											checked={filterSeverity.includes(sev)}
-											onchange={() => toggleFilter(filterSeverity, sev, (v) => (filterSeverity = v))}
+											onchange={() => toggleFilter(filterSeverity, sev, (v) => filterSeverity = v)}
 										/>
 										<span class="text-capitalize small">{sev}</span>
 									</label>
@@ -870,7 +872,7 @@
 							>
 								<span class="text-truncate">
 									{#if filterRuleType.length > 0}
-										{filterRuleType.map(r => r.toUpperCase()).join(', ')}
+										{filterRuleType.map((r) => r.toUpperCase()).join(', ')}
 									{:else}
 										All Rule Types
 									{/if}
@@ -883,7 +885,7 @@
 										<input
 											type="checkbox"
 											checked={filterRuleType.includes(rt)}
-											onchange={() => toggleFilter(filterRuleType, rt, (v) => (filterRuleType = v))}
+											onchange={() => toggleFilter(filterRuleType, rt, (v) => filterRuleType = v)}
 										/>
 										<span class="small">{rt.toUpperCase()}</span>
 									</label>
@@ -902,7 +904,7 @@
 							>
 								<span class="text-truncate">
 									{#if filterResolution.length > 0}
-										{filterResolution.map(r => r === 'none' ? 'Unresolved' : r.replace('_', ' ')).join(', ')}
+										{filterResolution.map((r) => r === 'none' ? 'Unresolved' : r.replace('_', ' ')).join(', ')}
 									{:else}
 										All Resolutions
 									{/if}
@@ -915,7 +917,7 @@
 										<input
 											type="checkbox"
 											checked={filterResolution.includes(res)}
-											onchange={() => toggleFilter(filterResolution, res, (v) => (filterResolution = v))}
+											onchange={() => toggleFilter(filterResolution, res, (v) => filterResolution = v)}
 										/>
 										<span class="small">{label}</span>
 									</label>
@@ -934,7 +936,7 @@
 								class="form-control form-control-sm"
 								placeholder="Search rule IDs..."
 								bind:value={ruleIdSearch}
-								onfocus={() => (ruleIdDropdownOpen = true)}
+								onfocus={() => ruleIdDropdownOpen = true}
 							/>
 							{#if ruleIdDropdownOpen && filteredRuleIds.length > 0}
 								<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -948,11 +950,8 @@
 											type="button"
 											class="list-group-item list-group-item-action small"
 											class:active={filterRuleId.includes(rid)}
-											onclick={() =>
-												toggleFilter(filterRuleId, rid, (v) => (filterRuleId = v))}
-										>
-											{rid}
-										</button>
+											onclick={() => toggleFilter(filterRuleId, rid, (v) => filterRuleId = v)}
+										>{rid}</button>
 									{/each}
 								</div>
 							{/if}
@@ -985,15 +984,28 @@
 							<div class="d-flex flex-column gap-3 mb-4">
 								{#each ['critical', 'high', 'medium', 'low', 'informational', 'unknown'] as sev}
 									{@const count = alertStats.severity_distribution[sev] || 0}
-									{@const pct = totalAlerts > 0 ? Math.round((count / totalAlerts) * 100) : 0}
-									{@const barColor = sev === 'critical' || sev === 'high' ? 'bg-danger' : (sev === 'medium' ? 'bg-warning' : (sev === 'low' ? 'bg-primary' : 'bg-secondary'))}
+									{@const pct = totalAlerts > 0 ? Math.round(count / totalAlerts * 100) : 0}
+
+									{@const barColor = sev === 'critical' || sev === 'high'
+										? 'bg-danger'
+										: sev === 'medium'
+											? 'bg-warning'
+											: sev === 'low' ? 'bg-primary' : 'bg-secondary'}
+
 									<div>
 										<div class="d-flex justify-content-between mb-1">
 											<span class="fw-semibold text-capitalize small">{sev}</span>
 											<span class="text-muted small">{count} ({pct})</span>
 										</div>
 										<div class="progress" style="height: 6px;">
-											<div class="progress-bar {barColor}" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+											<div
+												class="progress-bar {barColor}"
+												role="progressbar"
+												style="width: {pct}%;"
+												aria-valuenow={pct}
+												aria-valuemin="0"
+												aria-valuemax="100"
+											></div>
 										</div>
 									</div>
 								{/each}
@@ -1008,14 +1020,21 @@
 							<div class="d-flex flex-column gap-3 mb-4">
 								{#each [['true_positive', 'True Positive', 'bg-danger'], ['false_positive', 'False Positive', 'bg-warning'], ['benign', 'Benign', 'bg-success'], ['none', 'Unresolved', 'bg-secondary']] as [res, label, barColor]}
 									{@const count = alertStats.resolution_distribution[res] || 0}
-									{@const pct = totalResolutions > 0 ? Math.round((count / totalResolutions) * 100) : 0}
+									{@const pct = totalResolutions > 0 ? Math.round(count / totalResolutions * 100) : 0}
 									<div>
 										<div class="d-flex justify-content-between mb-1">
 											<span class="fw-semibold small">{label}</span>
 											<span class="text-muted small">{count} ({pct}%)</span>
 										</div>
 										<div class="progress" style="height: 6px;">
-											<div class="progress-bar {barColor}" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+											<div
+												class="progress-bar {barColor}"
+												role="progressbar"
+												style="width: {pct}%;"
+												aria-valuenow={pct}
+												aria-valuemin="0"
+												aria-valuemax="100"
+											></div>
 										</div>
 									</div>
 								{/each}
@@ -1029,7 +1048,7 @@
 						{:else}
 							<div class="d-flex flex-column gap-3 mb-4">
 								{#each Object.entries(alertStats.rule_distribution).sort((a, b) => b[1] - a[1]) as [ruleId, count]}
-									{@const pct = totalRules > 0 ? Math.round((count / totalRules) * 100) : 0}
+									{@const pct = totalRules > 0 ? Math.round(count / totalRules * 100) : 0}
 									{@const parts = ruleId.split('::')}
 									{@const hasType = parts.length > 1 && parts[0] !== 'unknown'}
 									<div>
@@ -1050,7 +1069,14 @@
 											<span class="text-muted small">{count} ({pct}%)</span>
 										</div>
 										<div class="progress" style="height: 6px;">
-											<div class="progress-bar bg-info" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+											<div
+												class="progress-bar bg-info"
+												role="progressbar"
+												style="width: {pct}%;"
+												aria-valuenow={pct}
+												aria-valuemin="0"
+												aria-valuemax="100"
+											></div>
 										</div>
 									</div>
 								{/each}
@@ -1064,14 +1090,21 @@
 						{:else}
 							<div class="d-flex flex-column gap-3">
 								{#each Object.entries(alertStats.rule_type_distribution).sort((a, b) => b[1] - a[1]) as [ruleType, count]}
-									{@const pct = totalRuleTypes > 0 ? Math.round((count / totalRuleTypes) * 100) : 0}
+									{@const pct = totalRuleTypes > 0 ? Math.round(count / totalRuleTypes * 100) : 0}
 									<div>
 										<div class="d-flex justify-content-between mb-1">
 											<span class="fw-semibold small text-uppercase">{ruleType}</span>
 											<span class="text-muted small">{count} ({pct}%)</span>
 										</div>
 										<div class="progress" style="height: 6px;">
-											<div class="progress-bar bg-primary" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+											<div
+												class="progress-bar bg-primary"
+												role="progressbar"
+												style="width: {pct}%;"
+												aria-valuenow={pct}
+												aria-valuemin="0"
+												aria-valuemax="100"
+											></div>
 										</div>
 									</div>
 								{/each}
@@ -1101,7 +1134,7 @@
 							>
 								<span class="text-truncate">
 									{#if filterOnlineStatus.length > 0}
-										{filterOnlineStatus.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}
+										{filterOnlineStatus.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}
 									{:else}
 										All Statuses
 									{/if}
@@ -1114,7 +1147,7 @@
 										<input
 											type="checkbox"
 											checked={filterOnlineStatus.includes(val)}
-											onchange={() => toggleDeviceFilter(filterOnlineStatus, val, (v) => (filterOnlineStatus = v))}
+											onchange={() => toggleDeviceFilter(filterOnlineStatus, val, (v) => filterOnlineStatus = v)}
 										/>
 										<span class="small">{label}</span>
 									</label>
@@ -1133,7 +1166,7 @@
 							>
 								<span class="text-truncate">
 									{#if filterHealthStatus.length > 0}
-										{filterHealthStatus.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}
+										{filterHealthStatus.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}
 									{:else}
 										All Health Statuses
 									{/if}
@@ -1146,7 +1179,7 @@
 										<input
 											type="checkbox"
 											checked={filterHealthStatus.includes(val)}
-											onchange={() => toggleDeviceFilter(filterHealthStatus, val, (v) => (filterHealthStatus = v))}
+											onchange={() => toggleDeviceFilter(filterHealthStatus, val, (v) => filterHealthStatus = v)}
 										/>
 										<span class="small">{label}</span>
 									</label>
@@ -1183,7 +1216,7 @@
 											<input
 												type="checkbox"
 												checked={filterAgentVersion.includes(ver)}
-												onchange={() => toggleDeviceFilter(filterAgentVersion, ver, (v) => (filterAgentVersion = v))}
+												onchange={() => toggleDeviceFilter(filterAgentVersion, ver, (v) => filterAgentVersion = v)}
 											/>
 											<span class="small text-truncate">{ver}</span>
 										</label>
@@ -1219,7 +1252,7 @@
 											<input
 												type="checkbox"
 												checked={filterRustinelVersion.includes(ver)}
-												onchange={() => toggleDeviceFilter(filterRustinelVersion, ver, (v) => (filterRustinelVersion = v))}
+												onchange={() => toggleDeviceFilter(filterRustinelVersion, ver, (v) => filterRustinelVersion = v)}
 											/>
 											<span class="small text-truncate">{ver}</span>
 										</label>
@@ -1255,7 +1288,7 @@
 											<input
 												type="checkbox"
 												checked={filterOs.includes(osItem)}
-												onchange={() => toggleDeviceFilter(filterOs, osItem, (v) => (filterOs = v))}
+												onchange={() => toggleDeviceFilter(filterOs, osItem, (v) => filterOs = v)}
 											/>
 											<span class="small text-truncate">{osItem}</span>
 										</label>
@@ -1275,14 +1308,21 @@
 						{:else}
 							<div class="d-flex flex-column gap-3 mb-4">
 								{#each Object.entries(deviceStats.agent_distribution).sort((a, b) => b[1] - a[1]) as [ver, count]}
-									{@const pct = totalAgentDevices > 0 ? Math.round((count / totalAgentDevices) * 100) : 0}
+									{@const pct = totalAgentDevices > 0 ? Math.round(count / totalAgentDevices * 100) : 0}
 									<div>
 										<div class="d-flex justify-content-between mb-1">
 											<span class="fw-semibold small">{ver}</span>
 											<span class="text-muted small">{count} ({pct}%)</span>
 										</div>
 										<div class="progress" style="height: 6px;">
-											<div class="progress-bar bg-primary" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+											<div
+												class="progress-bar bg-primary"
+												role="progressbar"
+												style="width: {pct}%;"
+												aria-valuenow={pct}
+												aria-valuemin="0"
+												aria-valuemax="100"
+											></div>
 										</div>
 									</div>
 								{/each}
@@ -1295,14 +1335,21 @@
 						{:else}
 							<div class="d-flex flex-column gap-3 mb-4">
 								{#each Object.entries(deviceStats.rustinel_distribution).sort((a, b) => b[1] - a[1]) as [ver, count]}
-									{@const pct = totalRustinelDevices > 0 ? Math.round((count / totalRustinelDevices) * 100) : 0}
+									{@const pct = totalRustinelDevices > 0 ? Math.round(count / totalRustinelDevices * 100) : 0}
 									<div>
 										<div class="d-flex justify-content-between mb-1">
 											<span class="fw-semibold small">{ver}</span>
 											<span class="text-muted small">{count} ({pct}%)</span>
 										</div>
 										<div class="progress" style="height: 6px;">
-											<div class="progress-bar bg-success" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+											<div
+												class="progress-bar bg-success"
+												role="progressbar"
+												style="width: {pct}%;"
+												aria-valuenow={pct}
+												aria-valuemin="0"
+												aria-valuemax="100"
+											></div>
 										</div>
 									</div>
 								{/each}
@@ -1316,14 +1363,21 @@
 						{:else}
 							<div class="d-flex flex-column gap-3 mb-4">
 								{#each Object.entries(deviceStats.os_distribution).sort((a, b) => b[1] - a[1]) as [osName, count]}
-									{@const pct = totalOsDevices > 0 ? Math.round((count / totalOsDevices) * 100) : 0}
+									{@const pct = totalOsDevices > 0 ? Math.round(count / totalOsDevices * 100) : 0}
 									<div>
 										<div class="d-flex justify-content-between mb-1">
 											<span class="fw-semibold small">{osName}</span>
 											<span class="text-muted small">{count} ({pct}%)</span>
 										</div>
 										<div class="progress" style="height: 6px;">
-											<div class="progress-bar bg-info" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+											<div
+												class="progress-bar bg-info"
+												role="progressbar"
+												style="width: {pct}%;"
+												aria-valuenow={pct}
+												aria-valuemin="0"
+												aria-valuemax="100"
+											></div>
 										</div>
 									</div>
 								{/each}
@@ -1338,14 +1392,21 @@
 							<div class="d-flex flex-column gap-3 mb-4">
 								{#each [['healthy', 'Healthy', 'bg-success'], ['unhealthy', 'Unhealthy', 'bg-danger'], ['unknown', 'Unknown', 'bg-secondary']] as [hStatus, label, barColor]}
 									{@const count = deviceStats.health_distribution[hStatus] || 0}
-									{@const pct = totalHealthDevices > 0 ? Math.round((count / totalHealthDevices) * 100) : 0}
+									{@const pct = totalHealthDevices > 0 ? Math.round(count / totalHealthDevices * 100) : 0}
 									<div>
 										<div class="d-flex justify-content-between mb-1">
 											<span class="fw-semibold small">{label}</span>
 											<span class="text-muted small">{count} ({pct}%)</span>
 										</div>
 										<div class="progress" style="height: 6px;">
-											<div class="progress-bar {barColor}" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+											<div
+												class="progress-bar {barColor}"
+												role="progressbar"
+												style="width: {pct}%;"
+												aria-valuenow={pct}
+												aria-valuemin="0"
+												aria-valuemax="100"
+											></div>
 										</div>
 									</div>
 								{/each}
@@ -1360,14 +1421,21 @@
 							<div class="d-flex flex-column gap-3">
 								{#each [['online', 'Online', 'bg-success'], ['offline', 'Offline', 'bg-secondary']] as [oStatus, label, barColor]}
 									{@const count = deviceStats.online_distribution[oStatus] || 0}
-									{@const pct = totalOnlineDevices > 0 ? Math.round((count / totalOnlineDevices) * 100) : 0}
+									{@const pct = totalOnlineDevices > 0 ? Math.round(count / totalOnlineDevices * 100) : 0}
 									<div>
 										<div class="d-flex justify-content-between mb-1">
 											<span class="fw-semibold small">{label}</span>
 											<span class="text-muted small">{count} ({pct}%)</span>
 										</div>
 										<div class="progress" style="height: 6px;">
-											<div class="progress-bar {barColor}" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+											<div
+												class="progress-bar {barColor}"
+												role="progressbar"
+												style="width: {pct}%;"
+												aria-valuenow={pct}
+												aria-valuemin="0"
+												aria-valuemax="100"
+											></div>
 										</div>
 									</div>
 								{/each}
@@ -1392,21 +1460,31 @@
 					{#if users.length === 0}
 						<p class="text-muted small mb-0">No users found.</p>
 					{:else}
-						{@const usersWithStorage = [...users].filter(u => (u.total_space_used || 0) > 0).sort((a, b) => (b.total_space_used || 0) - (a.total_space_used || 0))}
+						{@const usersWithStorage = [...users].filter((u) => (u.total_space_used || 0) > 0).sort((a, b) => (b.total_space_used || 0) - (a.total_space_used || 0))}
 						{#if usersWithStorage.length === 0}
 							<p class="text-muted small mb-0">No users currently consume storage quota.</p>
 						{:else}
 							<h6 class="fw-bold mb-3">Top Users by Storage Consumption</h6>
 							<div class="d-flex flex-column gap-3">
 								{#each usersWithStorage.slice(0, 10) as u}
-									{@const pct = totalUsersSpace > 0 ? Math.round(((u.total_space_used || 0) / totalUsersSpace) * 100) : 0}
+									{@const pct = totalUsersSpace > 0
+										? Math.round((u.total_space_used || 0) / totalUsersSpace * 100)
+										: 0}
+
 									<div>
 										<div class="d-flex justify-content-between mb-1">
 											<span class="fw-semibold small">{u.email} <span class="badge bg-secondary ms-1">{u.role}</span></span>
 											<span class="text-muted small font-monospace">{formatBytes(u.total_space_used)} ({pct}%)</span>
 										</div>
 										<div class="progress" style="height: 6px;">
-											<div class="progress-bar bg-info" role="progressbar" style="width: {pct}%;" aria-valuenow="{pct}" aria-valuemin="0" aria-valuemax="100"></div>
+											<div
+												class="progress-bar bg-info"
+												role="progressbar"
+												style="width: {pct}%;"
+												aria-valuenow={pct}
+												aria-valuemin="0"
+												aria-valuemax="100"
+											></div>
 										</div>
 									</div>
 								{/each}

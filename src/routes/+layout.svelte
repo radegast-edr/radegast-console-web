@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { askConfirm } from '$lib/confirm';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import 'bootstrap/dist/css/bootstrap.min.css';
 	import '@fontsource/open-sans';
 	import 'hack-font/build/web/hack.css';
@@ -27,7 +27,8 @@
 	$effect(() => {
 		const currentUser = $user;
 		const path = page.url.pathname;
-		const relativePath = path.startsWith(base) ? path.slice(base.length) : path;
+		const basePrefix = resolve('').replace(/\/+$/, '');
+		const relativePath = basePrefix && path.startsWith(basePrefix) ? path.slice(basePrefix.length) : path;
 		const isBannerPage = relativePath === '/' || relativePath === '' || relativePath === '/alerts' || relativePath === '/hunt';
 
 		if (currentUser && isBannerPage) {
@@ -50,7 +51,7 @@
 		}
 	});
 
-	let { children } = $props<{ children: Snippet }>();
+	let { children }: { children: Snippet } = $props();
 
 	// Routes that are fully public (no auth needed)
 	const PUBLIC_PREFIXES = ['/login', '/register', '/verify', '/terms', '/privacy', '/reset-password', '/unsubscribe', '/delete-account', '/server-error'];
@@ -64,7 +65,8 @@
 
 	onMount(async () => {
 		const path = page.url.pathname;
-		const relativePath = path.startsWith(base) ? path.slice(base.length) : path;
+		const basePrefix = resolve('').replace(/\/+$/, '');
+		const relativePath = basePrefix && path.startsWith(basePrefix) ? path.slice(basePrefix.length) : path;
 
 		if (PUBLIC_PREFIXES.some((p) => relativePath.startsWith(p))) return;
 
@@ -73,19 +75,20 @@
 			$user = me;
 		} catch (err: any) {
 			if (err?.status >= 500 || err?.name === 'TypeError' || err?.message?.includes('NetworkError') || err?.message?.includes('Failed to fetch')) {
-				goto(`${base}/server-error`);
+				goto(resolve('/server-error'));
 			} else if (err?.status === 401 || err?.status === 403 || !err?.status) {
 				const nextPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
 				const search = page.url.search;
 				const target = encodeURIComponent(`${nextPath}${search}`);
-				goto(`${base}/login?next=${target}`);
+				goto(resolve(`/login?next=${target}`));
 			}
 		}
 	});
 
 	$effect(() => {
 		const path = page.url.pathname;
-		const relativePath = path.startsWith(base) ? path.slice(base.length) : path;
+		const basePrefix = resolve('').replace(/\/+$/, '');
+		const relativePath = basePrefix && path.startsWith(basePrefix) ? path.slice(basePrefix.length) : path;
 		if (PUBLIC_PREFIXES.some((p) => relativePath.startsWith(p))) return;
 
 		const currentUser = $user;
@@ -96,7 +99,8 @@
 
 	$effect(() => {
 		const path = page.url.pathname;
-		const relativePath = path.startsWith(base) ? path.slice(base.length) : path;
+		const basePrefix = resolve('').replace(/\/+$/, '');
+		const relativePath = basePrefix && path.startsWith(basePrefix) ? path.slice(basePrefix.length) : path;
 		if (PUBLIC_PREFIXES.some((p) => relativePath.startsWith(p))) return;
 
 		const currentUser = $user;
@@ -128,7 +132,7 @@
 
 			// 3. Generate random 256-bit AES key
 			const keyBytes = window.crypto.getRandomValues(new Uint8Array(32));
-			const aesKeyHex = Array.from(keyBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+			const aesKeyHex = Array.from(keyBytes).map((b) => b.toString(16).padStart(2, '0')).join('');
 
 			// 4. AES-GCM-256 encrypt recovery private key with the AES key
 			const encryptedRecoveryPriv = await aesEncrypt(recoveryPriv, aesKeyHex);
@@ -168,7 +172,7 @@
 	beforeNavigate(({ cancel, to }) => {
 		if (showRecoveryModal && !navigateToUrl) {
 			cancel();
-			askConfirm('Are you sure you want to leave? Your recovery key will be lost if you have not saved it.').then(confirmed => {
+			askConfirm('Are you sure you want to leave? Your recovery key will be lost if you have not saved it.').then((confirmed) => {
 				if (confirmed && to) {
 					navigateToUrl = to.url.href;
 					goto(to.url.href);
@@ -185,7 +189,7 @@
 	}
 </script>
 
-<svelte:window onbeforeunload={handleBeforeUnload} />
+<svelte:window onbeforeunload={handleBeforeUnload}></svelte:window>
 
 <div class="d-flex flex-column flex-md-row" style="min-height: 100vh; overflow-x: hidden;">
 	{#if $user}
@@ -198,8 +202,18 @@
 						<div>
 							<h6 class="fw-bold mb-1">Multi-Factor Authentication (MFA) Setup Required</h6>
 							<p class="mb-0 small text-body-secondary">
-								Your account role (<strong>{$user.role}</strong>) requires MFA level <strong>{$user.mfa_required_level}</strong>, but you have not configured any compatible MFA methods yet.
-								Please navigate to <a href="{base}/settings" class="fw-bold text-decoration-underline">Settings</a> to register an authenticator app or Yubikey.
+								Your account role (
+								<strong>{$user.role}</strong>
+								) requires MFA level 
+								<strong>{$user.mfa_required_level}</strong>
+								, but you have not configured any compatible MFA methods yet. Please navigate to 
+
+								<a
+									href={resolve('/settings')}
+									class="fw-bold text-decoration-underline"
+								>Settings</a>
+
+								to register an authenticator app or Yubikey.
 							</p>
 						</div>
 					</div>
@@ -210,8 +224,14 @@
 						<div>
 							<h6 class="fw-bold mb-1 text-warning-emphasis">Local Encryption Key Missing</h6>
 							<p class="mb-0 small text-body-secondary">
-								You do not have your private encryption key configured locally on this browser. You won't be able to decrypt device logs.
-								Please visit the <a href="{base}/keys/transfer" class="fw-bold text-decoration-underline text-warning-emphasis">Key Transfer & Restoration</a> page to configure it.
+								You do not have your private encryption key configured locally on this browser. You won't be able to decrypt device logs. Please visit the 
+
+								<a
+									href={resolve('/keys/transfer')}
+									class="fw-bold text-decoration-underline text-warning-emphasis"
+								>Key Transfer & Restoration</a>
+
+								page to configure it.
 							</p>
 						</div>
 					</div>

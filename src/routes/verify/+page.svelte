@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import Spinner from '$lib/components/Spinner.svelte';
 
 	let status = $state<'loading' | 'success' | 'error'>('loading');
 	let errorMessage = $state('');
 
 	onMount(async () => {
-		const token = $page.url.searchParams.get('token');
+		const token = page.url.searchParams.get('token');
 		if (!token) {
 			status = 'error';
 			errorMessage = 'No verification token found in the link. Please check your email and try again.';
@@ -38,13 +38,20 @@
 			<div class="mb-4" style="font-size: 4rem;">✅</div>
 			<h2 class="fw-bold mb-2">Email Verified</h2>
 			<p class="text-muted mb-4">Your account is now active. You can log in and start using Radegast EDR.</p>
-			<a href="{base}/login" class="btn btn-primary px-5">Go to Login</a>
 
+			<a
+				href={resolve('/login')}
+				class="btn btn-primary px-5"
+			>Go to Login</a>
 		{:else}
 			<div class="mb-4" style="font-size: 4rem;">❌</div>
 			<h2 class="fw-bold mb-2">Verification Failed</h2>
 			<p class="text-muted mb-4">{errorMessage}</p>
-			<a href="{base}/register" class="btn btn-outline-primary px-5">Back to Register</a>
+
+			<a
+				href={resolve('/register')}
+				class="btn btn-outline-primary px-5"
+			>Back to Register</a>
 		{/if}
 	</div>
 </div>

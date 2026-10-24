@@ -7,7 +7,9 @@ import { toLocalISOString } from '$lib/utils';
 import Hunt from './+page.svelte';
 
 vi.mock('$app/paths', () => ({
-	base: ''
+	base: '',
+	resolve: (path: string) => (!path ? '' : path.startsWith('/') ? path : '/' + path),
+	asset: (path: string) => path
 }));
 
 vi.mock('$app/navigation', () => ({
@@ -124,7 +126,7 @@ describe('Hunt URL Hash Shareable State', () => {
 		await waitFor(() => {
 			expect(goto).toHaveBeenCalledWith(
 				expect.stringContaining('q=new_hunt_query'),
-				expect.objectContaining({ replaceState: true })
+				expect.objectContaining({ replace: true })
 			);
 		});
 	});

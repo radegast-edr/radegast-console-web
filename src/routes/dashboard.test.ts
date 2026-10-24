@@ -6,7 +6,9 @@ import { getStoredPrivateKey } from '$lib/crypto';
 import Dashboard from './+page.svelte';
 
 vi.mock('$app/paths', () => ({
-	base: ''
+	base: '',
+	resolve: (path: string) => (!path ? '' : path.startsWith('/') ? path : '/' + path),
+	asset: (path: string) => path
 }));
 
 vi.mock('$app/navigation', () => ({

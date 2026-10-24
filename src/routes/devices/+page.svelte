@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { askConfirm } from '$lib/confirm';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { api, type Device } from '$lib/api';
 	import { showFlash, showError } from '$lib/store';
@@ -14,7 +14,7 @@
 	let newDeviceName = $state('');
 	let newDeviceToken = $state('');
 	let newDeviceGroupId = $state('');
-	let availableGroups = $state<Array<{id: number, teamName: string, name: string}>>([]);
+	let availableGroups = $state<Array<{ id: number; teamName: string; name: string }>>([]);
 
 	onMount(async () => {
 		await loadDevices();
@@ -95,7 +95,7 @@
 <AgentSetupInstructions
 	token={newDeviceToken}
 	deviceName={newDeviceName}
-	onDismiss={() => (newDeviceToken = '')}
+	onDismiss={() => newDeviceToken = ''}
 />
 
 <table class="table table-hover align-middle">
@@ -114,7 +114,7 @@
 		{#each sortedDevices as device (device.id)}
 			<tr>
 				<td>
-					<a href="{base}/devices/{device.id}">{device.name}</a>
+					<a href={resolve(`/devices/${device.id}`)}>{device.name}</a>
 					{#if !device.signature_public_key}
 						<span class="badge bg-danger ms-2" title="Unsigned device! Signing key is not set.">Unsigned</span>
 					{/if}
@@ -150,8 +150,17 @@
 	</tbody>
 </table>
 
-<Modal show={showCreate} title="Add Device" onClose={() => (showCreate = false)}>
-	<form onsubmit={(e) => { e.preventDefault(); createDevice(); }}>
+<Modal
+	show={showCreate}
+	title="Add Device"
+	onClose={() => showCreate = false}
+>
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			createDevice();
+		}}
+	>
 		<div class="mb-3">
 			<label for="deviceName" class="form-label">Device Name</label>
 			<input

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 </script>
 
 <svelte:head>
@@ -152,7 +152,10 @@
 		</section>
 
 		<div class="mt-4 text-center">
-			<a href="{base}/register" class="btn btn-outline-primary px-4">Back to Registration</a>
+			<a
+				href={resolve('/register')}
+				class="btn btn-outline-primary px-4"
+			>Back to Registration</a>
 		</div>
 	</div>
 </div>

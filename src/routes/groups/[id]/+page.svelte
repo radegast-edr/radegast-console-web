@@ -1,10 +1,10 @@
 <script lang="ts">
 	import Icon from '@iconify/svelte';
 	import { askConfirm } from '$lib/confirm';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { decryptExclusionsList, encryptExclusion } from '$lib/exclusionHelpers';
 	import { decryptAllowlistEntries, encryptAllowlistEntry } from '$lib/preventionAllowlistHelpers';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { api, type GroupDetail, type Team, type TeamMember, type Device, type EnabledPack, type Pack, type PackVersion, type Exclusion, type ExclusionCreate, type PreventionAllowlist } from '$lib/api';
 	import { showFlash, showError, triggerKeyRefresh, user } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
@@ -53,7 +53,7 @@
 	// Unsupported Agent Warning
 	let unsupportedDevices = $derived.by(() => {
 		if (!group) return [];
-		return (group.devices ?? []).filter(d => isAgentVersionUnsupported(d.agent_version));
+		return (group.devices ?? []).filter((d) => isAgentVersionUnsupported(d.agent_version));
 	});
 
 	function isAgentVersionUnsupported(version: string | null | undefined): boolean {
@@ -67,7 +67,7 @@
 			const parts = verNum.split('.').map(Number);
 			if (parts.length >= 3) {
 				const [major, minor] = parts;
-				if (major < 0 || (major === 0 && minor < 5)) {
+				if (major < 0 || major === 0 && minor < 5) {
 					return true;
 				}
 			} else {
@@ -80,7 +80,7 @@
 
 	let unsupportedResponseDevices = $derived.by(() => {
 		if (!group) return [];
-		return (group.devices ?? []).filter(d => isAgentVersionUnsupportedForResponse(d.agent_version));
+		return (group.devices ?? []).filter((d) => isAgentVersionUnsupportedForResponse(d.agent_version));
 	});
 
 	function isAgentVersionUnsupportedForResponse(version: string | null | undefined): boolean {
@@ -94,7 +94,7 @@
 			const parts = verNum.split('.').map(Number);
 			if (parts.length >= 3) {
 				const [major, minor] = parts;
-				if (major < 0 || (major === 0 && minor < 6)) {
+				if (major < 0 || major === 0 && minor < 6) {
 					return true;
 				}
 			} else {
@@ -197,7 +197,7 @@
 	let groupMembers = $state<TeamMember[]>([]);
 
 	$effect(() => {
-		loadGroup($page.params.id ?? '');
+		loadGroup(page.params.id ?? '');
 	});
 
 	async function loadGroup(id: string | number): Promise<void> {
@@ -216,7 +216,7 @@
 			if ((!g.public_key || !g.private_key) && userPriv) {
 				await initAgeWasm();
 				const { publicKey, privateKey } = generateKeypair();
-				
+
 				const pubKeys = await api.getGroupRecipientPublicKeys(g.id);
 				const myPub = await getStoredPublicKey(me.id);
 				if (myPub && !pubKeys.includes(myPub)) {
@@ -258,7 +258,7 @@
 			// Load members for all linked teams
 			const allGroupMembers: TeamMember[] = [];
 			if (g.teams && g.teams.length > 0) {
-				const membersRes = await Promise.all(g.teams.map(t => api.listMembers(t.id)));
+				const membersRes = await Promise.all(g.teams.map((t) => api.listMembers(t.id)));
 				const seenMemberIds = new Set<number>();
 				for (const mList of membersRes) {
 					for (const m of mList) {
@@ -332,13 +332,13 @@
 	async function unlinkTeam(teamId: string | number): Promise<void> {
 		if (!group) return;
 		try {
-			const remainingTeams = (group.teams ?? []).filter(t => t.id !== Number(teamId));
+			const remainingTeams = (group.teams ?? []).filter((t) => t.id !== Number(teamId));
 			const remainingPubs = new Set<string>();
 			for (const t of remainingTeams) {
 				const pubs = await api.getTeamRecipientPublicKeys(t.id);
-				pubs.forEach(p => remainingPubs.add(p));
+				pubs.forEach((p) => remainingPubs.add(p));
 			}
-			(group.devices ?? []).forEach(d => {
+			(group.devices ?? []).forEach((d) => {
 				if (d.encryption_public_key) remainingPubs.add(d.encryption_public_key);
 			});
 			const updatedKeys = Array.from(remainingPubs);
@@ -360,7 +360,7 @@
 		try {
 			const newPubs = await api.getTeamRecipientPublicKeys(Number(addTeamId));
 			const currentPubKeys = await api.getGroupRecipientPublicKeys(group.id);
-			newPubs.forEach(p => {
+			newPubs.forEach((p) => {
 				if (!currentPubKeys.includes(p)) currentPubKeys.push(p);
 			});
 			let reencryptedKey = '';
@@ -379,10 +379,10 @@
 	async function removeDevice(deviceId: string | number): Promise<void> {
 		if (!group) return;
 		try {
-			const d = group.devices.find(dev => dev.id === Number(deviceId));
+			const d = group.devices.find((dev) => dev.id === Number(deviceId));
 			const currentPubKeys = await api.getGroupRecipientPublicKeys(group.id);
-			const updatedPubKeys = d?.encryption_public_key 
-				? currentPubKeys.filter(k => k !== d.encryption_public_key)
+			const updatedPubKeys = d?.encryption_public_key
+				? currentPubKeys.filter((k) => k !== d.encryption_public_key)
 				: currentPubKeys;
 			let reencryptedKey = '';
 			if (group.private_key) {
@@ -400,7 +400,7 @@
 	async function addDevice(): Promise<void> {
 		if (!addDeviceId || !group) return;
 		try {
-			const d = allDevices.find(dev => dev.id === Number(addDeviceId));
+			const d = allDevices.find((dev) => dev.id === Number(addDeviceId));
 			if (!d) throw new Error('Device not found');
 			const currentPubKeys = await api.getGroupRecipientPublicKeys(group.id);
 			if (d.encryption_public_key && !currentPubKeys.includes(d.encryption_public_key)) {
@@ -495,7 +495,7 @@
 			exclusionName = exclusion.name;
 			exclusionQuery = exclusion.jsonata_query;
 			exclusionDescription = exclusion.description || '';
-			exclusionType = (exclusion.exclusion_type as 'hard' | 'soft') || 'hard';
+			exclusionType = exclusion.exclusion_type as 'hard' | 'soft' || 'hard';
 			exclusionEncrypted = exclusion.encrypted || false;
 		} else {
 			exclusionName = '';
@@ -617,8 +617,8 @@
 		try {
 			await api.deleteGroup(group.id);
 			showFlash('Group deleted successfully');
-			await goto(`${base}/groups`);
-		} catch (e) {
+			await goto(resolve('/groups'));
+		} catch(e) {
 			showError((e as Error).message);
 		}
 	}
@@ -632,7 +632,7 @@
 			
 			// Re-encrypt group private key including the new user's public keys
 			const currentPubKeys = await api.getGroupRecipientPublicKeys(group.id);
-			newPubs.forEach(p => {
+			newPubs.forEach((p) => {
 				if (!currentPubKeys.includes(p)) currentPubKeys.push(p);
 			});
 			
@@ -647,7 +647,7 @@
 			}
 			
 			await api.inviteToTeam(targetTeamId, inviteEmail.trim(), groupKeysMap);
-			triggerKeyRefresh.update(n => n + 1);
+			triggerKeyRefresh.update((n) => n + 1);
 			showFlash(`Invitation sent to ${inviteEmail}`);
 			inviteEmail = '';
 			await loadGroup(group.id);
@@ -673,7 +673,7 @@
 			}
 			
 			await api.cancelInvitation(teamId, userId, groupKeysMap);
-			triggerKeyRefresh.update(n => n + 1);
+			triggerKeyRefresh.update((n) => n + 1);
 			showFlash('Invitation cancelled');
 			await loadGroup(group.id);
 		} catch (e) {
@@ -689,13 +689,23 @@
 
 {#if group}
 	<div class="mb-4">
-		<a href="{base}/groups" class="btn btn-outline-secondary btn-sm mb-2">← Back to Groups</a>
-		<div class="d-flex align-items-center justify-content-between gap-2 mt-1">
+		<a
+			href={resolve('/groups')}
+			class="btn btn-outline-secondary btn-sm mb-2"
+		>← Back to Groups</a>
+
+		<div
+			class="d-flex align-items-center justify-content-between gap-2 mt-1"
+		>
 			<div class="d-flex align-items-center gap-2">
 				{#if editingName}
 					<input class="form-control form-control-lg w-auto" bind:value={editName} />
 					<button class="btn btn-success btn-sm" onclick={saveName}>Save</button>
-					<button class="btn btn-outline-secondary btn-sm" onclick={() => (editingName = false)}>Cancel</button>
+
+					<button
+						class="btn btn-outline-secondary btn-sm"
+						onclick={() => editingName = false}
+					>Cancel</button>
 				{:else}
 					<h2 class="mb-0">{group.name}</h2>
 					<button class="btn btn-outline-secondary btn-sm" onclick={startRename} title="Rename group">✎</button>
@@ -720,8 +730,10 @@
 			<ul class="mb-0 mt-2">
 				{#each unsupportedDevices as device}
 					<li>
-						<a href="{base}/devices/{device.id}">{device.name}</a>
-						(version: <code>{device.agent_version || 'unknown'}</code>)
+						<a href={resolve(`/devices/${device.id}`)}>{device.name}</a>
+						(version: 
+						<code>{device.agent_version || 'unknown'}</code>
+						)
 					</li>
 				{/each}
 			</ul>
@@ -746,7 +758,7 @@
 						{#each group.teams as team}
 							{@const isLast = (group.teams ?? []).length <= 1}
 							<tr>
-								<td><a href="{base}/teams/{team.id}">{team.name}</a></td>
+								<td><a href={resolve(`/teams/${team.id}`)}>{team.name}</a></td>
 								<td>
 									<span
 										class="d-inline-block"
@@ -799,7 +811,7 @@
 					<tbody>
 						{#each sortDevices(group.devices ?? []) as device (device.id)}
 							<tr>
-								<td><a href="{base}/devices/{device.id}">{device.name}</a></td>
+								<td><a href={resolve(`/devices/${device.id}`)}>{device.name}</a></td>
 								<td>
 									{#if !isDeviceActive(device.last_seen)}
 										<span class="badge bg-secondary">Offline</span>
@@ -913,125 +925,134 @@
 	</div>
 
 	{#if $user?.extended_edr_enabled}
-	<!-- Active Response Settings section -->
-	<div class="card mb-4">
-		<div class="card-header"><h5 class="mb-0">Active Response Settings</h5></div>
-		<div class="card-body">
-			<p class="text-muted small">
-				Active Response automatically terminates processes that trigger a rule with the selected severity or higher.
-			</p>
+		<!-- Active Response Settings section -->
+		<div class="card mb-4">
+			<div class="card-header"><h5 class="mb-0">Active Response Settings</h5></div>
+			<div class="card-body">
+				<p class="text-muted small">
+					Active Response automatically terminates processes that trigger a rule with the selected severity or higher.
+				</p>
 
-			{#if unsupportedResponseDevices.length > 0}
+				{#if unsupportedResponseDevices.length > 0}
 				<div class="alert alert-danger border-0 mb-3" role="alert">
-					<h6 class="alert-heading fw-bold">Warning: Unsupported Agent Versions for Active Response</h6>
-					<p class="mb-0 small">
+						<h6 class="alert-heading fw-bold">Warning: Unsupported Agent Versions for Active Response</h6>
+						<p class="mb-0 small">
 						The following devices in this group are running an agent with an unknown version or version lower than <strong>python 0.6.0</strong>.
 						Active Response <strong>will not apply</strong> and <strong>will not be enabled</strong> for these devices:
-					</p>
-					<ul class="mb-0 mt-2 small">
-						{#each unsupportedResponseDevices as device}
-							<li>
-								<a href="{base}/devices/{device.id}" class="text-danger fw-bold">{device.name}</a>
-								(version: <code>{device.agent_version || 'unknown'}</code>)
-							</li>
-						{/each}
-					</ul>
-				</div>
-			{/if}
+						</p>
+						<ul class="mb-0 mt-2 small">
+							{#each unsupportedResponseDevices as device}
+								<li>
+									<a
+										href={resolve(`/devices/${device.id}`)}
+										class="text-danger fw-bold"
+									>{device.name}</a>
 
-			<div class="row g-3 align-items-center">
-				<div class="col-auto">
-					<div class="form-check form-switch">
-						<input
-							class="form-check-input"
-							type="checkbox"
-							id="activeResponseToggle"
-							checked={localResponseEnabled}
-							onchange={handleResponseToggle}
-							disabled={!hasPackWrite}
-						/>
+									(version: 
+									<code>{device.agent_version || 'unknown'}</code>
+									)
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+
+				<div class="row g-3 align-items-center">
+					<div class="col-auto">
+						<div class="form-check form-switch">
+							<input
+								class="form-check-input"
+								type="checkbox"
+								id="activeResponseToggle"
+								checked={localResponseEnabled}
+								onchange={handleResponseToggle}
+								disabled={!hasPackWrite}
+							/>
 						<label class="form-check-label" for="activeResponseToggle">
 							<strong>Enable Active Response (Process Termination)</strong>
 						</label>
+						</div>
 					</div>
-				</div>
 				<div class="col-auto ms-sm-4 d-flex align-items-center gap-2">
 					<label for="responseSeveritySelect" class="col-form-label col-form-label-sm text-nowrap mb-0">
 						Minimum severity level for termination:
 					</label>
-					<select
-						class="form-select form-select-sm w-auto"
-						id="responseSeveritySelect"
-						value={localResponseSeverity}
-						onchange={handleSeverityChange}
-						disabled={!hasPackWrite}
-					>
-						<option value="low">Low</option>
-						<option value="medium">Medium</option>
-						<option value="high">High</option>
-						<option value="critical">Critical</option>
-					</select>
+						<select
+							class="form-select form-select-sm w-auto"
+							id="responseSeveritySelect"
+							value={localResponseSeverity}
+							onchange={handleSeverityChange}
+							disabled={!hasPackWrite}
+						>
+							<option value="low">Low</option>
+							<option value="medium">Medium</option>
+							<option value="high">High</option>
+							<option value="critical">Critical</option>
+						</select>
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
 
-	<!-- Prevention Allowlist section -->
-	<div class="card mb-4">
+		<!-- Prevention Allowlist section -->
+		<div class="card mb-4">
 		<div class="card-header d-flex justify-content-between align-items-center">
-			<h5 class="mb-0">Prevention Allowlist</h5>
-			{#if hasPackWrite}
-				<button class="btn btn-sm btn-primary" onclick={() => (showAllowlistModal = true)}>Add Entry</button>
-			{/if}
-		</div>
-		<div class="card-body">
-			<p class="text-muted small">
-				Processes matching these entries will never be terminated by Active Response, even if they trigger a detection rule.
-			</p>
-			{#if (group.prevention_allowlists ?? []).length === 0}
-				<p class="text-muted mb-0">No prevention allowlist entries configured for this group.</p>
-			{:else}
-				<table class="table table-sm mb-0 align-middle">
-					<thead>
-						<tr>
-							<th>Type</th>
-							<th>Value</th>
-							<th>Description</th>
-							{#if hasPackWrite}
-								<th></th>
-							{/if}
-						</tr>
-					</thead>
-					<tbody>
-						{#each group.prevention_allowlists as entry}
+				<h5 class="mb-0">Prevention Allowlist</h5>
+				{#if hasPackWrite}
+					<button
+						class="btn btn-sm btn-primary"
+						onclick={() => showAllowlistModal = true}
+					>Add Entry</button>
+				{/if}
+			</div>
+			<div class="card-body">
+				<p class="text-muted small">
+					Processes matching these entries will never be terminated by Active Response, even if they trigger a detection rule.
+				</p>
+				{#if (group.prevention_allowlists ?? []).length === 0}
+					<p class="text-muted mb-0">No prevention allowlist entries configured for this group.</p>
+				{:else}
+					<table class="table table-sm mb-0 align-middle">
+						<thead>
 							<tr>
-								<td>
-									{#if entry.entry_type === 'image'}
-										<span class="badge bg-secondary">Image</span>
-									{:else}
-										<span class="badge bg-body-secondary text-body">Path</span>
-									{/if}
-								</td>
-								<td><code class="small">{entry.value}</code></td>
-								<td>{entry.description || '-'}</td>
+								<th>Type</th>
+								<th>Value</th>
+								<th>Description</th>
 								{#if hasPackWrite}
-									<td class="text-end">
-										<button
-											class="btn btn-sm btn-outline-danger"
-											onclick={(e) => deleteAllowlistEntry(entry.id, e)}
-											title="Delete"
+									<th></th>
+								{/if}
+							</tr>
+						</thead>
+						<tbody>
+							{#each group.prevention_allowlists as entry}
+								<tr>
+									<td>
+										{#if entry.entry_type === 'image'}
+											<span class="badge bg-secondary">Image</span>
+										{:else}
+											<span class="badge bg-body-secondary text-body">Path</span>
+										{/if}
+									</td>
+									<td><code class="small">{entry.value}</code></td>
+									<td>{entry.description || '-'}</td>
+									{#if hasPackWrite}
+										<td class="text-end">
+											<button
+												class="btn btn-sm btn-outline-danger"
+												onclick={(e) => deleteAllowlistEntry(entry.id, e)}
+												title="Delete"
 										>
 											<Icon icon="lucide:trash-2" />
 										</button>
-									</td>
-								{/if}
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			{/if}
+										</td>
+									{/if}
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				{/if}
+			</div>
 		</div>
-	</div>
 	{/if}
 
 	<!-- Exclusions section -->
@@ -1079,7 +1100,10 @@
 								<td>{exclusion.description || '-'}</td>
 								<td>
 									{#if exclusion.alert_id}
-										<a href="{base}/alert/{exclusion.alert_id}" class="badge bg-secondary text-decoration-none">Alert #{exclusion.alert_id}</a>
+										<a
+											href={resolve(`/alert/${exclusion.alert_id}`)}
+											class="badge bg-secondary text-decoration-none"
+										>Alert #{exclusion.alert_id}</a>
 									{:else}
 										-
 									{/if}
@@ -1161,7 +1185,7 @@
 		bind:name={exclusionName}
 		bind:query={exclusionQuery}
 		bind:description={exclusionDescription}
-		bind:exclusionType={exclusionType}
+		bind:exclusionType
 		bind:encrypted={exclusionEncrypted}
 		selectedGroupId={group.id}
 		title={editingExclusion ? 'Edit Exclusion' : 'Create Exclusion'}
@@ -1171,8 +1195,18 @@
 	/>
 
 	<!-- Enable Pack Modal -->
-	<Modal show={showEnablePackModal} title="Enable Pack for Group" onClose={() => (showEnablePackModal = false)}>
-		<form onsubmit={(e) => { e.preventDefault(); enablePack(); }}>
+
+	<Modal
+		show={showEnablePackModal}
+		title="Enable Pack for Group"
+		onClose={() => showEnablePackModal = false}
+	>
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				enablePack();
+			}}
+		>
 			<div class="mb-3">
 				<label for="selectPack" class="form-label">Select Pack</label>
 				<select class="form-select" id="selectPack" bind:value={selectedPackId} onchange={handlePackChange} required>
@@ -1204,7 +1238,12 @@
 	</Modal>
 
 	<!-- Warning Modal for Active Response -->
-	<Modal show={showResponseWarningModal} title="Confirm Enabling Active Response" onClose={() => (showResponseWarningModal = false)}>
+
+	<Modal
+		show={showResponseWarningModal}
+		title="Confirm Enabling Active Response"
+		onClose={() => showResponseWarningModal = false}
+	>
 		<div class="p-2">
 			<div class="alert alert-danger d-flex align-items-start gap-2 mb-3">
 				<Icon icon="lucide:alert-triangle" class="fs-4 flex-shrink-0 mt-0.5" />
@@ -1219,15 +1258,32 @@
 				Please verify that you are not getting false positives for the selected severity level (<strong>{localResponseSeverity.toUpperCase()}</strong>) before enabling this.
 			</p>
 			<div class="d-flex justify-content-end gap-2 mt-4">
-				<button class="btn btn-outline-secondary btn-sm" onclick={() => (showResponseWarningModal = false)}>Cancel</button>
-				<button class="btn btn-danger btn-sm" onclick={confirmEnableResponse}>Enable Active Response</button>
+				<button
+					class="btn btn-outline-secondary btn-sm"
+					onclick={() => showResponseWarningModal = false}
+				>Cancel</button>
+
+				<button
+					class="btn btn-danger btn-sm"
+					onclick={confirmEnableResponse}
+				>Enable Active Response</button>
 			</div>
 		</div>
 	</Modal>
 
 	<!-- Prevention Allowlist Modal -->
-	<Modal show={showAllowlistModal} title="Add Prevention Allowlist Entry" onClose={() => (showAllowlistModal = false)}>
-		<form onsubmit={(e) => { e.preventDefault(); saveAllowlistEntry(); }}>
+
+	<Modal
+		show={showAllowlistModal}
+		title="Add Prevention Allowlist Entry"
+		onClose={() => showAllowlistModal = false}
+	>
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				saveAllowlistEntry();
+			}}
+		>
 			<div class="mb-3">
 				<label for="allowlistType" class="form-label">Type</label>
 				<select class="form-select" id="allowlistType" bind:value={allowlistEntryType}>
@@ -1266,12 +1322,17 @@
 				></textarea>
 			</div>
 			<div class="d-flex gap-2 justify-content-end">
-				<button type="button" class="btn btn-outline-secondary btn-sm" onclick={() => (showAllowlistModal = false)}>
-					Cancel
-				</button>
-				<button type="submit" class="btn btn-primary btn-sm" disabled={!allowlistValue.trim()}>
-					Add Entry
-				</button>
+				<button
+					type="button"
+					class="btn btn-outline-secondary btn-sm"
+					onclick={() => showAllowlistModal = false}
+				>Cancel</button>
+
+				<button
+					type="submit"
+					class="btn btn-primary btn-sm"
+					disabled={!allowlistValue.trim()}
+				>Add Entry</button>
 			</div>
 		</form>
 	</Modal>

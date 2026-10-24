@@ -1,9 +1,11 @@
 <script lang="ts">
 	import Icon from '@iconify/svelte';
-	let { alert, initialExpanded = false } = $props<{
+	interface Props {
 		alert: Record<string, unknown>;
 		initialExpanded?: boolean;
-	}>();
+	}
+
+	let { alert, initialExpanded = false }: Props = $props();
 
 	let expanded = $state(false);
 	$effect(() => {
