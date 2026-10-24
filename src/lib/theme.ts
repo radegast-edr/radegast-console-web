@@ -6,19 +6,21 @@ export type ThemeType = 'light' | 'dark' | 'auto';
 const THEME_KEY = 'radegast-theme';
 
 // Read initial value from localStorage or default to 'auto'
-const initialTheme: ThemeType = browser ? (localStorage.getItem(THEME_KEY) as ThemeType || 'auto') : 'auto';
+const initialTheme: ThemeType = browser && typeof localStorage !== 'undefined' ? (localStorage.getItem(THEME_KEY) as ThemeType || 'auto') : 'auto';
 
 export const theme = writable<ThemeType>(initialTheme);
 
 if (browser) {
 	theme.subscribe((value) => {
-		localStorage.setItem(THEME_KEY, value);
+		if (typeof localStorage !== 'undefined') {
+			localStorage.setItem(THEME_KEY, value);
+		}
 		applyTheme(value);
 	});
 
 	if (typeof window.matchMedia === 'function') {
 		window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-			const currentTheme = localStorage.getItem(THEME_KEY) as ThemeType;
+			const currentTheme = (typeof localStorage !== 'undefined' ? localStorage.getItem(THEME_KEY) : null) as ThemeType || 'auto';
 			if (currentTheme === 'auto') {
 				applyTheme('auto');
 			}
