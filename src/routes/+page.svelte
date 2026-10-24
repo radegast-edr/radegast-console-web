@@ -110,7 +110,7 @@
 				hasPrivateKey = !!await getStoredPrivateKey(me.id);
 			} catch(err: any) {
 				if (err?.status >= 500 || err?.name === 'TypeError' || err?.message?.includes('NetworkError') || err?.message?.includes('Failed to fetch')) {
-					goto(resolve('/server-error'));
+					goto(resolve('/server-error?next=%2F'));
 				} else if (err?.status === 401 || err?.status === 403 || !err?.status) {
 					goto(resolve('/login'));
 				}

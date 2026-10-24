@@ -75,7 +75,12 @@
 			$user = me;
 		} catch (err: any) {
 			if (err?.status >= 500 || err?.name === 'TypeError' || err?.message?.includes('NetworkError') || err?.message?.includes('Failed to fetch')) {
-				goto(resolve('/server-error'));
+				const nextPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+				const search = page.url.search;
+				const hash = typeof window !== 'undefined' ? window.location.hash : '';
+				const target = encodeURIComponent(`${nextPath}${search}${hash}`);
+				const statusQuery = err?.status ? `status=${err.status}&` : '';
+				goto(resolve(`/server-error?${statusQuery}next=${target}`));
 			} else if (err?.status === 401 || err?.status === 403 || !err?.status) {
 				const nextPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
 				const search = page.url.search;

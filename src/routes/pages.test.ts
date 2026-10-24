@@ -33,6 +33,7 @@ import ErrorBoundary from './+error.svelte';
 import Layout from './+layout.svelte';
 import { goto } from '$app/navigation';
 import { ApiError } from '$lib/api';
+import { page } from '$app/state';
 
 // Mock SvelteKit stores & navigation
 vi.mock('$app/paths', () => ({
@@ -979,10 +980,34 @@ describe('Route Pages Load Verification', () => {
 		render(ServerError);
 		await waitFor(() => {
 			expect(screen.getByRole('heading', { name: /Server Error/i })).toBeInTheDocument();
-			expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
+			const tryAgain = screen.getByRole('button', { name: /Try Again/i });
+			expect(tryAgain).toBeInTheDocument();
+			expect(tryAgain).toHaveAttribute('href', '/');
 			expect(screen.getByRole('link', { name: /Dashboard/i })).toBeInTheDocument();
 			expect(screen.getByRole('link', { name: /Go to Login/i })).toBeInTheDocument();
 		});
+	});
+
+	it('renders ServerError page with next param and sets Try Again href to retry path', async () => {
+		page.url = new URL('http://localhost/server-error?status=500&next=%2Falerts');
+		render(ServerError);
+		await waitFor(() => {
+			expect(screen.getByRole('heading', { name: /500 - Server Error/i })).toBeInTheDocument();
+			const tryAgain = screen.getByRole('button', { name: /Try Again/i });
+			expect(tryAgain).toBeInTheDocument();
+			expect(tryAgain).toHaveAttribute('href', '/alerts');
+		});
+		page.url = new URL('http://localhost/?token=test_token');
+	});
+
+	it('renders ServerError page and avoids loop when next points to server-error', async () => {
+		page.url = new URL('http://localhost/server-error?status=500&next=%2Fserver-error');
+		render(ServerError);
+		await waitFor(() => {
+			const tryAgain = screen.getByRole('button', { name: /Try Again/i });
+			expect(tryAgain).toHaveAttribute('href', '/');
+		});
+		page.url = new URL('http://localhost/?token=test_token');
 	});
 
 	it('renders ErrorBoundary (+error.svelte) page', async () => {

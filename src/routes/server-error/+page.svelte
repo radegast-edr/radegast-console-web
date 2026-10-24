@@ -4,6 +4,19 @@
 	import Icon from '@iconify/svelte';
 
 	let statusParam = $derived(page.url.searchParams.get('status'));
+	let nextParam = $derived(page.url.searchParams.get('next'));
+
+	let retryPath = $derived.by(() => {
+		if (nextParam) {
+			const decoded = decodeURIComponent(nextParam);
+			if (!decoded.includes('/server-error')) {
+				return decoded.startsWith('/') ? decoded : '/' + decoded;
+			}
+		}
+		return '/';
+	});
+
+	let retryHref = $derived(resolve(retryPath));
 </script>
 
 <svelte:head>
@@ -33,10 +46,15 @@
 				{/if}
 			</p>
 			<div class="d-flex justify-content-center gap-3">
-				<button class="btn btn-primary d-inline-flex align-items-center gap-2" onclick={() => window.location.reload()}>
+				<a
+					role="button"
+					href={retryHref}
+					data-sveltekit-reload
+					class="btn btn-primary d-inline-flex align-items-center gap-2"
+				>
 					<Icon icon="lucide:refresh-cw" />
 					<span>Try Again</span>
-				</button>
+				</a>
 
 				<a
 					href={resolve('/')}

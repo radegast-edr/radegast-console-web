@@ -53,7 +53,9 @@ export class ApiError extends Error {
 const errorMiddleware: Middleware = {
 	async onResponse({ response, request }) {
 		const isAuthLogin = request.url.endsWith('/auth/login');
-		const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+		const currentPath = typeof window !== 'undefined'
+			? window.location.pathname + window.location.search + window.location.hash
+			: '';
 		const isServerErrorPage = currentPath.includes('/server-error');
 
 		// 401 Unauthorized or 403 Forbidden: unauthenticated session
@@ -64,7 +66,12 @@ const errorMiddleware: Middleware = {
 
 		// 5xx Server Errors: drop to server error page
 		if (response.status >= 500 && !isServerErrorPage) {
-			await goto(resolve(`/server-error?status=${response.status}`));
+			const basePrefix = resolve('').replace(/\/+$/, '');
+			const relativePath = basePrefix && currentPath.startsWith(basePrefix)
+				? currentPath.slice(basePrefix.length)
+				: currentPath;
+			const target = encodeURIComponent(relativePath.startsWith('/') ? relativePath : `/${relativePath}`);
+			await goto(resolve(`/server-error?status=${response.status}&next=${target}`));
 			throw new ApiError(`Server error (${response.status})`, response.status);
 		}
 
@@ -79,10 +86,17 @@ const errorMiddleware: Middleware = {
 		return response;
 	},
 	async onError() {
-		const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+		const currentPath = typeof window !== 'undefined'
+			? window.location.pathname + window.location.search + window.location.hash
+			: '';
 		const isServerErrorPage = currentPath.includes('/server-error');
 		if (!isServerErrorPage) {
-			await goto(resolve('/server-error?status=network_error'));
+			const basePrefix = resolve('').replace(/\/+$/, '');
+			const relativePath = basePrefix && currentPath.startsWith(basePrefix)
+				? currentPath.slice(basePrefix.length)
+				: currentPath;
+			const target = encodeURIComponent(relativePath.startsWith('/') ? relativePath : `/${relativePath}`);
+			await goto(resolve(`/server-error?status=network_error&next=${target}`));
 		}
 	}
 };
