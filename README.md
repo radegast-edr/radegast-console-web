@@ -44,3 +44,7 @@ Generate the static build using:
 npm run build
 ```
 The compiled static pages will be generated inside the `build` directory, ready to be hosted by any web server or distributed assets path.
+
+## AI Usage Disclosure
+
+The code in this repository was heavily assisted by using GenAI tools. However, every commit is 100 % human made and reviewed. We know that this is a repository for security tool and for that reason we take the code security very seriously, including following all security best-practices during local development.
