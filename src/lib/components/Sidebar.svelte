@@ -14,6 +14,7 @@
 	import Laptop from '~icons/lucide/laptop';
 	import Package from '~icons/lucide/package';
 	import Bell from '~icons/lucide/bell';
+	import FilterX from '~icons/lucide/filter-x';
 	import Crosshair from '~icons/lucide/crosshair';
 	import Shield from '~icons/lucide/shield';
 	import Archive from '~icons/lucide/archive';
@@ -201,6 +202,17 @@
 				>
 					<Bell style="width: 20px; height: 20px;" />
 					{#if !collapsed}<span class="text-truncate">Alerts</span>{/if}
+				</a>
+			</li>
+			<li>
+				<a
+					href={resolve('/exclusions')}
+					class="nav-link {isActive('/exclusions') ? 'active' : 'link-body-emphasis'} d-flex align-items-center {collapsed ? 'justify-content-center' : 'gap-2'}"
+					title="Exclusions"
+					data-tour="nav-exclusions"
+				>
+					<FilterX style="width: 20px; height: 20px;" />
+					{#if !collapsed}<span class="text-truncate">Exclusions</span>{/if}
 				</a>
 			</li>
 			{#if $user.extended_edr_enabled}

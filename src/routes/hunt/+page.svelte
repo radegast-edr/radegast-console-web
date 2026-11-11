@@ -5,7 +5,7 @@
 	import Icon from '@iconify/svelte';
 	import { api, type Group, type Team, type ExclusionCreate } from '$lib/api';
 	import { showError, showFlash } from '$lib/store';
-	import { decryptExclusion, encryptExclusion } from '$lib/exclusionHelpers';
+	import { decryptExclusion, encryptExclusion, isUndecrypted, updateExclusionContent } from '$lib/exclusionHelpers';
 	import { initAgeWasm, getStoredPrivateKey } from '$lib/crypto';
 	import { LogManager } from '$lib/logManager.svelte';
 	import { formatFullDateTime, toLocalISOString, toUTCISOString } from '$lib/utils';
@@ -178,13 +178,22 @@
 		}
 
 		if (existingExclusion) {
-			const decrypted = await decryptExclusion(existingExclusion, alertObj.meta.excluded_by.group.id);
+			if (!existingExclusion.can_edit) {
+				showError('This exclusion is applied to device groups where you do not have pack write permission, so it cannot be edited here.');
+				return;
+			}
+			const decryptGroupId = alertObj.meta.excluded_by.group?.id ?? existingExclusion.groups[0]?.id ?? null;
+			const decrypted = await decryptExclusion(existingExclusion, decryptGroupId);
+			if (isUndecrypted({ encrypted: existingExclusion.encrypted ?? false, name: decrypted.name, jsonata_query: decrypted.jsonata_query })) {
+				showError('This exclusion could not be decrypted in this browser (your private key is missing here or cannot open the group key), so it cannot be edited.');
+				return;
+			}
 			exclusionName = decrypted.name;
 			exclusionQuery = decrypted.jsonata_query;
 			exclusionDescription = decrypted.description;
 			exclusionType = existingExclusion.exclusion_type as 'hard' | 'soft' || 'hard';
 			exclusionEncrypted = existingExclusion.encrypted || false;
-			selectedGroupId = alertObj.meta.excluded_by.group.id;
+			selectedGroupId = decryptGroupId;
 			editingExclusion = existingExclusion;
 		} else {
 			editingExclusion = null;
@@ -208,14 +217,16 @@
 		}
 
 		try {
-			const groupDetail = await api.getGroup(selectedGroupId);
-			const { name: finalName, jsonata_query: finalQuery, description: finalDesc } = await encryptExclusion(
-				exclusionName.trim(),
-				exclusionQuery.trim(),
-				exclusionDescription.trim() || null,
-				exclusionEncrypted,
-				groupDetail.public_key
-			);
+			const groupDetail = editingExclusion ? null : await api.getGroup(selectedGroupId);
+			const { name: finalName, jsonata_query: finalQuery, description: finalDesc } = groupDetail
+				? await encryptExclusion(
+						exclusionName.trim(),
+						exclusionQuery.trim(),
+						exclusionDescription.trim() || null,
+						exclusionEncrypted,
+						groupDetail.public_key
+					)
+				: { name: '', jsonata_query: '', description: null };
 
 			const data: ExclusionCreate = {
 				name: finalName,
@@ -226,10 +237,18 @@
 				encrypted: exclusionEncrypted
 			};
 
-			if (editingExclusion) {
-				await api.deleteExclusion(editingExclusion.id);
-			}
-			const newExclusion = await api.createExclusion(selectedGroupId, data);
+			// Editing keeps the exclusion (and its ID) and updates it in every group it is applied to
+			const newExclusion = editingExclusion
+				? await updateExclusionContent(
+						editingExclusion,
+						{
+							name: exclusionName.trim(),
+							jsonata_query: exclusionQuery.trim(),
+							description: exclusionDescription.trim() || null
+						},
+						exclusionType
+					)
+				: await api.createExclusion(selectedGroupId, data);
 			showExclusionModal = false;
 			showFlash(editingExclusion ? 'Exclusion updated' : 'Exclusion created from alert');
 
@@ -526,7 +545,7 @@
 			bind:encrypted={exclusionEncrypted}
 			title={editingExclusion ? 'Edit Exclusion' : 'Create Exclusion'}
 			isEditMode={!!editingExclusion}
-			groups={exclusionGroups}
+			groups={editingExclusion ? [] : exclusionGroups}
 			bind:selectedGroupId
 			alertObj={currentAlertObj}
 			onClose={() => { showExclusionModal = false; editingExclusion = null; }}

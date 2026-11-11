@@ -4,6 +4,7 @@
 	import jsonata from 'jsonata';
 	import { api, type Group, type Device } from '$lib/api';
 	import { user } from '$lib/store';
+	import { agentVersionSupportsE2EE } from '$lib/exclusionHelpers';
 
 	let {
 		show = $bindable(false),
@@ -14,6 +15,8 @@
 		exclusionType = $bindable<'hard' | 'soft'>('hard'),
 		encrypted = $bindable(false),
 		selectedGroupId = $bindable<number | null>(null),
+		selectedGroupIds = $bindable<number[]>([]),
+		multiGroup = false,
 		groups = [],
 		alertObj = null,
 		isEditMode = false,
@@ -28,6 +31,8 @@
 		exclusionType?: 'hard' | 'soft';
 		encrypted?: boolean;
 		selectedGroupId?: number | null;
+		selectedGroupIds?: number[];
+		multiGroup?: boolean;
 		groups?: Group[];
 		alertObj?: Record<string, unknown> | null;
 		isEditMode?: boolean;
@@ -73,66 +78,65 @@
 		};
 	});
 
+	let hasGroupSelection = $derived(multiGroup ? selectedGroupIds.length > 0 : !!selectedGroupId);
+
 	const canSubmit = $derived(
-		!!name.trim() && !!query.trim() && queryIsValid && (groups.length === 0 || !!selectedGroupId)
+		!!name.trim() && !!query.trim() && queryIsValid && (groups.length === 0 || hasGroupSelection)
 	);
 
 	let targetGroupDevices = $state<Device[]>([]);
+	let groupsMissingKeys = $state<string[]>([]);
 	let loadingDevices = $state(false);
+	let targetGroupIds = $derived(multiGroup ? selectedGroupIds : selectedGroupId ? [selectedGroupId] : []);
 
-	function isAgentVersionUnsupported(version: string | null | undefined): boolean {
-		if (!version) return true;
-		const trimmed = version.trim();
-		if (!trimmed) return true;
-		if (trimmed.toLowerCase() === 'unknown') return true;
-		
-		if (trimmed.startsWith('python ')) {
-			const verNum = trimmed.substring(7).trim();
-			const parts = verNum.split('.').map(Number);
-			if (parts.length >= 3) {
-				const [major, minor] = parts;
-				if (major < 0 || (major === 0 && minor < 5)) {
-					return true;
-				}
-			} else {
-				return true;
-			}
-			return false;
-		}
-		return false;
+	function toggleGroup(groupId: number, checked: boolean): void {
+		selectedGroupIds = checked
+			? [...new Set([...selectedGroupIds, groupId])]
+			: selectedGroupIds.filter((id) => id !== groupId);
 	}
 
 	let unsupportedDevices = $derived.by(() => {
-		return targetGroupDevices.filter(d => isAgentVersionUnsupported(d.agent_version));
+		return targetGroupDevices.filter((d) => !agentVersionSupportsE2EE(d.agent_version));
 	});
 
 	let isE2EESupported = $derived.by(() => {
+		if (multiGroup && groupsMissingKeys.length > 0) return false;
 		return unsupportedDevices.length === 0;
 	});
 
 	$effect(() => {
-		if (show && selectedGroupId) {
+		const ids = targetGroupIds;
+		if (show && ids.length > 0) {
+			let cancelled = false;
 			loadingDevices = true;
-			api.getGroup(selectedGroupId)
-				.then((groupDetail) => {
-					targetGroupDevices = groupDetail.devices ?? [];
+			Promise.all(ids.map((id) => api.getGroup(id)))
+				.then((details) => {
+					if (cancelled) return;
+					targetGroupDevices = details.flatMap((d) => d.devices ?? []);
+					groupsMissingKeys = details.filter((d) => !d.public_key || !d.private_key).map((d) => d.name);
 				})
 				.catch((err) => {
 					console.error('Failed to load group devices:', err);
+					if (cancelled) return;
 					targetGroupDevices = [];
+					groupsMissingKeys = [];
 				})
 				.finally(() => {
-					loadingDevices = false;
+					if (!cancelled) loadingDevices = false;
 				});
+			return () => {
+				cancelled = true;
+			};
 		} else {
 			targetGroupDevices = [];
+			groupsMissingKeys = [];
 			loadingDevices = false;
 		}
 	});
 
 	$effect(() => {
 		if (!isEditMode) {
-			if (selectedGroupId && !loadingDevices) {
+			if (targetGroupIds.length > 0 && !loadingDevices) {
 				encrypted = isE2EESupported;
 			} else {
 				encrypted = false;
@@ -159,7 +163,26 @@
 			/>
 		</div>
 
-		{#if groups.length > 0}
+		{#if groups.length > 0 && multiGroup}
+			<fieldset class="mb-3">
+				<legend class="form-label fs-6 mb-1">Device Groups</legend>
+				<div class="border rounded p-2 bg-body-tertiary" style="max-height: 12rem; overflow-y: auto;">
+					{#each groups as group (group.id)}
+						<div class="form-check">
+							<input
+								class="form-check-input"
+								type="checkbox"
+								id="exclusionGroup{group.id}"
+								checked={selectedGroupIds.includes(group.id)}
+								onchange={(e) => toggleGroup(group.id, (e.currentTarget as HTMLInputElement).checked)}
+							/>
+							<label class="form-check-label" for="exclusionGroup{group.id}">{group.name}</label>
+						</div>
+					{/each}
+				</div>
+				<div class="form-text small">The exclusion is applied to every selected group. You can change the groups later.</div>
+			</fieldset>
+		{:else if groups.length > 0}
 			<div class="mb-3">
 				<label for="groupSelect" class="form-label">Device Group</label>
 				<select class="form-select" id="groupSelect" bind:value={selectedGroupId} required>
@@ -220,7 +243,7 @@
 		{/if}
 
 		{#if !isEditMode}
-			{#if selectedGroupId}
+			{#if targetGroupIds.length > 0}
 				{#if loadingDevices}
 					<div class="text-muted small mb-3">
 						<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -228,11 +251,15 @@
 					</div>
 				{:else if isE2EESupported}
 					<div class="alert alert-success p-2 small mb-3">
-						<strong>End-to-End Encrypted (E2EE):</strong> This exclusion will be E2EE because all devices in the target group support it.
+						<strong>End-to-End Encrypted (E2EE):</strong> This exclusion will be E2EE because all devices in the target {multiGroup ? 'groups' : 'group'} support it.
+					</div>
+				{:else if multiGroup && groupsMissingKeys.length > 0}
+					<div class="alert alert-warning p-2 small mb-3">
+						<strong>Not E2EE:</strong> This exclusion will not be encrypted because these groups have no encryption keys set up: {groupsMissingKeys.join(', ')}.
 					</div>
 				{:else}
 					<div class="alert alert-warning p-2 small mb-3">
-						<strong>Not E2EE:</strong> This exclusion will not be encrypted because at least one device in the group does not support it (running an agent with an unknown version or version lower than <strong>python 0.5.0</strong>).
+						<strong>Not E2EE:</strong> This exclusion will not be encrypted because at least one device in the {multiGroup ? 'selected groups' : 'group'} does not support it (running an agent with an unknown version or version lower than <strong>python 0.5.0</strong>).
 					</div>
 				{/if}
 			{/if}

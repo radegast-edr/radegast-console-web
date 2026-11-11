@@ -191,6 +191,10 @@ export type APIKeyResponse = components['schemas']['APIKeyResponse'];
 export type APIKeyCreatedResponse = components['schemas']['APIKeyCreatedResponse'];
 export type Exclusion = components['schemas']['ExclusionResponse'];
 export type ExclusionCreate = components['schemas']['ExclusionCreate'];
+export type ExclusionCreateMulti = components['schemas']['ExclusionCreateMulti'];
+export type ExclusionUpdate = components['schemas']['ExclusionUpdate'];
+export type ExclusionGroupChange = components['schemas']['ExclusionGroupChange'];
+export type ExclusionLastChange = components['schemas']['ExclusionLastChange'];
 export type PreventionAllowlist = components['schemas']['PreventionAllowlistResponse'];
 export type PreventionAllowlistCreate = components['schemas']['PreventionAllowlistCreate'];
 export type LogSeverity = components["schemas"]["LogSeverity"];
@@ -386,7 +390,34 @@ export const api = {
 		call(callOp('list_group_exclusions_api_v1_exclusions_groups__group_id__get', { params: { path: { group_id } } })),
 
 	createExclusion: (group_id: number, data: ExclusionCreate) =>
-		call(callOp('create_exclusion_api_v1_exclusions_groups__group_id__post', { params: { path: { group_id } }, body: data })),
+		call(callOp('create_group_exclusion_api_v1_exclusions_groups__group_id__post', { params: { path: { group_id } }, body: data })),
+
+	listExclusions: () => call(callOp('list_all_exclusions_api_v1_exclusions__get', {})),
+
+	createSharedExclusion: (data: ExclusionCreateMulti) =>
+		call(callOp('create_exclusion_api_v1_exclusions__post', { body: data })),
+
+	updateExclusion: (exclusion_id: number, data: ExclusionUpdate) =>
+		call(callOp('update_exclusion_api_v1_exclusions__exclusion_id__put', { params: { path: { exclusion_id } }, body: data })),
+
+	getExclusionRecipients: (exclusion_id: number) =>
+		call(callOp('get_exclusion_recipients_api_v1_exclusions__exclusion_id__recipients_get', { params: { path: { exclusion_id } } })),
+
+	applyExclusionToGroup: (exclusion_id: number, group_id: number, data: ExclusionGroupChange) =>
+		call(
+			callOp('apply_exclusion_to_group_api_v1_exclusions__exclusion_id__groups__group_id__put', {
+				params: { path: { exclusion_id, group_id } },
+				body: data
+			})
+		),
+
+	removeExclusionFromGroup: (exclusion_id: number, group_id: number, data: ExclusionGroupChange) =>
+		call(
+			callOp('remove_exclusion_from_group_api_v1_exclusions__exclusion_id__groups__group_id__remove_post', {
+				params: { path: { exclusion_id, group_id } },
+				body: data
+			})
+		),
 
 	deleteExclusion: (exclusion_id: number) =>
 		call(callOp('delete_exclusion_api_v1_exclusions__exclusion_id__delete', { params: { path: { exclusion_id } } })),

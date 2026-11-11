@@ -2,10 +2,22 @@
 	import Icon from '@iconify/svelte';
 	import { askConfirm } from '$lib/confirm';
 	import { resolve } from '$app/paths';
-	import { decryptExclusionsList, encryptExclusion } from '$lib/exclusionHelpers';
+	import {
+		applyExclusionToGroup,
+		decryptExclusionsList,
+		describeLastChange,
+		encryptExclusion,
+		groupSupportsE2EE,
+		isUndecrypted,
+		lastChangeAuthor,
+		loadExclusionLibrary,
+		removeExclusionFromGroup,
+		updateExclusionContent,
+		type ExclusionFields
+	} from '$lib/exclusionHelpers';
 	import { decryptAllowlistEntries, encryptAllowlistEntry } from '$lib/preventionAllowlistHelpers';
 	import { page } from '$app/state';
-	import { api, type GroupDetail, type Team, type TeamMember, type Device, type EnabledPack, type Pack, type PackVersion, type Exclusion, type ExclusionCreate, type PreventionAllowlist } from '$lib/api';
+	import { api, ApiError, type GroupDetail, type Team, type TeamMember, type Device, type EnabledPack, type Pack, type PackVersion, type Exclusion, type ExclusionCreate, type PreventionAllowlist } from '$lib/api';
 	import { showFlash, showError, triggerKeyRefresh, user } from '$lib/store';
 	import Modal from '$lib/components/Modal.svelte';
 	import ExclusionModal from '$lib/components/ExclusionModal.svelte';
@@ -489,7 +501,14 @@
 	}
 
 	// Exclusion Management Functions
+	const UNDECRYPTED_MESSAGE =
+		'This exclusion could not be decrypted in this browser (your private key is missing here or cannot open the group key), so it cannot be edited.';
+
 	async function openCreateExclusion(exclusion: Exclusion | null = null): Promise<void> {
+		if (exclusion && isUndecrypted(exclusion)) {
+			showError(UNDECRYPTED_MESSAGE);
+			return;
+		}
 		editingExclusion = exclusion;
 		if (exclusion) {
 			exclusionName = exclusion.name;
@@ -513,28 +532,38 @@
 			return;
 		}
 		try {
-			const { name: finalName, jsonata_query: finalQuery, description: finalDesc } = await encryptExclusion(
-				exclusionName.trim(),
-				exclusionQuery.trim(),
-				exclusionDescription.trim() || null,
-				exclusionEncrypted,
-				group.public_key
-			);
+			const { name: finalName, jsonata_query: finalQuery, description: finalDesc } = editingExclusion
+				? { name: '', jsonata_query: '', description: null }
+				: await encryptExclusion(
+						exclusionName.trim(),
+						exclusionQuery.trim(),
+						exclusionDescription.trim() || null,
+						exclusionEncrypted,
+						group.public_key
+					);
 
-			const data: ExclusionCreate = {
-				name: finalName,
-				jsonata_query: finalQuery,
-				description: finalDesc,
-				alert_id: editingExclusion ? editingExclusion.alert_id : null,
-				exclusion_type: exclusionType,
-				encrypted: exclusionEncrypted
-			};
-			
 			if (editingExclusion) {
-				await api.deleteExclusion(editingExclusion.id);
+				// Edit in place: keeps the ID and updates every group the exclusion is applied to
+				await updateExclusionContent(
+					editingExclusion,
+					{
+						name: exclusionName.trim(),
+						jsonata_query: exclusionQuery.trim(),
+						description: exclusionDescription.trim() || null
+					},
+					exclusionType
+				);
+			} else {
+				const data: ExclusionCreate = {
+					name: finalName,
+					jsonata_query: finalQuery,
+					description: finalDesc,
+					alert_id: null,
+					exclusion_type: exclusionType,
+					encrypted: exclusionEncrypted
+				};
+				await api.createExclusion(Number(group.id), data);
 			}
-			
-			await api.createExclusion(Number(group.id), data);
 			showExclusionModal = false;
 			showFlash('Exclusion saved');
 			await loadGroup(group.id);
@@ -547,22 +576,92 @@
 			exclusionEncrypted = false;
 			editingExclusion = null;
 		} catch (e) {
-			showError((e as Error).message);
+			await handleExclusionError(e);
 		}
 	}
 
-	async function deleteExclusionHandler(exclusionId: number, e: MouseEvent): Promise<void> {
+	async function handleExclusionError(e: unknown): Promise<void> {
+		showError((e as Error).message);
+		if (e instanceof ApiError && e.status === 409 && group) {
+			await loadGroup(group.id);
+		}
+	}
+
+	function plainFields(exclusion: Exclusion): ExclusionFields | null {
+		// group.exclusions are decrypted in place by loadGroup; failed decryption leaves placeholders
+		if (isUndecrypted(exclusion)) {
+			return null;
+		}
+		return { name: exclusion.name, jsonata_query: exclusion.jsonata_query, description: exclusion.description ?? null };
+	}
+
+	async function deleteExclusionHandler(exclusion: Exclusion, e: MouseEvent): Promise<void> {
 		e.stopPropagation();
-		if (!await askConfirm('Are you sure you want to delete this exclusion?')) return;
+		if (!group) return;
+		const shared = exclusion.group_count > 1;
+		const message = shared
+			? `Remove "${exclusion.name}" from this group? It stays applied to its ${exclusion.group_count - 1} other group(s).`
+			: 'Are you sure you want to delete this exclusion?';
+		if (!await askConfirm(message)) return;
 		try {
-			await api.deleteExclusion(exclusionId);
-			showFlash('Exclusion deleted');
-			
-			if (group) {
-				await loadGroup(group.id);
+			// Content is only re-encrypted when an encrypted exclusion stays applied to other groups
+			const fields = plainFields(exclusion);
+			if (!fields && exclusion.encrypted && shared) {
+				throw new Error('The exclusion could not be decrypted with your key');
 			}
-		} catch (e) {
-			showError((e as Error).message);
+			const deleted = await removeExclusionFromGroup(
+				exclusion,
+				fields ?? { name: '', jsonata_query: '', description: null },
+				group
+			);
+			showFlash(deleted ? 'Exclusion deleted' : 'Exclusion removed from this group');
+			await loadGroup(group.id);
+		} catch (err) {
+			await handleExclusionError(err);
+		}
+	}
+
+	// Apply an existing exclusion (from another group) to this group
+	let showApplyExisting = $state(false);
+	let loadingLibrary = $state(false);
+	let libraryCandidates = $state<(Exclusion & { decrypted: ExclusionFields | null })[]>([]);
+	let applyExistingId = $state<number | null>(null);
+	let applyingExisting = $state(false);
+	let applyExistingSelected = $derived(libraryCandidates.find((ex) => ex.id === applyExistingId) ?? null);
+	let applyExistingBlocked = $derived(!!applyExistingSelected?.encrypted && !!group && !groupSupportsE2EE(group));
+
+	async function openApplyExisting(): Promise<void> {
+		if (!group) return;
+		showApplyExisting = true;
+		applyExistingId = null;
+		loadingLibrary = true;
+		try {
+			const me = await api.me();
+			const library = await loadExclusionLibrary(me.id);
+			const groupId = group.id;
+			libraryCandidates = library.exclusions
+				.filter((ex) => ex.decrypted && !ex.groups.some((g) => g.id === groupId))
+				.sort((a, b) => (a.decrypted?.name ?? '').localeCompare(b.decrypted?.name ?? ''));
+		} catch (err) {
+			showError((err as Error).message);
+			libraryCandidates = [];
+		} finally {
+			loadingLibrary = false;
+		}
+	}
+
+	async function confirmApplyExisting(): Promise<void> {
+		if (!group || !applyExistingSelected?.decrypted) return;
+		applyingExisting = true;
+		try {
+			await applyExclusionToGroup(applyExistingSelected, applyExistingSelected.decrypted, group);
+			showFlash('Exclusion applied to this group');
+			showApplyExisting = false;
+			await loadGroup(group.id);
+		} catch (err) {
+			await handleExclusionError(err);
+		} finally {
+			applyingExisting = false;
 		}
 	}
 
@@ -1060,7 +1159,10 @@
 		<div class="card-header d-flex justify-content-between align-items-center">
 			<h5 class="mb-0">Detection Exclusions</h5>
 			{#if hasPackWrite}
-				<button class="btn btn-sm btn-primary" onclick={() => openCreateExclusion(null)}>Create Exclusion</button>
+				<div class="d-flex gap-2">
+					<button class="btn btn-sm btn-outline-secondary" onclick={openApplyExisting}>Apply Existing</button>
+					<button class="btn btn-sm btn-primary" onclick={() => openCreateExclusion(null)}>Create Exclusion</button>
+				</div>
 			{/if}
 		</div>
 		<div class="card-body">
@@ -1075,8 +1177,9 @@
 							<th>JSONata Query</th>
 							<th>Description</th>
 							<th>Source Alert</th>
+							<th>Last Change</th>
 							{#if hasPackWrite}
-								<th></th>
+								<th><span class="visually-hidden">Actions</span></th>
 							{/if}
 						</tr>
 					</thead>
@@ -1087,6 +1190,14 @@
 									<strong>{exclusion.name}</strong>
 									{#if !exclusion.encrypted}
 										<span class="badge bg-secondary-subtle text-secondary-emphasis ms-1" style="font-size: 0.75rem;"><Icon icon="lucide:unlock" class="me-1" style="vertical-align: text-bottom;" />Unencrypted</span>
+									{/if}
+									{#if exclusion.group_count > 1}
+										<a
+											href={resolve('/exclusions')}
+											class="badge bg-body-secondary text-body border text-decoration-none ms-1"
+											style="font-size: 0.75rem;"
+											title="This exclusion is also applied to other device groups"
+										><Icon icon="lucide:share-2" class="me-1" style="vertical-align: text-bottom;" />Shared with {exclusion.group_count - 1} other group{exclusion.group_count > 2 ? 's' : ''}</a>
 									{/if}
 								</td>
 								<td>
@@ -1108,10 +1219,25 @@
 										-
 									{/if}
 								</td>
+								<td class="small">
+									{#if exclusion.last_change}
+										<div>{describeLastChange(exclusion.last_change)}</div>
+										<div class="text-body-secondary">
+											{lastChangeAuthor(exclusion.last_change)}{#if exclusion.last_change.at}&nbsp;&middot; {new Date(exclusion.last_change.at).toLocaleString()}{/if}
+										</div>
+									{/if}
+								</td>
 								{#if hasPackWrite}
-									<td>
-										<button class="btn btn-sm btn-outline-secondary me-2" onclick={() => openCreateExclusion(exclusion)} title="Edit">✎</button>
-										<button class="btn btn-sm btn-outline-danger" onclick={(e) => deleteExclusionHandler(exclusion.id, e)} title="Delete">×</button>
+									<td class="text-nowrap">
+										{#if exclusion.can_edit && !isUndecrypted(exclusion)}
+											<button class="btn btn-sm btn-outline-secondary me-2" onclick={() => openCreateExclusion(exclusion)} title="Edit" aria-label="Edit">✎</button>
+										{/if}
+										<button
+											class="btn btn-sm btn-outline-danger"
+											onclick={(e) => deleteExclusionHandler(exclusion, e)}
+											title={exclusion.group_count > 1 ? 'Remove from this group' : 'Delete'}
+											aria-label={exclusion.group_count > 1 ? 'Remove from this group' : 'Delete'}
+										>×</button>
 									</td>
 								{/if}
 							</tr>
@@ -1193,6 +1319,45 @@
 		onClose={() => { showExclusionModal = false; editingExclusion = null; }}
 		onSave={saveExclusion}
 	/>
+
+	<!-- Apply Existing Exclusion Modal -->
+	<Modal show={showApplyExisting} title="Apply Existing Exclusion" onClose={() => (showApplyExisting = false)}>
+		{#if loadingLibrary}
+			<Spinner centered text="Loading exclusions..." py={3} />
+		{:else if libraryCandidates.length === 0}
+			<p class="text-body-secondary mb-0">
+				There are no exclusions in your other device groups that could be applied to this group.
+			</p>
+		{:else}
+			<label for="applyExistingSelect" class="form-label">Exclusion</label>
+			<select id="applyExistingSelect" class="form-select mb-2" bind:value={applyExistingId}>
+				<option value={null}>Select an exclusion...</option>
+				{#each libraryCandidates as ex (ex.id)}
+					<option value={ex.id}>{ex.decrypted?.name} ({ex.groups.map((g) => g.name).join(', ')})</option>
+				{/each}
+			</select>
+			{#if applyExistingSelected?.decrypted}
+				<div class="small mb-2">
+					<code>{applyExistingSelected.decrypted.jsonata_query}</code>
+				</div>
+			{/if}
+			{#if applyExistingBlocked}
+				<div class="alert alert-warning p-2 small mb-2">
+					This exclusion is end-to-end encrypted, but this group has no encryption keys set up or contains
+					agents older than <strong>python 0.5.0</strong>.
+				</div>
+			{/if}
+		{/if}
+		<div class="d-flex gap-2 justify-content-end mt-3">
+			<button type="button" class="btn btn-outline-secondary" onclick={() => (showApplyExisting = false)}>Cancel</button>
+			<button
+				type="button"
+				class="btn btn-primary"
+				disabled={!applyExistingSelected || applyExistingBlocked || applyingExisting}
+				onclick={confirmApplyExisting}
+			>Apply</button>
+		</div>
+	</Modal>
 
 	<!-- Enable Pack Modal -->
 

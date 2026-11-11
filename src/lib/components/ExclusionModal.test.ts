@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import ExclusionModal from './ExclusionModal.svelte';
 import { api } from '$lib/api';
 
@@ -129,4 +129,88 @@ describe('ExclusionModal Component', () => {
 			expect(screen.getByLabelText('Encrypt this exclusion (End-to-End Encrypted)')).toBeDisabled();
 		});
 	});
+
+	describe('multi-group mode', () => {
+		const groups = [
+			{ id: 1, name: 'Servers' },
+			{ id: 2, name: 'Laptops' }
+		] as any;
+
+		function mockGroups(details: Record<number, any>) {
+			vi.mocked(api.getGroup).mockImplementation(async (id: number) => details[id]);
+		}
+
+		it('renders a checkbox per group and selects groups', async () => {
+			mockGroups({
+				1: { id: 1, name: 'Servers', public_key: 'k1', private_key: 'p1', devices: [] },
+				2: { id: 2, name: 'Laptops', public_key: 'k2', private_key: 'p2', devices: [] }
+			});
+			render(ExclusionModal, {
+				props: {
+					show: true,
+					multiGroup: true,
+					groups,
+					selectedGroupIds: [1],
+					name: 'Shared',
+					query: 'rule.name = "x"',
+					description: '',
+					onClose: () => {},
+					onSave: () => {}
+				}
+			});
+
+			const servers = screen.getByLabelText('Servers') as HTMLInputElement;
+			const laptops = screen.getByLabelText('Laptops') as HTMLInputElement;
+			expect(servers.checked).toBe(true);
+			expect(laptops.checked).toBe(false);
+
+			await fireEvent.click(laptops);
+			await waitFor(() => {
+				expect(laptops.checked).toBe(true);
+				expect(api.getGroup).toHaveBeenCalledWith(2);
+				expect(screen.getByText(/all devices in the target groups support it/)).toBeInTheDocument();
+			});
+		});
+
+		it('disables submit when no group is selected', async () => {
+			render(ExclusionModal, {
+				props: {
+					show: true,
+					multiGroup: true,
+					groups,
+					selectedGroupIds: [],
+					name: 'Shared',
+					query: 'rule.name = "x"',
+					description: '',
+					onClose: () => {},
+					onSave: () => {}
+				}
+			});
+			expect(screen.getByText('Create Exclusion', { selector: 'button' })).toBeDisabled();
+		});
+
+		it('warns about selected groups without encryption keys', async () => {
+			mockGroups({
+				1: { id: 1, name: 'Servers', public_key: 'k1', private_key: 'p1', devices: [] },
+				2: { id: 2, name: 'Laptops', public_key: null, private_key: null, devices: [] }
+			});
+			render(ExclusionModal, {
+				props: {
+					show: true,
+					multiGroup: true,
+					groups,
+					selectedGroupIds: [1, 2],
+					name: 'Shared',
+					query: 'rule.name = "x"',
+					description: '',
+					onClose: () => {},
+					onSave: () => {}
+				}
+			});
+			await waitFor(() => {
+				expect(screen.getByText(/no encryption keys set up: Laptops/)).toBeInTheDocument();
+			});
+		});
+	});
 });
+

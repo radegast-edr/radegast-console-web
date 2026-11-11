@@ -1238,11 +1238,15 @@ export interface paths {
         };
         /**
          * List All Exclusions
-         * @description List all exclusions visible to the current user.
+         * @description List all exclusions applied to at least one device group visible to the current user.
          */
         get: operations["list_all_exclusions_api_v1_exclusions__get"];
         put?: never;
-        post?: never;
+        /**
+         * Create Exclusion
+         * @description Create an exclusion applied to one or more device groups.
+         */
+        post: operations["create_exclusion_api_v1_exclusions__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1258,15 +1262,15 @@ export interface paths {
         };
         /**
          * List Group Exclusions
-         * @description List all exclusions for a specific device group.
+         * @description List all exclusions applied to a specific device group.
          */
         get: operations["list_group_exclusions_api_v1_exclusions_groups__group_id__get"];
         put?: never;
         /**
-         * Create Exclusion
-         * @description Create a new exclusion for a device group.
+         * Create Group Exclusion
+         * @description Create an exclusion applied to a single device group (backwards compatible endpoint).
          */
-        post: operations["create_exclusion_api_v1_exclusions_groups__group_id__post"];
+        post: operations["create_group_exclusion_api_v1_exclusions_groups__group_id__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1283,6 +1287,7 @@ export interface paths {
         /**
          * Get Device Exclusions
          * @description Device endpoint: Returns all exclusions (JSONata queries) for the groups this device belongs to.
+         *     An exclusion shared by several of the device's groups is returned once per group.
          *     The agent will use these to filter out false positives from alerts.
          */
         get: operations["get_device_exclusions_api_v1_exclusions_device_get"];
@@ -1306,13 +1311,77 @@ export interface paths {
          * @description Get a specific exclusion by ID.
          */
         get: operations["get_exclusion_api_v1_exclusions__exclusion_id__get"];
-        put?: never;
+        /**
+         * Update Exclusion
+         * @description Update an exclusion in every device group it is applied to.
+         */
+        put: operations["update_exclusion_api_v1_exclusions__exclusion_id__put"];
         post?: never;
         /**
          * Delete Exclusion
-         * @description Delete an exclusion.
+         * @description Delete an exclusion from every device group it is applied to.
          */
         delete: operations["delete_exclusion_api_v1_exclusions__exclusion_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exclusions/{exclusion_id}/recipients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Exclusion Recipients
+         * @description Public keys of all device groups the exclusion is applied to (the AGE recipients of its content).
+         */
+        get: operations["get_exclusion_recipients_api_v1_exclusions__exclusion_id__recipients_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exclusions/{exclusion_id}/groups/{group_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Apply Exclusion To Group
+         * @description Apply an existing exclusion to another device group.
+         */
+        put: operations["apply_exclusion_to_group_api_v1_exclusions__exclusion_id__groups__group_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exclusions/{exclusion_id}/groups/{group_id}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remove Exclusion From Group
+         * @description Remove an exclusion from a device group. Removing it from its last group deletes it.
+         */
+        post: operations["remove_exclusion_from_group_api_v1_exclusions__exclusion_id__groups__group_id__remove_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2661,7 +2730,10 @@ export interface components {
             /** Signature Public Key */
             signature_public_key: string;
         };
-        /** ExclusionCreate */
+        /**
+         * ExclusionCreate
+         * @description Create an exclusion in a single device group (kept for backwards compatibility).
+         */
         ExclusionCreate: {
             /** Name */
             name: string;
@@ -2683,6 +2755,70 @@ export interface components {
              */
             encrypted: boolean;
         };
+        /**
+         * ExclusionCreateMulti
+         * @description Create an exclusion applied to one or more device groups.
+         *
+         *     When ``encrypted`` is true, the content fields must be AGE ciphertext encrypted for the
+         *     public key of every group in ``group_ids``.
+         */
+        ExclusionCreateMulti: {
+            /** Name */
+            name: string;
+            /** Jsonata Query */
+            jsonata_query: string;
+            /** Description */
+            description?: string | null;
+            /** Group Ids */
+            group_ids: number[];
+            /** Alert Id */
+            alert_id?: number | null;
+            /**
+             * Exclusion Type
+             * @default hard
+             * @enum {string}
+             */
+            exclusion_type: "hard" | "soft";
+            /**
+             * Encrypted
+             * @default false
+             */
+            encrypted: boolean;
+        };
+        /** ExclusionDeleteResponse */
+        ExclusionDeleteResponse: {
+            /** Message */
+            message: string;
+            /**
+             * Deleted
+             * @default false
+             */
+            deleted: boolean;
+        };
+        /**
+         * ExclusionGroupChange
+         * @description Apply an exclusion to a group or remove it from one.
+         *
+         *     For encrypted exclusions the content must be re-encrypted for the new set of groups
+         *     (not needed when removing the last group, which deletes the exclusion).
+         */
+        ExclusionGroupChange: {
+            /** Version */
+            version: number;
+            /** Name */
+            name?: string | null;
+            /** Jsonata Query */
+            jsonata_query?: string | null;
+            /** Description */
+            description?: string | null;
+        };
+        /** ExclusionGroupRef */
+        ExclusionGroupRef: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+        };
         /** ExclusionGroupResponse */
         ExclusionGroupResponse: {
             /** Id */
@@ -2690,43 +2826,43 @@ export interface components {
             /** Name */
             name: string;
         };
-        /** ExclusionListResponse */
-        ExclusionListResponse: {
-            /** Id */
-            id: number;
-            /** Device Group Id */
-            device_group_id: number;
-            /** Name */
-            name: string;
-            /** Description */
-            description: string | null;
-            /** Jsonata Query */
-            jsonata_query: string;
+        /** ExclusionLastChange */
+        ExclusionLastChange: {
             /**
-             * Created At
-             * Format: date-time
+             * Action
+             * @enum {string}
              */
-            created_at: string;
-            /** Alert Id */
-            alert_id?: number | null;
-            /**
-             * Exclusion Type
-             * @default hard
-             */
-            exclusion_type: string;
+            action: "created" | "updated" | "applied" | "removed" | "migrated";
+            /** At */
+            at?: string | null;
+            /** By User Id */
+            by_user_id?: number | null;
+            /** By Email */
+            by_email?: string | null;
+            /** Group Id */
+            group_id?: number | null;
+            /** Group Name */
+            group_name?: string | null;
+        };
+        /** ExclusionRecipientsResponse */
+        ExclusionRecipientsResponse: {
+            /** Version */
+            version: number;
+            /** Public Keys */
+            public_keys: string[];
         };
         /** ExclusionRefResponse */
         ExclusionRefResponse: {
             /** Id */
             id: number;
-            group: components["schemas"]["ExclusionGroupResponse"];
+            group?: components["schemas"]["ExclusionGroupResponse"] | null;
         };
         /** ExclusionResponse */
         ExclusionResponse: {
             /** Id */
             id: number;
             /** Device Group Id */
-            device_group_id: number;
+            device_group_id?: number | null;
             /** Name */
             name: string;
             /** Description */
@@ -2751,6 +2887,45 @@ export interface components {
              * @default false
              */
             encrypted: boolean;
+            /**
+             * Version
+             * @default 1
+             */
+            version: number;
+            /**
+             * Groups
+             * @default []
+             */
+            groups: components["schemas"]["ExclusionGroupRef"][];
+            /**
+             * Group Count
+             * @default 0
+             */
+            group_count: number;
+            /**
+             * Can Edit
+             * @default false
+             */
+            can_edit: boolean;
+            last_change?: components["schemas"]["ExclusionLastChange"] | null;
+        };
+        /**
+         * ExclusionUpdate
+         * @description Update the content of an exclusion in all groups it is applied to.
+         */
+        ExclusionUpdate: {
+            /** Version */
+            version: number;
+            /** Name */
+            name: string;
+            /** Jsonata Query */
+            jsonata_query: string;
+            /** Description */
+            description?: string | null;
+            /** Exclusion Type */
+            exclusion_type?: ("hard" | "soft") | null;
+            /** Encrypted */
+            encrypted?: boolean | null;
         };
         /** ExtendedEdrSettings */
         ExtendedEdrSettings: {
@@ -5870,7 +6045,40 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ExclusionListResponse"][];
+                    "application/json": components["schemas"]["ExclusionResponse"][];
+                };
+            };
+        };
+    };
+    create_exclusion_api_v1_exclusions__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExclusionCreateMulti"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExclusionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5906,7 +6114,7 @@ export interface operations {
             };
         };
     };
-    create_exclusion_api_v1_exclusions_groups__group_id__post: {
+    create_group_exclusion_api_v1_exclusions_groups__group_id__post: {
         parameters: {
             query?: never;
             header?: never;
@@ -5992,6 +6200,41 @@ export interface operations {
             };
         };
     };
+    update_exclusion_api_v1_exclusions__exclusion_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exclusion_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExclusionUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExclusionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     delete_exclusion_api_v1_exclusions__exclusion_id__delete: {
         parameters: {
             query?: never;
@@ -6009,7 +6252,110 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MessageResponse"];
+                    "application/json": components["schemas"]["ExclusionDeleteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_exclusion_recipients_api_v1_exclusions__exclusion_id__recipients_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exclusion_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExclusionRecipientsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_exclusion_to_group_api_v1_exclusions__exclusion_id__groups__group_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exclusion_id: number;
+                group_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExclusionGroupChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExclusionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_exclusion_from_group_api_v1_exclusions__exclusion_id__groups__group_id__remove_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exclusion_id: number;
+                group_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExclusionGroupChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExclusionDeleteResponse"];
                 };
             };
             /** @description Validation Error */
