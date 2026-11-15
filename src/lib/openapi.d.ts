@@ -225,20 +225,20 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/user/keys/secondary": {
+    "/api/v1/user/public-keys-by-email": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
         /**
-         * Setup Secondary Key
-         * @description Add a secondary key alongside the user's existing main keypair (e.g. on a new device).
+         * Get Public Keys By Email
+         * @description Retrieve public keys of another registered user by email.
          */
-        post: operations["setup_secondary_key_api_v1_user_keys_secondary_post"];
+        get: operations["get_public_keys_by_email_api_v1_user_public_keys_by_email_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -263,30 +263,6 @@ export interface paths {
          * @description Add a new public key for the current user.
          */
         post: operations["add_user_key_api_v1_user_keys_post"];
-        /**
-         * Delete All Keys
-         * @description Delete all keys for the current user (fresh-start before re-setup).
-         */
-        delete: operations["delete_all_keys_api_v1_user_keys_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/user/public-keys-by-email": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Public Keys By Email
-         * @description Retrieve public keys of another registered user by email.
-         */
-        get: operations["get_public_keys_by_email_api_v1_user_public_keys_by_email_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2264,6 +2240,11 @@ export interface components {
              * @default []
              */
             releases: ("read" | "create" | "write" | "delete")[];
+            /**
+             * User
+             * @default []
+             */
+            user: ("read" | "create" | "write" | "delete")[];
         };
         /** AccountDeletionConfirmResponse */
         AccountDeletionConfirmResponse: {
@@ -2800,16 +2781,6 @@ export interface components {
         };
         /** KeyRecoverResponse */
         KeyRecoverResponse: {
-            /** Public Key */
-            public_key: string;
-            /** Encrypted Private Key */
-            encrypted_private_key: string;
-        };
-        /**
-         * KeySecondarySetupRequest
-         * @description Add a secondary (recovery) keypair alongside the existing main keypair.
-         */
-        KeySecondarySetupRequest: {
             /** Public Key */
             public_key: string;
             /** Encrypted Private Key */
@@ -3807,18 +3778,16 @@ export interface operations {
             };
         };
     };
-    setup_secondary_key_api_v1_user_keys_secondary_post: {
+    get_public_keys_by_email_api_v1_user_public_keys_by_email_get: {
         parameters: {
-            query?: never;
+            query: {
+                email: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["KeySecondarySetupRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -3826,7 +3795,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["KeySetupResponse"];
+                    "application/json": string[];
                 };
             };
             /** @description Validation Error */
@@ -3880,57 +3849,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KeySetupResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_all_keys_api_v1_user_keys_delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    get_public_keys_by_email_api_v1_user_public_keys_by_email_get: {
-        parameters: {
-            query: {
-                email: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string[];
                 };
             };
             /** @description Validation Error */

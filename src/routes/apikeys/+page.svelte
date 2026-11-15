@@ -18,6 +18,7 @@
 	let packsScope = $state<('read' | 'create' | 'write' | 'delete')[]>([]);
 	let logsScope = $state<('read' | 'create' | 'write' | 'delete')[]>([]);
 	let releasesScope = $state<('read' | 'create' | 'write' | 'delete')[]>([]);
+	let userScope = $state<('read' | 'create' | 'write' | 'delete')[]>([]);
 
 	// Dropdown states
 	let devicesDropdownOpen = $state(false);
@@ -26,6 +27,7 @@
 	let packsDropdownOpen = $state(false);
 	let logsDropdownOpen = $state(false);
 	let releasesDropdownOpen = $state(false);
+	let userDropdownOpen = $state(false);
 
 	function closeAllDropdowns() {
 		devicesDropdownOpen = false;
@@ -34,6 +36,7 @@
 		packsDropdownOpen = false;
 		logsDropdownOpen = false;
 		releasesDropdownOpen = false;
+		userDropdownOpen = false;
 	}
 
 	// Key Expiration
@@ -74,7 +77,8 @@
 				groups: groupsScope,
 				packs: packsScope,
 				logs: logsScope,
-				releases: releasesScope
+				releases: releasesScope,
+				user: userScope
 			};
 
 			let expiresAt: string | null = null;
@@ -100,6 +104,7 @@
 			packsScope = [];
 			logsScope = [];
 			releasesScope = [];
+			userScope = [];
 			expiresOption = 'never';
 			expiresCustomDate = '';
 			showFlash('API key generated successfully.');
@@ -504,6 +509,53 @@
 											<div class="form-check">
 												<input class="form-check-input" type="checkbox" id="logs-delete" value="delete" bind:group={logsScope} />
 												<label class="form-check-label small" for="logs-delete">Delete</label>
+											</div>
+										</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+
+						<!-- User -->
+						<div class="row align-items-center mb-3">
+							<div class="col-5">
+								<span class="fw-semibold">User</span>
+							</div>
+							<div class="col-7">
+								<div class="dropdown">
+									<button
+										class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start d-flex justify-content-between align-items-center {userDropdownOpen ? 'show' : ''}"
+										type="button"
+										onclick={(e) => { e.stopPropagation(); const wasOpen = userDropdownOpen; closeAllDropdowns(); userDropdownOpen = !wasOpen; }}
+										aria-expanded={userDropdownOpen}
+									>
+										<span class="text-truncate" style="max-width: 140px;">{userScope.length === 0 ? 'None' : userScope.join(', ')}</span>
+									</button>
+									<!-- svelte-ignore a11y_click_events_have_key_events -->
+									<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+									<ul class="dropdown-menu p-3 w-100 shadow {userDropdownOpen ? 'show' : ''}" onclick={(e) => e.stopPropagation()}>
+										<li>
+											<div class="form-check">
+												<input class="form-check-input" type="checkbox" id="user-read" value="read" bind:group={userScope} />
+												<label class="form-check-label small" for="user-read">Read</label>
+											</div>
+										</li>
+										<li>
+											<div class="form-check">
+												<input class="form-check-input" type="checkbox" id="user-create" value="create" bind:group={userScope} />
+												<label class="form-check-label small" for="user-create">Create</label>
+											</div>
+										</li>
+										<li>
+											<div class="form-check">
+												<input class="form-check-input" type="checkbox" id="user-write" value="write" bind:group={userScope} />
+												<label class="form-check-label small" for="user-write">Write</label>
+											</div>
+										</li>
+										<li>
+											<div class="form-check">
+												<input class="form-check-input" type="checkbox" id="user-delete" value="delete" bind:group={userScope} />
+												<label class="form-check-label small" for="user-delete">Delete</label>
 											</div>
 										</li>
 									</ul>

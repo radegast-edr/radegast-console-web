@@ -85,8 +85,6 @@ vi.mock('$lib/api', () => ({
 		verifyEmail: vi.fn(),
 		unsubscribe: vi.fn(),
 		setupKeys: vi.fn(),
-		setupSecondaryKey: vi.fn(),
-		deleteKeys: vi.fn(),
 		recoverKeys: vi.fn(),
 		listKeys: vi.fn(),
 		addKey: vi.fn(),

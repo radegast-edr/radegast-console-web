@@ -229,12 +229,6 @@ export const api = {
 	setupKeys: (body: components['schemas']['KeySetupRequest']) =>
 		call(callOp('setup_keys_api_v1_user_keys_setup_post', { body })),
 
-	setupSecondaryKey: (body: components['schemas']['KeySecondarySetupRequest']) =>
-		call(callOp('setup_secondary_key_api_v1_user_keys_secondary_post', { body })),
-
-	deleteKeys: () =>
-		call(callOp('delete_all_keys_api_v1_user_keys_delete', {})),
-
 	recoverKeys: () =>
 		call(callOp('recover_keys_api_v1_user_keys_recover_get', {})),
 
